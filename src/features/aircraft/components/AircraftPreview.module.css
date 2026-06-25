@@ -1,0 +1,67 @@
+.preview {
+  width: 100%;
+  min-height: 18rem;
+  height: 100%;
+  border-radius: var(--radius);
+  background: oklch(0.129 0.042 264.695);
+}
+
+.gridLine {
+  fill: none;
+  stroke: oklch(0.279 0.041 260.031);
+  stroke-width: 1;
+}
+
+.fuselage {
+  fill: oklch(0.869 0.022 252.894);
+  opacity: 0.92;
+}
+
+.wing {
+  fill: oklch(0.809 0.105 251.813);
+  opacity: 0.95;
+}
+
+.liftWing {
+  fill: url("#wing-lift");
+}
+
+.tail {
+  fill: oklch(0.882 0.059 254.128);
+  opacity: 0.92;
+}
+
+.fin {
+  fill: oklch(0.929 0.033 255.585);
+  opacity: 0.92;
+}
+
+.centerLine {
+  stroke: oklch(0.984 0.003 247.858);
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+.liftTrail {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.liftTrailPrimary {
+  stroke: oklch(0.723 0.219 149.579);
+}
+
+.liftTrailSecondary {
+  stroke: oklch(0.746 0.16 232.661);
+}
+
+.label {
+  fill: oklch(0.869 0.022 252.894);
+  font-size: 13px;
+}
+
+.subLabel {
+  fill: oklch(0.554 0.046 257.417);
+  font-size: 12px;
+}
