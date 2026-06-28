@@ -1,17 +1,19 @@
 import type { Airfoil } from "../model/types";
+import { cn } from "../../../shared/lib/utils";
 
 interface AirfoilPlotProps {
   airfoil: Airfoil;
+  className?: string;
 }
 
 const toPoint = (x: number, y: number) => `${40 + x * 500},${135 - y * 760}`;
 
-export function AirfoilPlot({ airfoil }: AirfoilPlotProps) {
+export function AirfoilPlot({ airfoil, className }: AirfoilPlotProps) {
   const upper = airfoil.coordinates.map((p) => toPoint(p.x, p.upper)).join(" ");
   const lower = [...airfoil.coordinates].reverse().map((p) => toPoint(p.x, p.lower)).join(" ");
 
   return (
-    <svg viewBox="0 0 580 250" className="h-full min-h-64 w-full rounded-lg bg-slate-50">
+    <svg viewBox="0 0 580 250" className={cn("h-full min-h-64 w-full rounded-lg bg-slate-50", className)}>
       <defs>
         <pattern id="airfoil-grid" width="40" height="40" patternUnits="userSpaceOnUse">
           <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" strokeWidth="1" />
