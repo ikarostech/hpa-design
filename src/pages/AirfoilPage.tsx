@@ -6,16 +6,21 @@ import { AirfoilDetailDrawer } from "../features/airfoils/components/AirfoilDeta
 import { AirfoilListTable } from "../features/airfoils/components/AirfoilListTable";
 import { AirfoilNextStepsCard } from "../features/airfoils/components/AirfoilNextStepsCard";
 import { buildAirfoilChartSeries } from "../features/airfoils/model/chartSeries";
+import { runXfoilAnalysis, type XfoilAnalysisSettings } from "../features/airfoils/model/xfoilAnalysis";
 import { airfoilPolars, airfoils, polarPoints } from "../mocks/mockData";
 
 export function AirfoilPage() {
   const [selectedId, setSelectedId] = useState(airfoils[0].id);
   const [polarReady, setPolarReady] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [generatedPolars, setGeneratedPolars] = useState<typeof airfoilPolars>([]);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [visibleAirfoilIds, setVisibleAirfoilIds] = useState(() => Array.from(new Set(airfoilPolars.map((polar) => polar.airfoilId))));
 
+  const allPolars = useMemo(() => [...airfoilPolars, ...generatedPolars], [generatedPolars]);
   const selected = airfoils.find((airfoil) => airfoil.id === selectedId) ?? airfoils[0];
-  const cases = useMemo(() => (polarReady ? airfoilPolars : airfoilPolars.filter((polar) => polar.airfoilId !== selected.id)), [polarReady, selected.id]);
+  const cases = useMemo(() => (polarReady ? allPolars : allPolars.filter((polar) => polar.airfoilId !== selected.id)), [allPolars, polarReady, selected.id]);
   const chartSeries = useMemo(() => buildAirfoilChartSeries(cases, airfoils, visibleAirfoilIds), [cases, visibleAirfoilIds]);
 
   const openDetail = (airfoilId: string) => {
@@ -27,6 +32,22 @@ export function AirfoilPage() {
     setVisibleAirfoilIds((current) => current.includes(airfoilId)
       ? current.filter((id) => id !== airfoilId)
       : [...current, airfoilId]);
+  };
+
+  const runAnalysis = async (settings: XfoilAnalysisSettings) => {
+    setAnalysisRunning(true);
+    setAnalysisError(null);
+
+    try {
+      const polar = await runXfoilAnalysis(selected, settings);
+      setGeneratedPolars((current) => [polar, ...current.filter((item) => item.id !== polar.id)]);
+      setVisibleAirfoilIds((current) => current.includes(selected.id) ? current : [...current, selected.id]);
+      setPolarReady(true);
+    } catch (error) {
+      setAnalysisError(error instanceof Error ? error.message : "XFOIL解析に失敗しました。");
+    } finally {
+      setAnalysisRunning(false);
+    }
   };
 
   return (
@@ -42,7 +63,7 @@ export function AirfoilPage() {
         <div className="space-y-5">
           <AirfoilListTable
             airfoils={airfoils}
-            airfoilPolars={airfoilPolars}
+            airfoilPolars={allPolars}
             selectedId={selected.id}
             detailOpen={detailOpen}
             visibleAirfoilIds={visibleAirfoilIds}
@@ -53,7 +74,13 @@ export function AirfoilPage() {
         </div>
 
         <div className="space-y-5">
-          <AirfoilAnalysisSettingsCard polarReady={polarReady} onCreatePolar={() => setPolarReady(true)} />
+          <AirfoilAnalysisSettingsCard
+            polarReady={polarReady}
+            airfoilName={selected.name}
+            isRunning={analysisRunning}
+            error={analysisError}
+            onRun={runAnalysis}
+          />
           <AirfoilNextStepsCard />
         </div>
       </div>
