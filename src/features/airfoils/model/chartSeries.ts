@@ -6,10 +6,8 @@ const chartColors = ["#2563eb", "#0f766e", "#dc2626", "#7c3aed", "#d97706", "#08
 export function buildAirfoilChartSeries(
   cases: AirfoilPolar[],
   airfoils: Airfoil[],
-  visibleAirfoilIds: string[],
 ): PolarChartSeries[] {
   return cases
-    .filter((polar) => visibleAirfoilIds.includes(polar.airfoilId))
     .map((polar, index) => {
       const airfoil = airfoils.find((item) => item.id === polar.airfoilId);
 

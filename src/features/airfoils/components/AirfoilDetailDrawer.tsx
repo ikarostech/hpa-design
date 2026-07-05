@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { ArrowLeft, Pencil, X } from "lucide-react";
 import type { Airfoil } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
 import { Button } from "../../../shared/ui/Button";
@@ -9,25 +9,37 @@ interface AirfoilDetailDrawerProps {
   open: boolean;
   polarReady: boolean;
   onClose: () => void;
+  onEdit: () => void;
 }
 
-export function AirfoilDetailDrawer({ airfoil, open, polarReady, onClose }: AirfoilDetailDrawerProps) {
+export function AirfoilDetailDrawer({ airfoil, open, polarReady, onClose, onEdit }: AirfoilDetailDrawerProps) {
   if (!open) {
     return null;
   }
 
   return (
     <div className="fixed inset-0 z-40">
-      <button className="absolute inset-0 bg-slate-950/30" aria-label="詳細を閉じる" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col border-l bg-white shadow-xl">
+      <button className="absolute inset-0 bg-slate-950/10" aria-label="詳細を閉じる" onClick={onClose} />
+      <aside className="absolute right-0 top-0 flex h-full w-full flex-col border-l bg-white shadow-xl sm:max-w-[440px]">
         <div className="flex items-center justify-between border-b px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">{airfoil.name}</h2>
-            <p className="mt-1 text-sm text-slate-500">翼型形状と基本パラメータ</p>
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}>
+              <ArrowLeft size={18} />
+            </Button>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-semibold text-slate-950">{airfoil.name}</h2>
+              <p className="mt-1 text-sm text-slate-500">翼型形状と基本パラメータ</p>
+            </div>
           </div>
+          <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={onEdit}>
+            <Pencil size={14} />
+            編集
+          </Button>
           <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={onClose}>
             <X size={18} />
           </Button>
+          </div>
         </div>
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
           <AirfoilPlot airfoil={airfoil} className="h-48 min-h-0" />

@@ -21,4 +21,16 @@ export interface AirfoilPolar {
   points: Array<{ alpha: number; cl: number; cd: number; cm: number }>;
 }
 
+export interface AirfoilAnalysisRun {
+  id: string;
+  name: string;
+  airfoilIds: string[];
+  polarIds: string[];
+  createdAt: string;
+  reynolds: number;
+  mach: number;
+  alphaRange: string;
+  status: RunStatus;
+}
+
 export type RunStatus = string;
