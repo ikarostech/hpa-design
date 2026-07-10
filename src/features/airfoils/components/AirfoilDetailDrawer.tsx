@@ -1,4 +1,5 @@
 import { ArrowLeft, Pencil, X } from "lucide-react";
+import type { InspectorController } from "@/shared/model";
 import type { Airfoil } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
 import { Button } from "../../../shared/ui/Button";
@@ -6,24 +7,23 @@ import { AirfoilPlot } from "./AirfoilPlot";
 
 interface AirfoilDetailDrawerProps {
   airfoil: Airfoil;
-  open: boolean;
+  inspector: InspectorController<string>;
   polarReady: boolean;
-  onClose: () => void;
   onEdit: () => void;
 }
 
-export function AirfoilDetailDrawer({ airfoil, open, polarReady, onClose, onEdit }: AirfoilDetailDrawerProps) {
-  if (!open) {
+export function AirfoilDetailDrawer({ airfoil, inspector, polarReady, onEdit }: AirfoilDetailDrawerProps) {
+  if (!inspector.state.open) {
     return null;
   }
 
   return (
     <div className="fixed inset-0 z-40">
-      <button className="absolute inset-0 bg-slate-950/10" aria-label="詳細を閉じる" onClick={onClose} />
+      <button className="absolute inset-0 bg-slate-950/10" aria-label="詳細を閉じる" onClick={inspector.close} />
       <aside className="absolute right-0 top-0 flex h-full w-full flex-col border-l bg-white shadow-xl sm:max-w-[440px]">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}>
+            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={inspector.close}>
               <ArrowLeft size={18} />
             </Button>
             <div className="min-w-0">
@@ -36,7 +36,7 @@ export function AirfoilDetailDrawer({ airfoil, open, polarReady, onClose, onEdit
             <Pencil size={14} />
             編集
           </Button>
-          <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={onClose}>
+          <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={inspector.close}>
             <X size={18} />
           </Button>
           </div>

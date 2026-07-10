@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import { analysisCases, analysisResult } from "../mocks/mockData";
+import type { SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
@@ -14,7 +15,12 @@ export function AnalysisPage() {
   const [params] = useSearchParams();
   const [selectedCase, setSelectedCase] = useState(analysisCases[0].id);
   const [hasRun, setHasRun] = useState(true);
-  const selected = analysisCases.find((item) => item.id === selectedCase) ?? analysisCases[0];
+  const caseSelection: SingleSelection<string> = {
+    selectedId: selectedCase,
+    select: setSelectedCase,
+    clear: () => setSelectedCase(analysisCases[0].id),
+  };
+  const selected = analysisCases.find((item) => item.id === caseSelection.selectedId) ?? analysisCases[0];
   const chartData = useMemo(() => analysisResult.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })), []);
   const activeTab = params.get("tab") === "results" ? "結果" : "解析";
 
@@ -36,7 +42,7 @@ export function AnalysisPage() {
             <CardHeader><h2 className="font-semibold text-slate-950">解析ケース一覧</h2></CardHeader>
             <CardBody className="space-y-2">
               {analysisCases.map((item) => (
-                <button key={item.id} onClick={() => setSelectedCase(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === selectedCase ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
+                <button key={item.id} onClick={() => caseSelection.select(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === caseSelection.selectedId ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
                   <span>{item.name}</span>
                   <span className="mt-1 block text-xs text-slate-500">{item.method} / {item.alphaSweep}</span>
                 </button>

@@ -1,4 +1,5 @@
-import { PolarCharts, type PolarChartPoint, type PolarChartSeries } from "./PolarCharts";
+import type { PolarChartPoint, PolarChartSeries } from "../model/chartTypes";
+import { PolarCharts } from "./PolarCharts";
 import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
 
 interface AirfoilChartPanelProps {

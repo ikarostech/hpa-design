@@ -1,10 +1,10 @@
 import { ArrowLeft, Save, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { FormController } from "@/shared/model";
 import type { Airfoil } from "../model/types";
+import type { AirfoilEditorMode } from "../model/workspace";
 import { Button } from "../../../shared/ui/Button";
 import { AirfoilPlot } from "./AirfoilPlot";
-
-export type AirfoilEditorMode = "create-naca" | "import-dat" | "edit";
 
 interface AirfoilEditorDrawerProps {
   mode: AirfoilEditorMode | null;
@@ -70,12 +70,26 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
   const title = mode === "edit" ? "翼型を編集" : mode === "import-dat" ? ".datから作成" : "NACA翼型を作成";
   const previewAirfoil = buildPreviewAirfoil(mode, airfoil?.id, form);
 
-  const update = (key: keyof AirfoilFormState, value: string) => {
-    setForm((current) => ({ ...current, [key]: key === "name" || key === "nacaCode" || key === "datText" ? value : Number(value) }));
+  const formController: FormController<AirfoilFormState> = {
+    state: {
+      value: form,
+      initialValue: defaultForm,
+      errors: {},
+      dirty: !isSameForm(form, defaultForm),
+      valid: true,
+      submitting: false,
+    },
+    update: (key, value) => setForm((current) => ({ ...current, [key]: value })),
+    patch: (value) => setForm((current) => ({ ...current, ...value })),
+    reset: (value = defaultForm) => setForm(value),
+    submit: async () => {
+      onSave(previewAirfoil);
+    },
   };
 
-  const save = () => {
-    onSave(previewAirfoil);
+  const update = (key: keyof AirfoilFormState, value: string) => {
+    const nextValue = key === "name" || key === "nacaCode" || key === "datText" ? value : Number(value);
+    formController.update(key, nextValue);
   };
 
   return (
@@ -99,17 +113,17 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {mode === "import-dat" ? (
-            <TextArea label=".dat内容" value={form.datText} onChange={(value) => update("datText", value)} />
+            <TextArea label=".dat内容" value={formController.state.value.datText} onChange={(value) => update("datText", value)} />
           ) : mode === "create-naca" ? (
-            <Input label="NACAコード" value={form.nacaCode} onChange={(value) => update("nacaCode", value)} />
+            <Input label="NACAコード" value={formController.state.value.nacaCode} onChange={(value) => update("nacaCode", value)} />
           ) : null}
 
-          <Input label="翼型名" value={form.name} onChange={(value) => update("name", value)} />
+          <Input label="翼型名" value={formController.state.value.name} onChange={(value) => update("name", value)} />
           <div className="grid grid-cols-2 gap-3">
-            <NumberInput label="厚み比" value={form.thicknessRatio} onChange={(value) => update("thicknessRatio", value)} />
-            <NumberInput label="最大キャンバー" value={form.maxCamber} onChange={(value) => update("maxCamber", value)} />
-            <NumberInput label="LE半径" value={form.leadingEdgeRadius} step="0.01" onChange={(value) => update("leadingEdgeRadius", value)} />
-            <NumberInput label="TE厚" value={form.trailingEdgeThickness} step="0.01" onChange={(value) => update("trailingEdgeThickness", value)} />
+            <NumberInput label="厚み比" value={formController.state.value.thicknessRatio} onChange={(value) => update("thicknessRatio", value)} />
+            <NumberInput label="最大キャンバー" value={formController.state.value.maxCamber} onChange={(value) => update("maxCamber", value)} />
+            <NumberInput label="LE半径" value={formController.state.value.leadingEdgeRadius} step="0.01" onChange={(value) => update("leadingEdgeRadius", value)} />
+            <NumberInput label="TE厚" value={formController.state.value.trailingEdgeThickness} step="0.01" onChange={(value) => update("trailingEdgeThickness", value)} />
           </div>
 
           <div>
@@ -120,7 +134,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
 
         <div className="flex justify-end gap-2 border-t p-4">
           <Button variant="secondary" onClick={onClose}>キャンセル</Button>
-          <Button onClick={save}>
+          <Button onClick={formController.submit}>
             <Save size={16} />
             保存
           </Button>
@@ -128,6 +142,10 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
       </aside>
     </div>
   );
+}
+
+function isSameForm(left: AirfoilFormState, right: AirfoilFormState) {
+  return Object.keys(left).every((key) => left[key as keyof AirfoilFormState] === right[key as keyof AirfoilFormState]);
 }
 
 function Input({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {

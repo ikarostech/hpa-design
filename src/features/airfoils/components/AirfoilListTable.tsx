@@ -1,4 +1,5 @@
 import { Info, Pencil } from "lucide-react";
+import type { InspectorController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
@@ -7,23 +8,17 @@ import { AirfoilTargetTable } from "./AirfoilTargetTable";
 interface AirfoilListTableProps {
   airfoils: Airfoil[];
   airfoilPolars: AirfoilPolar[];
-  selectedId: string;
-  detailOpen: boolean;
-  selectedForAnalysisIds: string[];
-  onOpenDetail: (airfoilId: string) => void;
+  detailInspector: InspectorController<string>;
+  analysisTargets: MultiSelection<string>;
   onEdit: (airfoilId: string) => void;
-  onToggleAnalysisTarget: (airfoilId: string) => void;
 }
 
 export function AirfoilListTable({
   airfoils,
   airfoilPolars,
-  selectedId,
-  detailOpen,
-  selectedForAnalysisIds,
-  onOpenDetail,
+  detailInspector,
+  analysisTargets,
   onEdit,
-  onToggleAnalysisTarget,
 }: AirfoilListTableProps) {
   return (
     <Card>
@@ -37,16 +32,15 @@ export function AirfoilListTable({
         <AirfoilTargetTable
           airfoils={airfoils}
           airfoilPolars={airfoilPolars}
-          selectedId={selectedId}
-          selectedForAnalysisIds={selectedForAnalysisIds}
-          onToggleAnalysisTarget={onToggleAnalysisTarget}
+          selectedId={detailInspector.state.targetId ?? undefined}
+          analysisTargets={analysisTargets}
           actions={(airfoil, { isSelected }) => (
             <div className="flex justify-end gap-2">
               <Button variant="secondary" size="sm" onClick={() => onEdit(airfoil.id)}>
                 <Pencil size={14} />
                 編集
               </Button>
-              <Button variant={isSelected && detailOpen ? "primary" : "secondary"} size="sm" onClick={() => onOpenDetail(airfoil.id)}>
+              <Button variant={isSelected && detailInspector.state.open ? "primary" : "secondary"} size="sm" onClick={() => detailInspector.openDetail(airfoil.id)}>
                 <Info size={14} />
                 詳細
               </Button>

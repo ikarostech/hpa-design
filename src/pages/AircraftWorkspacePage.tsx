@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
 import { WingSectionTable } from "../features/aircraft/components/WingSectionTable";
 import { aircraftGeometry } from "../mocks/mockData";
+import type { FormController } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
@@ -11,23 +12,44 @@ import { MetricCard } from "../shared/ui/MetricCard";
 
 const tabs = ["概要", "翼・尾翼設計", "胴体設計", "配置・重量", "制御・サーフェス", "干渉チェック"];
 
+const initialAircraftForm = {
+  span: aircraftGeometry.span,
+  rootChord: aircraftGeometry.rootChord,
+  tipChord: aircraftGeometry.tipChord,
+  taperRatio: aircraftGeometry.taperRatio,
+  twist: aircraftGeometry.twist,
+  dihedral: aircraftGeometry.dihedral,
+  sweep: aircraftGeometry.sweep,
+  incidence: aircraftGeometry.incidence,
+  airfoil: "NACA2412",
+  aileron: "外翼 35%",
+};
+
+type AircraftFormState = typeof initialAircraftForm;
+
 export function AircraftWorkspacePage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    span: aircraftGeometry.span,
-    rootChord: aircraftGeometry.rootChord,
-    tipChord: aircraftGeometry.tipChord,
-    taperRatio: aircraftGeometry.taperRatio,
-    twist: aircraftGeometry.twist,
-    dihedral: aircraftGeometry.dihedral,
-    sweep: aircraftGeometry.sweep,
-    incidence: aircraftGeometry.incidence,
-    airfoil: "NACA2412",
-    aileron: "外翼 35%",
-  });
+  const [form, setForm] = useState<AircraftFormState>(initialAircraftForm);
 
-  const update = (key: keyof typeof form, value: string) => {
-    setForm((current) => ({ ...current, [key]: typeof current[key] === "number" ? Number(value) : value }));
+  const formController: FormController<AircraftFormState> = {
+    state: {
+      value: form,
+      initialValue: initialAircraftForm,
+      errors: {},
+      dirty: !isSameAircraftForm(form, initialAircraftForm),
+      valid: true,
+      submitting: false,
+    },
+    update: (key, value) => setForm((current) => ({ ...current, [key]: value })),
+    patch: (value) => setForm((current) => ({ ...current, ...value })),
+    reset: (value = initialAircraftForm) => setForm(value),
+    submit: async () => undefined,
+  };
+
+  const update = <TKey extends keyof AircraftFormState>(key: TKey, value: string) => {
+    const currentValue = formController.state.value[key];
+    const nextValue = typeof currentValue === "number" ? Number(value) : value;
+    formController.update(key, nextValue as AircraftFormState[TKey]);
   };
 
   return (
@@ -85,16 +107,16 @@ export function AircraftWorkspacePage() {
         <Card>
           <CardHeader><h2 className="font-semibold text-slate-950">主翼プロパティ</h2></CardHeader>
           <CardBody className="space-y-3">
-            <NumberInput label="スパン" value={form.span} onChange={(value) => update("span", value)} />
-            <NumberInput label="ルート弦長" value={form.rootChord} onChange={(value) => update("rootChord", value)} />
-            <NumberInput label="チップ弦長" value={form.tipChord} onChange={(value) => update("tipChord", value)} />
-            <NumberInput label="テーパー比" value={form.taperRatio} onChange={(value) => update("taperRatio", value)} />
-            <NumberInput label="ねじり角" value={form.twist} onChange={(value) => update("twist", value)} />
-            <NumberInput label="上反角" value={form.dihedral} onChange={(value) => update("dihedral", value)} />
-            <NumberInput label="後退角" value={form.sweep} onChange={(value) => update("sweep", value)} />
-            <NumberInput label="取り付け角" value={form.incidence} onChange={(value) => update("incidence", value)} />
-            <SelectInput label="翼型割り当て" value={form.airfoil} onChange={(value) => update("airfoil", value)} options={["NACA2412", "Custom_UAV_Root", "AG35"]} />
-            <SelectInput label="エルロン設定" value={form.aileron} onChange={(value) => update("aileron", value)} options={["外翼 35%", "外翼 45%", "なし"]} />
+            <NumberInput label="スパン" value={formController.state.value.span} onChange={(value) => update("span", value)} />
+            <NumberInput label="ルート弦長" value={formController.state.value.rootChord} onChange={(value) => update("rootChord", value)} />
+            <NumberInput label="チップ弦長" value={formController.state.value.tipChord} onChange={(value) => update("tipChord", value)} />
+            <NumberInput label="テーパー比" value={formController.state.value.taperRatio} onChange={(value) => update("taperRatio", value)} />
+            <NumberInput label="ねじり角" value={formController.state.value.twist} onChange={(value) => update("twist", value)} />
+            <NumberInput label="上反角" value={formController.state.value.dihedral} onChange={(value) => update("dihedral", value)} />
+            <NumberInput label="後退角" value={formController.state.value.sweep} onChange={(value) => update("sweep", value)} />
+            <NumberInput label="取り付け角" value={formController.state.value.incidence} onChange={(value) => update("incidence", value)} />
+            <SelectInput label="翼型割り当て" value={formController.state.value.airfoil} onChange={(value) => update("airfoil", value)} options={["NACA2412", "Custom_UAV_Root", "AG35"]} />
+            <SelectInput label="エルロン設定" value={formController.state.value.aileron} onChange={(value) => update("aileron", value)} options={["外翼 35%", "外翼 45%", "なし"]} />
           </CardBody>
         </Card>
       </div>
@@ -118,6 +140,10 @@ export function AircraftWorkspacePage() {
       </div>
     </div>
   );
+}
+
+function isSameAircraftForm(left: AircraftFormState, right: AircraftFormState) {
+  return Object.keys(left).every((key) => left[key as keyof AircraftFormState] === right[key as keyof AircraftFormState]);
 }
 
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: string) => void }) {

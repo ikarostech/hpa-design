@@ -8,15 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-export type PolarChartPoint = { alpha: number; cl: number; cd: number; cm: number };
-
-export interface PolarChartSeries {
-  id: string;
-  name: string;
-  color: string;
-  data: PolarChartPoint[];
-}
+import type { PolarChartPoint, PolarChartSeries } from "../model/chartTypes";
 
 interface PolarChartsProps {
   data: PolarChartPoint[];

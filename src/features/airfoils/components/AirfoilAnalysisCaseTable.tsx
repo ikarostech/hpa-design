@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import type { ResultViewController } from "@/shared/model";
 import type { Airfoil, AirfoilAnalysisRun } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
 import { Button } from "../../../shared/ui/Button";
@@ -7,12 +8,12 @@ import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
 interface AirfoilAnalysisCaseTableProps {
   runs: AirfoilAnalysisRun[];
   airfoils: Airfoil[];
-  selectedRunId: string;
+  displayedRuns: ResultViewController<string>;
   onCreateRun: () => void;
-  onSelectRun: (runId: string) => void;
 }
 
-export function AirfoilAnalysisCaseTable({ runs, airfoils, selectedRunId, onCreateRun, onSelectRun }: AirfoilAnalysisCaseTableProps) {
+export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCreateRun }: AirfoilAnalysisCaseTableProps) {
+  const selectedRunId = displayedRuns.state.primaryResultId;
   const getAirfoilNames = (airfoilIds: string[]) => airfoilIds
     .map((id) => airfoils.find((airfoil) => airfoil.id === id)?.name)
     .filter(Boolean)
@@ -41,7 +42,7 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, selectedRunId, onCrea
                 <tr
                   key={run.id}
                   className={selectedRunId === run.id ? "bg-blue-50/60" : "cursor-pointer hover:bg-slate-50"}
-                  onClick={() => onSelectRun(run.id)}
+                  onClick={() => displayedRuns.setPrimary(run.id)}
                 >
                   <td className="px-2 py-3">
                     <input
@@ -49,7 +50,7 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, selectedRunId, onCrea
                       className="h-4 w-4 border-slate-300 text-blue-600"
                       checked={selectedRunId === run.id}
                       aria-label={`${run.name}をグラフに表示`}
-                      onChange={() => onSelectRun(run.id)}
+                      onChange={() => displayedRuns.setPrimary(run.id)}
                     />
                   </td>
                   <td className="px-2 py-3 font-medium text-slate-950">

@@ -1,4 +1,4 @@
-import type { PolarChartSeries } from "../components/PolarCharts";
+import type { PolarChartSeries } from "./chartTypes";
 import type { Airfoil, AirfoilPolar } from "./types";
 
 const chartColors = ["#2563eb", "#0f766e", "#dc2626", "#7c3aed", "#d97706", "#0891b2"];
