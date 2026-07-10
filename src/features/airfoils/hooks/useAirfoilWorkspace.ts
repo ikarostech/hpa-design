@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { InspectorController, InspectorState, ResultViewController } from "@/shared/model";
+import { useJobs } from "@/shared/jobs/JobProvider";
 import { buildAirfoilChartSeries } from "../model/chartSeries";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../model/types";
 import type {
@@ -38,6 +39,7 @@ const initialAnalysisDrawerState: InspectorState<string> = {
 };
 
 export function useAirfoilWorkspace() {
+  const jobs = useJobs();
   const [airfoilItems, setAirfoilItems] = useState<Airfoil[]>(airfoils);
   const [detailState, setDetailState] = useState<InspectorState<string>>(initialDetailState);
   const [editorMode, setEditorMode] = useState<AirfoilEditorMode | null>(null);
@@ -46,7 +48,7 @@ export function useAirfoilWorkspace() {
   const [analysisRuns, setAnalysisRuns] = useState<AirfoilAnalysisRun[]>(initialAnalysisRuns);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(initialAnalysisRuns[0]?.id ?? null);
   const [analysisTargetIds, setAnalysisTargetIds] = useState<string[]>(() => [airfoils[0].id, airfoils[1].id]);
-  const [analysisJobs, setAnalysisJobs] = useState<AirfoilAnalysisJob[]>([]);
+  const analysisJobs = jobs.jobs.filter((job): job is AirfoilAnalysisJob => job.kind === "airfoil-analysis");
 
   const allPolars = useMemo(() => [...airfoilPolars, ...generatedPolars], [generatedPolars]);
   const selected = airfoilItems.find((airfoil) => airfoil.id === detailState.targetId) ?? airfoilItems[0];
@@ -121,15 +123,11 @@ export function useAirfoilWorkspace() {
     setEditorMode(null);
   };
 
-  const patchAnalysisJob = (jobId: string, patch: Partial<AirfoilAnalysisJob>) => {
-    setAnalysisJobs((current) => current.map((job) => job.id === jobId ? { ...job, ...patch } : job));
-  };
-
   const runAnalysis = async (settings: XfoilAnalysisSettings) => {
     const targets = airfoilItems.filter((airfoil) => analysisTargetIds.includes(airfoil.id));
     const jobId = `job-airfoil-analysis-${Date.now()}`;
     const startedAt = new Date().toISOString();
-    const runningJob: AirfoilAnalysisJob = {
+    const runningJob = jobs.createJob<AirfoilAnalysisJob>({
       id: jobId,
       kind: "airfoil-analysis",
       name: "2D翼型解析",
@@ -139,16 +137,14 @@ export function useAirfoilWorkspace() {
       progress: { completed: 0, total: targets.length },
       settings,
       targetAirfoilIds: targets.map((airfoil) => airfoil.id),
-    };
-
-    setAnalysisJobs((current) => [runningJob, ...current]);
+    });
 
     try {
       const polars: AirfoilPolar[] = [];
 
       for (const airfoil of targets) {
         polars.push(await runXfoilAnalysis(airfoil, settings));
-        patchAnalysisJob(jobId, { progress: { completed: polars.length, total: targets.length } });
+        jobs.updateJob<AirfoilAnalysisJob>(jobId, { progress: { completed: polars.length, total: targets.length } });
       }
 
       const runId = `run-${Date.now()}`;
@@ -175,7 +171,7 @@ export function useAirfoilWorkspace() {
       setGeneratedPolars((current) => [...polars, ...current]);
       setAnalysisRuns((current) => [run, ...current]);
       setSelectedRunId(runId);
-      patchAnalysisJob(jobId, completedJob);
+      jobs.completeJob<AirfoilAnalysisJob>(jobId, completedJob);
       setAnalysisDrawerState((current) => ({ ...current, open: false }));
       return completedJob;
     } catch (error) {
@@ -185,7 +181,7 @@ export function useAirfoilWorkspace() {
         finishedAt: new Date().toISOString(),
         errorMessage: error instanceof Error ? error.message : "XFOIL解析に失敗しました。",
       };
-      patchAnalysisJob(jobId, failedJob);
+      jobs.failJob(jobId, failedJob.errorMessage ?? "XFOIL解析に失敗しました。");
       return failedJob;
     }
   };
@@ -195,9 +191,9 @@ export function useAirfoilWorkspace() {
     currentJob: analysisJobs.find((job) => job.status === "running") ?? analysisJobs[0] ?? null,
     run: runAnalysis,
     cancel: async (jobId) => {
-      patchAnalysisJob(jobId, { status: "cancelled", finishedAt: new Date().toISOString() });
+      jobs.cancelJob(jobId);
     },
-    clearCompleted: () => setAnalysisJobs((current) => current.filter((job) => job.status !== "completed")),
+    clearCompleted: jobs.clearCompleted,
   };
 
   return {

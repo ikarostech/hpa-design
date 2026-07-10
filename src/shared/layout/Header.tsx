@@ -1,4 +1,5 @@
 import { Bell, CircleHelp, Search } from "lucide-react";
+import { JobStatusButton } from "../jobs/JobStatusButton";
 
 export function Header() {
   return (
@@ -18,6 +19,7 @@ export function Header() {
         />
       </div>
       <div className="flex items-center gap-2">
+        <JobStatusButton />
         <button className="rounded-md p-2 text-slate-500 hover:bg-slate-100" title="ヘルプ">
           <CircleHelp size={19} />
         </button>
