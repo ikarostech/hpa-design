@@ -11,6 +11,7 @@ const toPoint = (x: number, y: number) => `${40 + x * 500},${135 - y * 760}`;
 export function AirfoilPlot({ airfoil, className }: AirfoilPlotProps) {
   const upper = airfoil.coordinates.map((p) => toPoint(p.x, p.upper)).join(" ");
   const lower = [...airfoil.coordinates].reverse().map((p) => toPoint(p.x, p.lower)).join(" ");
+  const camber = airfoil.coordinates.map((p) => toPoint(p.x, (p.upper + p.lower) / 2)).join(" ");
 
   return (
     <svg viewBox="0 0 580 250" className={cn("h-full min-h-64 w-full rounded-lg bg-slate-50", className)}>
@@ -25,6 +26,7 @@ export function AirfoilPlot({ airfoil, className }: AirfoilPlotProps) {
       <polygon points={`${upper} ${lower}`} fill="#dbeafe" stroke="#2563eb" strokeWidth="3" />
       <polyline points={upper} fill="none" stroke="#1d4ed8" strokeWidth="3" />
       <polyline points={lower} fill="none" stroke="#38bdf8" strokeWidth="3" />
+      <polyline points={camber} fill="none" stroke="#0f766e" strokeDasharray="8 6" strokeWidth="2" />
       <text x="505" y="155" fill="#475569" fontSize="12">x/c</text>
       <text x="18" y="48" fill="#475569" fontSize="12">y/c</text>
       <text x="40" y="226" fill="#64748b" fontSize="12">0.0</text>

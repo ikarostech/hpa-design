@@ -16,8 +16,14 @@ interface PolarChartsProps {
   mode?: "airfoil" | "analysis";
 }
 
-export function PolarCharts({ data, series, mode = "airfoil" }: PolarChartsProps) {
+type DerivedPolarPoint = PolarChartPoint & { ld: number };
+
+export function PolarCharts({ data, series }: PolarChartsProps) {
   const chartSeries = series ?? [{ id: "current", name: "CL", color: "#2563eb", data }];
+  const derivedSeries = chartSeries.map((item) => ({
+    ...item,
+    data: item.data.map(toDerivedPoint),
+  }));
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -28,11 +34,25 @@ export function PolarCharts({ data, series, mode = "airfoil" }: PolarChartsProps
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
-          {chartSeries.map((item) => (
+          {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cl" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
           ))}
         </LineChart>
       </Chart>
+
+      <Chart title="CD - α">
+        <LineChart>
+          <CartesianGrid stroke="#e2e8f0" />
+          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {derivedSeries.map((item) => (
+            <Line key={item.id} data={item.data} type="monotone" dataKey="cd" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
+          ))}
+        </LineChart>
+      </Chart>
+
       <Chart title="CD - CL">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
@@ -40,27 +60,67 @@ export function PolarCharts({ data, series, mode = "airfoil" }: PolarChartsProps
           <YAxis dataKey="cd" tick={{ fontSize: 12 }} />
           <Tooltip />
           <Legend />
-          {chartSeries.map((item) => (
+          {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cd" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
           ))}
         </LineChart>
       </Chart>
-      {mode === "analysis" ? (
-        <Chart title="Cm - α">
-          <LineChart>
-            <CartesianGrid stroke="#e2e8f0" />
-            <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
-            <Legend />
-            {chartSeries.map((item) => (
-              <Line key={item.id} data={item.data} type="monotone" dataKey="cm" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
-            ))}
-          </LineChart>
-        </Chart>
-      ) : null}
+
+      <Chart title="L/D - α">
+        <LineChart>
+          <CartesianGrid stroke="#e2e8f0" />
+          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {derivedSeries.map((item) => (
+            <Line key={item.id} data={item.data} type="monotone" dataKey="ld" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
+          ))}
+        </LineChart>
+      </Chart>
+
+      <Chart title="L/D - CL">
+        <LineChart>
+          <CartesianGrid stroke="#e2e8f0" />
+          <XAxis dataKey="cl" type="number" tick={{ fontSize: 12 }} />
+          <YAxis dataKey="ld" tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {derivedSeries.map((item) => (
+            <Line key={item.id} data={item.data} type="monotone" dataKey="ld" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
+          ))}
+        </LineChart>
+      </Chart>
+
+      <Chart title="Cm - α">
+        <LineChart>
+          <CartesianGrid stroke="#e2e8f0" />
+          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {derivedSeries.map((item) => (
+            <Line key={item.id} data={item.data} type="monotone" dataKey="cm" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
+          ))}
+        </LineChart>
+      </Chart>
     </div>
   );
+}
+
+function toDerivedPoint(point: PolarChartPoint): DerivedPolarPoint {
+  return {
+    ...point,
+    ld: getLiftDragRatio(point),
+  };
+}
+
+function getLiftDragRatio(point: PolarChartPoint) {
+  if (!Number.isFinite(point.cl) || !Number.isFinite(point.cd) || point.cd <= 0) {
+    return Number.NaN;
+  }
+
+  return Number((point.cl / point.cd).toFixed(2));
 }
 
 function Chart({ title, children }: { title: string; children: React.ReactElement }) {

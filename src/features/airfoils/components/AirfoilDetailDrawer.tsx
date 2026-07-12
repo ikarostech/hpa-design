@@ -4,6 +4,7 @@ import type { Airfoil } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
 import { Button } from "../../../shared/ui/Button";
 import { AirfoilPlot } from "./AirfoilPlot";
+import { AirfoilShapeMetricsPanel } from "./AirfoilShapeMetricsPanel";
 
 interface AirfoilDetailDrawerProps {
   airfoil: Airfoil;
@@ -32,30 +33,21 @@ export function AirfoilDetailDrawer({ airfoil, inspector, polarReady, onEdit }: 
             </div>
           </div>
           <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={onEdit}>
-            <Pencil size={14} />
-            編集
-          </Button>
-          <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={inspector.close}>
-            <X size={18} />
-          </Button>
+            <Button variant="secondary" size="sm" onClick={onEdit}>
+              <Pencil size={14} />
+              編集
+            </Button>
+            <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={inspector.close}>
+              <X size={18} />
+            </Button>
           </div>
         </div>
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
           <AirfoilPlot airfoil={airfoil} className="h-48 min-h-0" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <DataBox label="厚み比" value={`${airfoil.thicknessRatio}%`} />
-            <DataBox label="最大キャンバー" value={`${airfoil.maxCamber}%`} />
-            <DataBox label="LE半径" value={`${airfoil.leadingEdgeRadius}%`} />
-            <DataBox label="TE厚" value={`${airfoil.trailingEdgeThickness}%`} />
-          </div>
+          <AirfoilShapeMetricsPanel airfoil={airfoil} />
           {polarReady ? <Badge tone="green">Polar作成済み</Badge> : <Badge tone="amber">未作成</Badge>}
         </div>
       </aside>
     </div>
   );
-}
-
-function DataBox({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-950">{value}</p></div>;
 }
