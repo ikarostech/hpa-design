@@ -7,10 +7,11 @@ import { AirfoilEditorDrawer } from "../features/airfoils/components/AirfoilEdit
 import { AirfoilListTable } from "../features/airfoils/components/AirfoilListTable";
 import { AirfoilNextStepsCard } from "../features/airfoils/components/AirfoilNextStepsCard";
 import { useAirfoilWorkspace } from "../features/airfoils/hooks/useAirfoilWorkspace";
+import type { AirfoilWorkspaceData } from "../features/airfoils/model/workspace";
 import { Button } from "../shared/ui/Button";
 
-export function AirfoilPage() {
-  const workspace = useAirfoilWorkspace();
+export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
+  const workspace = useAirfoilWorkspace(data);
   const { detailInspector, analysisTargets, displayedRuns } = workspace.selection;
 
   return (
@@ -36,15 +37,15 @@ export function AirfoilPage() {
 
       <div className="space-y-5">
         <AirfoilListTable
-          airfoils={workspace.airfoils}
-          airfoilPolars={workspace.polars}
+          airfoils={[...workspace.airfoils]}
+          airfoilPolars={[...workspace.polars]}
           detailInspector={detailInspector}
           analysisTargets={analysisTargets}
           onEdit={(airfoilId) => workspace.openEditor("edit", airfoilId)}
         />
         <AirfoilAnalysisCaseTable
-          runs={workspace.analysisRuns}
-          airfoils={workspace.airfoils}
+          runs={[...workspace.analysisRuns]}
+          airfoils={[...workspace.airfoils]}
           displayedRuns={displayedRuns}
           onCreateRun={workspace.openAnalysisDrawer}
         />
@@ -66,8 +67,8 @@ export function AirfoilPage() {
       />
       <AirfoilAnalysisDrawer
         open={workspace.analysisDrawerState.open}
-        airfoils={workspace.airfoils}
-        airfoilPolars={workspace.polars}
+        airfoils={[...workspace.airfoils]}
+        airfoilPolars={[...workspace.polars]}
         analysisTargets={analysisTargets}
         targetNames={workspace.selectedTargetNames}
         jobController={workspace.analysisJobController}

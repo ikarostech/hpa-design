@@ -1,179 +1,78 @@
-import { ArrowRight, FilePlus2, Library, Plane, PlayCircle, Radar } from "lucide-react";
+import { ArrowRight, Download, FileUp, Library, Plane, Radar } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { projects, templates } from "../mocks/mockData";
-import { Badge } from "../shared/ui/Badge";
+import type { DesignDocument } from "../app/designDocument";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { MetricCard } from "../shared/ui/MetricCard";
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  document: DesignDocument;
+  onImportFile: (file: File) => Promise<void>;
+  onExport: () => void;
+}
+
+export function DashboardPage({ document, onImportFile, onExport }: DashboardPageProps) {
   const navigate = useNavigate();
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const importFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    try {
+      await onImportFile(file);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "設計ファイルを読み込めませんでした。");
+    } finally {
+      event.target.value = "";
+    }
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-950">ダッシュボード</h1>
-          <p className="mt-1 text-sm text-slate-500">翼型から解析結果まで、次の作業が分かる設計ワークスペースです。</p>
+          <h1 className="text-2xl font-semibold text-slate-950">設計概要</h1>
+          <p className="mt-1 text-sm text-slate-500">現在開いている設計ファイルを編集します。プロジェクトの切り替えはありません。</p>
         </div>
-        <Button onClick={() => navigate("/airfoils")}>
-          翼型を追加
-          <ArrowRight size={16} />
-        </Button>
+        <Button onClick={() => navigate("/airfoils")}>翼型を編集 <ArrowRight size={16} /></Button>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <div className="space-y-5">
-          <Card className="overflow-hidden">
-            <CardBody className="grid gap-6 bg-gradient-to-br from-blue-600 to-sky-500 p-6 text-white md:grid-cols-[1fr_280px]">
-              <div>
-                <Badge tone="green">MVP1</Badge>
-                <h2 className="mt-5 text-3xl font-semibold">AeroLabで航空機設計を始めましょう</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-blue-50">
-                  翼型の選択、Polar作成、主翼設計、VLM風の結果確認までを一つの導線で確認できます。
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button variant="secondary" onClick={() => navigate("/aircraft")}>
-                    <FilePlus2 size={16} />
-                    新規プロジェクト
-                  </Button>
-                  <Button variant="secondary" onClick={() => navigate("/airfoils")}>テンプレートから作成</Button>
-                </div>
-              </div>
-              <div className="rounded-lg border border-white/20 bg-white/10 p-4">
-                <p className="text-sm font-semibold">設計フロー</p>
-                {["翼型", "翼設計", "機体解析", "結果確認"].map((step, index) => (
-                  <div key={step} className="mt-4 flex items-center gap-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-sm font-semibold text-blue-700">
-                      {index + 1}
-                    </div>
-                    <span className="text-sm">{step}</span>
-                  </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard label="保存済み翼型" value="18" detail="6件が最近更新" icon={<Library size={18} />} />
-            <MetricCard label="解析実行数" value="42" detail="今週 +5" icon={<Radar size={18} />} />
-            <MetricCard label="最新の結果" value="L/D 23.8" detail="Cruise_20mps" icon={<PlayCircle size={18} />} />
+      <Card className="overflow-hidden">
+        <CardBody className="grid gap-5 bg-gradient-to-br from-blue-600 to-sky-500 p-6 text-white md:grid-cols-[1fr_auto]">
+          <div>
+            <p className="text-sm text-blue-100">現在の設計ファイル</p>
+            <h2 className="mt-1 text-3xl font-semibold">{document.name}</h2>
+            <p className="mt-3 text-sm leading-6 text-blue-50">GitHub Pages などの静的ホスティングでも、JSON ファイルを読み込み、ブラウザ内で設計を編集して再び書き出せます。</p>
           </div>
-
-          <div className="grid gap-5 xl:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <h2 className="font-semibold text-slate-950">最近のプロジェクト</h2>
-              </CardHeader>
-              <CardBody className="space-y-3">
-                {projects.map((project) => (
-                  <button
-                    key={project.id}
-                    className="w-full rounded-lg border border-slate-200 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50"
-                    onClick={() => navigate("/aircraft")}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-medium text-slate-950">{project.name}</p>
-                      <Badge tone={project.status === "解析済み" ? "green" : "blue"}>{project.status}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">{project.use} / 更新 {project.updatedAt}</p>
-                    <div className="mt-3 h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-blue-600" style={{ width: `${project.progress}%` }} />
-                    </div>
-                  </button>
-                ))}
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <h2 className="font-semibold text-slate-950">テンプレート</h2>
-              </CardHeader>
-              <CardBody className="grid gap-3">
-                {templates.map((template) => (
-                  <button
-                    key={template.name}
-                    className="rounded-lg border border-slate-200 p-3 text-left transition hover:border-blue-200 hover:bg-slate-50"
-                    onClick={() => navigate("/aircraft")}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Plane className="text-blue-600" size={18} />
-                      <p className="font-medium text-slate-900">{template.name}</p>
-                    </div>
-                    <p className="mt-2 text-sm text-slate-500">{template.description}</p>
-                  </button>
-                ))}
-              </CardBody>
-            </Card>
+          <div className="flex flex-wrap content-start gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50">
+              <FileUp size={16} /> 設計ファイルを読み込む
+              <input className="sr-only" type="file" accept="application/json,.json" onChange={importFile} />
+            </label>
+            <Button variant="secondary" onClick={onExport}><Download size={16} /> 設計ファイルを書き出す</Button>
           </div>
-        </div>
+        </CardBody>
+      </Card>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader>
-              <h2 className="font-semibold text-slate-950">新規プロジェクト作成</h2>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-4 gap-2">
-                {["基本設定", "翼型", "機体", "解析"].map((step, index) => (
-                  <div key={step} className="text-center">
-                    <div className={`mx-auto h-7 w-7 rounded-full text-xs font-semibold leading-7 ${index === 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>
-                      {index + 1}
-                    </div>
-                    <p className="mt-1 text-[11px] text-slate-500">{step}</p>
-                  </div>
-                ))}
-              </div>
-              <label className="block text-sm font-medium text-slate-700">
-                プロジェクト名
-                <input className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" defaultValue="New_UAV_Concept" />
-              </label>
-              <FormRow label="用途" value="UAV" />
-              <FormRow label="単位系" value="SI" />
-              <FormRow label="解析対象" value="空力特性（定常解析）" />
-              <Button className="w-full" onClick={() => navigate("/airfoils")}>次へ</Button>
-            </CardBody>
-          </Card>
+      {importError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{importError}</p>}
 
-          <NextSteps />
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard label="翼型" value={document.airfoils.length.toString()} detail="現在のライブラリ" icon={<Library size={18} />} />
+        <MetricCard label="Polar" value={document.polars.length.toString()} detail="翼型解析結果" icon={<Radar size={18} />} />
+        <MetricCard label="機体" value={`${document.aircraft.wingArea.toFixed(2)} m²`} detail={`翼幅 ${document.aircraft.span.toFixed(2)} m`} icon={<Plane size={18} />} />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <ActionCard title="1. 翼型と Polar" detail="翼型を追加し、XFOIL 解析で Polar を作成します。" action="翼型へ" onClick={() => navigate("/airfoils")} />
+        <ActionCard title="2. 機体設計" detail="主翼形状と翼型の割り当てを編集します。" action="機体設計へ" onClick={() => navigate("/aircraft")} />
+        <ActionCard title="3. 解析と保存" detail="解析結果を確認し、設計ファイルとして保存します。" action="入出力へ" onClick={() => navigate("/export")} />
       </div>
     </div>
   );
 }
 
-function FormRow({ label, value }: { label: string; value: string }) {
-  return (
-    <label className="block text-sm font-medium text-slate-700">
-      {label}
-      <select className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400" defaultValue={value}>
-        <option>{value}</option>
-        <option>グライダー</option>
-        <option>RC機</option>
-      </select>
-    </label>
-  );
-}
-
-function NextSteps() {
-  const navigate = useNavigate();
-  return (
-    <Card>
-      <CardHeader>
-        <h2 className="font-semibold text-slate-950">次の推奨ステップ</h2>
-      </CardHeader>
-      <CardBody className="space-y-3">
-        {[
-          { label: "翼型を追加", path: "/airfoils" },
-          { label: "Polarを作成", path: "/airfoils" },
-          { label: "主翼を定義", path: "/aircraft" },
-        ].map((step) => (
-          <button key={step.label} onClick={() => navigate(step.path)} className="flex w-full items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-blue-50">
-            {step.label}
-            <ArrowRight size={15} className="text-blue-600" />
-          </button>
-        ))}
-      </CardBody>
-    </Card>
-  );
+function ActionCard({ title, detail, action, onClick }: { title: string; detail: string; action: string; onClick: () => void }) {
+  return <Card><CardHeader><h2 className="font-semibold text-slate-950">{title}</h2></CardHeader><CardBody><p className="min-h-12 text-sm text-slate-500">{detail}</p><Button className="mt-4 w-full" variant="secondary" onClick={onClick}>{action}</Button></CardBody></Card>;
 }

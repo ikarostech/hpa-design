@@ -54,7 +54,7 @@ export function JobStatusButton() {
               <p className="text-xs text-slate-500">解析・出力などの実行状況</p>
             </div>
             {recentJobs.length > 0 ? (
-              <button className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100" onClick={clearCompleted}>
+              <button className="rounded-md px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100" onClick={() => clearCompleted()}>
                 完了を消去
               </button>
             ) : null}

@@ -1,7 +1,6 @@
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import type { Airfoil, AirfoilPolar } from "../features/airfoils/model/types";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
-import type { Project } from "../features/projects/model/types";
 
 const makeAirfoilCoordinates = (camber: number, thickness: number) =>
   Array.from({ length: 17 }, (_, index) => {
@@ -14,12 +13,6 @@ const makeAirfoilCoordinates = (camber: number, thickness: number) =>
       lower: camberLine - thicknessShape,
     };
   });
-
-export const projects: Project[] = [
-  { id: "p1", name: "LongRange_UAV_V2", use: "UAV", updatedAt: "2026-06-21", progress: 72, status: "設計中" },
-  { id: "p2", name: "HighAspect_Glider", use: "グライダー", updatedAt: "2026-06-18", progress: 88, status: "解析済み" },
-  { id: "p3", name: "Sport_RC_v1", use: "RC機", updatedAt: "2026-06-12", progress: 46, status: "設計中" },
-];
 
 export const airfoils: Airfoil[] = [
   { id: "af1", name: "NACA2412", thicknessRatio: 12, maxCamber: 2, leadingEdgeRadius: 1.58, trailingEdgeThickness: 0.21, coordinates: makeAirfoilCoordinates(0.02, 0.12) },
@@ -46,10 +39,13 @@ export const airfoilPolars: AirfoilPolar[] = [
     caseName: "NACA2412_Re300k",
     reynolds: 300000,
     mach: 0.04,
-    alphaRange: "-6° to 18°",
+    alphaStart: -6,
+    alphaEnd: 18,
+    alphaStep: 2,
     ncrit: 9,
-    converged: "17/17",
-    status: "完了",
+    convergedPoints: 17,
+    requestedPoints: 17,
+    status: "complete",
     points: polarPoints,
   },
   {
@@ -58,17 +54,19 @@ export const airfoilPolars: AirfoilPolar[] = [
     caseName: "ClarkY_Re250k",
     reynolds: 250000,
     mach: 0.03,
-    alphaRange: "-4° to 16°",
+    alphaStart: -4,
+    alphaEnd: 16,
+    alphaStep: 2,
     ncrit: 9,
-    converged: "14/15",
-    status: "要確認",
+    convergedPoints: 14,
+    requestedPoints: 15,
+    status: "needs-review",
     points: polarPoints.map((p) => ({ ...p, cl: Number((p.cl + 0.08).toFixed(3)) })),
   },
 ];
 
 export const aircraftGeometry: AircraftGeometry = {
   id: "geo1",
-  projectId: "p1",
   span: 3.2,
   rootChord: 0.42,
   tipChord: 0.22,
@@ -82,26 +80,26 @@ export const aircraftGeometry: AircraftGeometry = {
   mac: 0.33,
   staticMargin: 8.4,
   sections: [
-    { id: "ws1", spanPosition: 0, chord: 0.42, twist: 0, dihedral: 4, airfoil: "Custom_UAV_Root", controlSurface: "なし" },
-    { id: "ws2", spanPosition: 0.8, chord: 0.33, twist: -1, dihedral: 4, airfoil: "NACA2412", controlSurface: "フラップ" },
-    { id: "ws3", spanPosition: 1.6, chord: 0.22, twist: -2, dihedral: 4, airfoil: "AG35", controlSurface: "エルロン" },
+    { id: "ws1", spanPosition: 0, chord: 0.42, twist: 0, dihedral: 4, airfoilId: "af6", controlSurface: "なし" },
+    { id: "ws2", spanPosition: 0.8, chord: 0.33, twist: -1, dihedral: 4, airfoilId: "af1", controlSurface: "フラップ" },
+    { id: "ws3", spanPosition: 1.6, chord: 0.22, twist: -2, dihedral: 4, airfoilId: "af5", controlSurface: "エルロン" },
   ],
 };
 
 export const analysisCases: AnalysisCase[] = [
-  { id: "ac1", name: "Cruise_20mps", method: "VLM", alphaSweep: "-4° to 14°", speed: 20, altitude: 120, reynolds: 420000, geometry: "LongRange_UAV_V2", status: "完了" },
-  { id: "ac2", name: "Glide_BestLD", method: "LLT", alphaSweep: "-2° to 10°", speed: 14, altitude: 80, reynolds: 310000, geometry: "LongRange_UAV_V2", status: "未実行" },
-  { id: "ac3", name: "Stall_Sweep", method: "VLM", alphaSweep: "0° to 20°", speed: 11, altitude: 80, reynolds: 260000, geometry: "LongRange_UAV_V2", status: "要確認" },
+  { id: "ac1", name: "Cruise_20mps", method: "VLM", alphaStart: -4, alphaEnd: 14, alphaStep: 2, speed: 20, altitude: 120, reynolds: 420000, geometryId: "geo1", status: "completed" },
+  { id: "ac2", name: "Glide_BestLD", method: "LLT", alphaStart: -2, alphaEnd: 10, alphaStep: 2, speed: 14, altitude: 80, reynolds: 310000, geometryId: "geo1", status: "not-run" },
+  { id: "ac3", name: "Stall_Sweep", method: "VLM", alphaStart: 0, alphaEnd: 20, alphaStep: 2, speed: 11, altitude: 80, reynolds: 260000, geometryId: "geo1", status: "needs-review" },
 ];
 
 const resultRows = polarPoints.map((p) => ({
-  caseName: "Cruise_20mps",
+  caseId: "ac1",
   alpha: p.alpha,
   cl: p.cl,
   cd: p.cd,
   cm: p.cm,
   ld: Number((p.cl / p.cd).toFixed(1)),
-  status: "完了" as const,
+  status: "completed" as const,
 }));
 
 export const analysisResult: AnalysisResult = {
@@ -111,7 +109,7 @@ export const analysisResult: AnalysisResult = {
   cdMin: 0.012,
   maxLD: 23.8,
   cm0: -0.04,
-  status: "完了",
+  status: "completed",
   rows: resultRows,
 };
 

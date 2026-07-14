@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { FormController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import type { AirfoilAnalysisJobController } from "../model/workspace";
-import type { XfoilAnalysisSettings } from "../model/xfoilAnalysis";
+import type { XfoilAnalysisSettings } from "../model/analysis";
 import { Button } from "../../../shared/ui/Button";
 import { AirfoilTargetTable } from "./AirfoilTargetTable";
 

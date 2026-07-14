@@ -12,7 +12,7 @@ app -> pages -> features -> shared
 
 - `app`: routing and application-level composition.
 - `pages`: route-level screens that compose features and shared UI.
-- `features`: domain areas such as airfoils, aircraft, analysis, and projects.
+- `features`: domain areas such as airfoils, aircraft, and analysis.
 - `shared`: UI, layout, utilities, and domain-agnostic contracts that do not depend on feature code.
 - `mocks`: temporary data fixtures used while real persistence/API layers are not ready.
 

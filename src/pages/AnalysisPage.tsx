@@ -1,27 +1,39 @@
 import { Download, RotateCcw, Save, Zap } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
-import { analysisCases, analysisResult } from "../mocks/mockData";
+import type { AircraftGeometry } from "../features/aircraft/model/types";
+import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { MetricCard } from "../shared/ui/MetricCard";
 
-export function AnalysisPage() {
+interface AnalysisPageProps {
+  aircraft: AircraftGeometry;
+  cases: readonly AnalysisCase[];
+  results: readonly AnalysisResult[];
+}
+
+export function AnalysisPage({ aircraft, cases, results }: AnalysisPageProps) {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const [selectedCase, setSelectedCase] = useState(analysisCases[0].id);
-  const [hasRun, setHasRun] = useState(true);
+  const [params, setParams] = useSearchParams();
+  const [selectedCase, setSelectedCase] = useState<string | null>(cases[0]?.id ?? null);
+  useEffect(() => setSelectedCase(cases[0]?.id ?? null), [cases]);
   const caseSelection: SingleSelection<string> = {
     selectedId: selectedCase,
     select: setSelectedCase,
-    clear: () => setSelectedCase(analysisCases[0].id),
+    clear: () => setSelectedCase(null),
   };
-  const selected = analysisCases.find((item) => item.id === caseSelection.selectedId) ?? analysisCases[0];
-  const chartData = useMemo(() => analysisResult.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })), []);
+  const selected = cases.find((item) => item.id === caseSelection.selectedId) ?? cases[0];
+  const selectedResult = results.find((result) => result.caseId === selected?.id);
+  const hasRun = Boolean(selectedResult);
+  const chartData = useMemo(
+    () => selectedResult?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [],
+    [selectedResult],
+  );
   const activeTab = params.get("tab") === "results" ? "結果" : "解析";
 
   return (
@@ -32,7 +44,7 @@ export function AnalysisPage() {
       </div>
       <div className="flex gap-2 border-b border-slate-200">
         {["解析", "結果"].map((tab) => (
-          <button key={tab} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
+          <button key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
         ))}
       </div>
 
@@ -41,10 +53,10 @@ export function AnalysisPage() {
           <Card>
             <CardHeader><h2 className="font-semibold text-slate-950">解析ケース一覧</h2></CardHeader>
             <CardBody className="space-y-2">
-              {analysisCases.map((item) => (
+              {cases.map((item) => (
                 <button key={item.id} onClick={() => caseSelection.select(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === caseSelection.selectedId ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
                   <span>{item.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">{item.method} / {item.alphaSweep}</span>
+                  <span className="mt-1 block text-xs text-slate-500">{item.method} / {formatAlphaRange(item.alphaStart, item.alphaEnd, item.alphaStep)}</span>
                 </button>
               ))}
             </CardBody>
@@ -53,13 +65,13 @@ export function AnalysisPage() {
           <Card>
             <CardHeader><h2 className="font-semibold text-slate-950">解析設定</h2></CardHeader>
             <CardBody className="space-y-3">
-              <Setting label="解析手法" value={selected.method} />
-              <Setting label="α sweep" value={selected.alphaSweep} />
-              <Setting label="速度" value={`${selected.speed} m/s`} />
-              <Setting label="高度" value={`${selected.altitude} m`} />
-              <Setting label="Re" value={selected.reynolds.toLocaleString()} />
-              <Setting label="使用ジオメトリ" value={selected.geometry} />
-              <Button className="w-full" variant={hasRun ? "success" : "primary"} onClick={() => setHasRun(true)}>
+              <Setting label="解析手法" value={selected?.method ?? "-"} />
+              <Setting label="α sweep" value={selected ? formatAlphaRange(selected.alphaStart, selected.alphaEnd, selected.alphaStep) : "-"} />
+              <Setting label="速度" value={selected ? `${selected.speed} m/s` : "-"} />
+              <Setting label="高度" value={selected ? `${selected.altitude} m` : "-"} />
+              <Setting label="Re" value={selected?.reynolds.toLocaleString() ?? "-"} />
+              <Setting label="使用ジオメトリ" value={selected?.geometryId ?? "-"} />
+              <Button className="w-full" variant={hasRun ? "success" : "primary"} disabled={!hasRun}>
                 <Zap size={16} />
                 解析を実行
               </Button>
@@ -69,10 +81,10 @@ export function AnalysisPage() {
 
         <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-5">
-            <MetricCard label="CLmax" value={hasRun ? analysisResult.clMax.toString() : "-"} />
-            <MetricCard label="CDmin" value={hasRun ? analysisResult.cdMin.toString() : "-"} />
-            <MetricCard label="最大 L/D" value={hasRun ? analysisResult.maxLD.toString() : "-"} />
-            <MetricCard label="Cm0" value={hasRun ? analysisResult.cm0.toString() : "-"} />
+            <MetricCard label="CLmax" value={selectedResult?.clMax.toString() ?? "-"} />
+            <MetricCard label="CDmin" value={selectedResult?.cdMin.toString() ?? "-"} />
+            <MetricCard label="最大 L/D" value={selectedResult?.maxLD.toString() ?? "-"} />
+            <MetricCard label="Cm0" value={selectedResult?.cm0.toString() ?? "-"} />
             <MetricCard label="実行ステータス" value={hasRun ? "完了" : "未実行"} />
           </div>
 
@@ -92,15 +104,15 @@ export function AnalysisPage() {
                     <tr>{["Case", "α", "CL", "CD", "Cm", "L/D", "Status"].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}</tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {analysisResult.rows.slice(0, 10).map((row) => (
-                      <tr key={`${row.caseName}-${row.alpha}`}>
-                        <td className="px-2 py-3 font-medium">{row.caseName}</td>
+                    {(selectedResult?.rows ?? []).slice(0, 10).map((row) => (
+                      <tr key={`${row.caseId}-${row.alpha}`}>
+                        <td className="px-2 py-3 font-medium">{row.caseId}</td>
                         <td className="px-2 py-3">{row.alpha}°</td>
                         <td className="px-2 py-3">{row.cl}</td>
                         <td className="px-2 py-3">{row.cd}</td>
                         <td className="px-2 py-3">{row.cm}</td>
                         <td className="px-2 py-3">{row.ld}</td>
-                        <td className="px-2 py-3"><Badge tone="green">{row.status}</Badge></td>
+                        <td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td>
                       </tr>
                     ))}
                   </tbody>
@@ -117,7 +129,7 @@ export function AnalysisPage() {
               <Badge tone={hasRun ? "green" : "slate"}>{hasRun ? "表示中" : "未実行"}</Badge>
             </CardHeader>
             <CardBody>
-              <AircraftPreview lift={hasRun} />
+              <AircraftPreview lift={hasRun} geometry={aircraft} />
             </CardBody>
           </Card>
 
@@ -155,4 +167,15 @@ function Setting({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
     </div>
   );
+}
+
+function formatAlphaRange(start: number, end: number, step: number) {
+  return `${start}° to ${end}° (${step}°刻み)`;
+}
+
+function analysisStatusLabel(status: "completed" | "not-run" | "needs-review") {
+  if (status === "completed") {
+    return "完了";
+  }
+  return status === "not-run" ? "未実行" : "要確認";
 }

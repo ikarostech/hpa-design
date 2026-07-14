@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { Job, JobStatus } from "@/shared/model";
+import { transitionJob } from "./jobState";
 
-export type AppJob = Job<string, any, any>;
+export type AppJob = Job<string, unknown, unknown>;
 
 type CreateJobInput<TJob extends AppJob = AppJob> =
   Omit<TJob, "id" | "createdAt" | "status"> & {
@@ -9,6 +10,8 @@ type CreateJobInput<TJob extends AppJob = AppJob> =
     createdAt?: string;
     status?: JobStatus;
   };
+
+type JobPatch<TJob extends AppJob> = Partial<Omit<TJob, "id" | "kind" | "status" | "createdAt">>;
 
 interface JobToast {
   id: string;
@@ -21,11 +24,11 @@ interface JobToast {
 interface JobContextValue {
   jobs: readonly AppJob[];
   createJob: <TJob extends AppJob>(job: CreateJobInput<TJob>) => TJob;
-  updateJob: <TJob extends AppJob>(jobId: string, patch: Partial<TJob>) => void;
-  completeJob: <TJob extends AppJob>(jobId: string, patch?: Partial<TJob>) => void;
+  updateJob: <TJob extends AppJob>(jobId: string, patch: JobPatch<TJob>) => void;
+  completeJob: <TJob extends AppJob>(jobId: string, patch?: JobPatch<TJob>) => void;
   failJob: (jobId: string, errorMessage: string) => void;
   cancelJob: (jobId: string) => void;
-  clearCompleted: () => void;
+  clearCompleted: (kind?: string) => void;
   dismissToast: (toastId: string) => void;
 }
 
@@ -56,17 +59,21 @@ export function JobProvider({ children }: { children: ReactNode }) {
       setJobs((current) => [createdJob, ...current]);
       return createdJob as TJob;
     },
-    updateJob: <TJob extends AppJob>(jobId: string, patch: Partial<TJob>) => {
+    updateJob: <TJob extends AppJob>(jobId: string, patch: JobPatch<TJob>) => {
       setJobs((current) => current.map((job) => job.id === jobId ? { ...job, ...patch } : job));
     },
-    completeJob: <TJob extends AppJob>(jobId: string, patch: Partial<TJob> = {}) => {
+    completeJob: <TJob extends AppJob>(jobId: string, patch: JobPatch<TJob> = {}) => {
       const jobName = jobs.find((job) => job.id === jobId)?.name;
       setJobs((current) => current.map((job) => {
         if (job.id !== jobId) {
           return job;
         }
+        const transitioned = transitionJob(job, "completed");
+        if (transitioned === job) {
+          return job;
+        }
         return {
-          ...job,
+          ...transitioned,
           ...patch,
           status: "completed",
           finishedAt: new Date().toISOString(),
@@ -86,8 +93,12 @@ export function JobProvider({ children }: { children: ReactNode }) {
         if (job.id !== jobId) {
           return job;
         }
+        const transitioned = transitionJob(job, "failed");
+        if (transitioned === job) {
+          return job;
+        }
         return {
-          ...job,
+          ...transitioned,
           status: "failed",
           finishedAt: new Date().toISOString(),
           errorMessage,
@@ -103,12 +114,19 @@ export function JobProvider({ children }: { children: ReactNode }) {
       }
     },
     cancelJob: (jobId) => {
-      setJobs((current) => current.map((job) => job.id === jobId
-        ? { ...job, status: "cancelled", finishedAt: new Date().toISOString() }
-        : job));
+      setJobs((current) => current.map((job) => {
+        if (job.id !== jobId) {
+          return job;
+        }
+        const transitioned = transitionJob(job, "cancelled");
+        return transitioned === job ? job : { ...transitioned, finishedAt: new Date().toISOString() };
+      }));
     },
-    clearCompleted: () => {
-      setJobs((current) => current.filter((job) => job.status !== "completed" && job.status !== "cancelled"));
+    clearCompleted: (kind) => {
+      setJobs((current) => current.filter((job) => (
+        job.status !== "completed"
+        && job.status !== "cancelled"
+      ) || (kind !== undefined && job.kind !== kind)));
     },
     dismissToast: (toastId) => {
       setToasts((current) => current.filter((toast) => toast.id !== toastId));

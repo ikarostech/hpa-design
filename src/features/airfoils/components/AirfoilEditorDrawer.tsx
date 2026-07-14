@@ -65,7 +65,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
       return { ...airfoil, name: form.name.trim() || airfoil.name };
     }
     return null;
-  }, [airfoil, datState, mode, nacaState]);
+  }, [airfoil, datState, form.name, mode, nacaState]);
 
   if (!open || !mode) {
     return null;

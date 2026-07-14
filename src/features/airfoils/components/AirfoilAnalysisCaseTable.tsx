@@ -60,8 +60,8 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCrea
                   <td className="px-2 py-3">{getAirfoilNames(run.airfoilIds)}</td>
                   <td className="px-2 py-3">{run.reynolds.toLocaleString()}</td>
                   <td className="px-2 py-3">{run.mach}</td>
-                  <td className="px-2 py-3">{run.alphaRange}</td>
-                  <td className="px-2 py-3"><Badge tone={run.status === "完了" ? "green" : "amber"}>{run.status}</Badge></td>
+                  <td className="px-2 py-3">{formatAlphaRange(run.alphaStart, run.alphaEnd, run.alphaStep)}</td>
+                  <td className="px-2 py-3"><Badge tone={run.status === "complete" ? "green" : "amber"}>{run.status === "complete" ? "完了" : "要確認"}</Badge></td>
                 </tr>
               ))}
             </tbody>
@@ -70,4 +70,8 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCrea
       </CardBody>
     </Card>
   );
+}
+
+function formatAlphaRange(start: number, end: number, step: number) {
+  return `${start}° to ${end}° (${step}°刻み)`;
 }

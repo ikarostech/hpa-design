@@ -1,72 +1,57 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { InspectorController, InspectorState, ResultViewController } from "@/shared/model";
 import { useJobs } from "@/shared/jobs/JobProvider";
 import { buildAirfoilChartSeries } from "../model/chartSeries";
-import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../model/types";
+import type { Airfoil } from "../model/types";
 import type {
   AirfoilAnalysisJob,
   AirfoilAnalysisJobController,
   AirfoilEditorMode,
+  AirfoilWorkspaceData,
   AirfoilWorkspaceSelection,
 } from "../model/workspace";
-import { runXfoilAnalysis, type XfoilAnalysisSettings } from "../model/xfoilAnalysis";
-import { airfoilPolars, airfoils, polarPoints } from "../../../mocks/mockData";
+import type { XfoilAnalysisSettings } from "../model/analysis";
+import {
+  AirfoilAnalysisCancelledError,
+  executeAirfoilAnalysis,
+  type AirfoilAnalysisRunner,
+} from "../services/airfoilAnalysisService";
+import { webXfoilAnalysisRunner } from "../services/webXfoilAnalysisRunner";
 
-const initialAnalysisRuns: AirfoilAnalysisRun[] = [
-  {
-    id: "run-initial-polars",
-    name: "初期Polar比較",
-    airfoilIds: Array.from(new Set(airfoilPolars.map((polar) => polar.airfoilId))),
-    polarIds: airfoilPolars.map((polar) => polar.id),
-    createdAt: "サンプルデータ",
-    reynolds: 300000,
-    mach: 0.04,
-    alphaRange: "-6° to 18°",
-    status: "完了",
-  },
-];
-
-const initialDetailState: InspectorState<string> = {
-  open: false,
-  mode: "detail",
-  targetId: airfoils[0]?.id ?? null,
-};
-
-const initialAnalysisDrawerState: InspectorState<string> = {
-  open: false,
-  mode: "create",
-  targetId: null,
-};
-
-export function useAirfoilWorkspace() {
+export function useAirfoilWorkspace(
+  data: AirfoilWorkspaceData,
+  runner: AirfoilAnalysisRunner = webXfoilAnalysisRunner,
+) {
   const jobs = useJobs();
-  const [airfoilItems, setAirfoilItems] = useState<Airfoil[]>(airfoils);
-  const [detailState, setDetailState] = useState<InspectorState<string>>(initialDetailState);
+  const controllers = useRef(new Map<string, AbortController>());
+  const [detailState, setDetailState] = useState<InspectorState<string>>(() => ({
+    open: false,
+    mode: "detail",
+    targetId: data.airfoils[0]?.id ?? null,
+  }));
   const [editorMode, setEditorMode] = useState<AirfoilEditorMode | null>(null);
-  const [analysisDrawerState, setAnalysisDrawerState] = useState<InspectorState<string>>(initialAnalysisDrawerState);
-  const [generatedPolars, setGeneratedPolars] = useState<AirfoilPolar[]>([]);
-  const [analysisRuns, setAnalysisRuns] = useState<AirfoilAnalysisRun[]>(initialAnalysisRuns);
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(initialAnalysisRuns[0]?.id ?? null);
-  const [analysisTargetIds, setAnalysisTargetIds] = useState<string[]>(() => [airfoils[0].id, airfoils[1].id]);
+  const [analysisDrawerState, setAnalysisDrawerState] = useState<InspectorState<string>>({ open: false, mode: "create", targetId: null });
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(() => data.analysisRuns[0]?.id ?? null);
+  const [analysisTargetIds, setAnalysisTargetIds] = useState<string[]>(() => data.airfoils.slice(0, 2).map((airfoil) => airfoil.id));
   const analysisJobs = jobs.jobs.filter((job): job is AirfoilAnalysisJob => job.kind === "airfoil-analysis");
 
-  const allPolars = useMemo(() => [...airfoilPolars, ...generatedPolars], [generatedPolars]);
-  const selected = airfoilItems.find((airfoil) => airfoil.id === detailState.targetId) ?? airfoilItems[0];
-  const selectedRun = analysisRuns.find((run) => run.id === selectedRunId) ?? analysisRuns[0];
+  const allPolars = data.polars;
+  const selected = data.airfoils.find((airfoil) => airfoil.id === detailState.targetId) ?? data.airfoils[0];
+  const selectedRun = data.analysisRuns.find((run) => run.id === selectedRunId) ?? data.analysisRuns[0];
   const selectedRunPolars = useMemo(
-    () => allPolars.filter((polar) => selectedRun.polarIds.includes(polar.id)),
-    [allPolars, selectedRun.polarIds],
+    () => selectedRun ? allPolars.filter((polar) => selectedRun.polarIds.includes(polar.id)) : [],
+    [allPolars, selectedRun],
   );
   const selectedTargetNames = useMemo(
     () => analysisTargetIds
-      .map((id) => airfoilItems.find((airfoil) => airfoil.id === id)?.name)
+      .map((id) => data.airfoils.find((airfoil) => airfoil.id === id)?.name)
       .filter((name): name is string => Boolean(name)),
-    [airfoilItems, analysisTargetIds],
+    [data.airfoils, analysisTargetIds],
   );
-  const selectedHasPolar = allPolars.some((polar) => polar.airfoilId === selected.id);
+  const selectedHasPolar = selected ? allPolars.some((polar) => polar.airfoilId === selected.id) : false;
   const chartSeries = useMemo(
-    () => buildAirfoilChartSeries(selectedRunPolars, airfoilItems),
-    [airfoilItems, selectedRunPolars],
+    () => buildAirfoilChartSeries(selectedRunPolars, [...data.airfoils]),
+    [data.airfoils, selectedRunPolars],
   );
 
   const detailInspector: InspectorController<string> = {
@@ -115,18 +100,17 @@ export function useAirfoilWorkspace() {
   };
 
   const saveAirfoil = (airfoil: Airfoil) => {
-    setAirfoilItems((current) => {
-      const exists = current.some((item) => item.id === airfoil.id);
-      return exists ? current.map((item) => item.id === airfoil.id ? airfoil : item) : [airfoil, ...current];
-    });
+    void data.airfoilRepository.save(airfoil);
     setDetailState({ open: false, mode: "detail", targetId: airfoil.id });
     setEditorMode(null);
   };
 
   const runAnalysis = async (settings: XfoilAnalysisSettings) => {
-    const targets = airfoilItems.filter((airfoil) => analysisTargetIds.includes(airfoil.id));
+    const targets = data.airfoils.filter((airfoil) => analysisTargetIds.includes(airfoil.id));
     const jobId = `job-airfoil-analysis-${Date.now()}`;
     const startedAt = new Date().toISOString();
+    const controller = new AbortController();
+    controllers.current.set(jobId, controller);
     const runningJob = jobs.createJob<AirfoilAnalysisJob>({
       id: jobId,
       kind: "airfoil-analysis",
@@ -140,41 +124,34 @@ export function useAirfoilWorkspace() {
     });
 
     try {
-      const polars: AirfoilPolar[] = [];
-
-      for (const airfoil of targets) {
-        polars.push(await runXfoilAnalysis(airfoil, settings));
-        jobs.updateJob<AirfoilAnalysisJob>(jobId, { progress: { completed: polars.length, total: targets.length } });
-      }
-
-      const runId = `run-${Date.now()}`;
-      const run: AirfoilAnalysisRun = {
-        id: runId,
-        name: `一括解析 ${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`,
-        airfoilIds: targets.map((airfoil) => airfoil.id),
-        polarIds: polars.map((polar) => polar.id),
-        createdAt: new Date().toLocaleString("ja-JP"),
-        reynolds: settings.reynolds,
-        mach: settings.mach,
-        alphaRange: `${settings.alphaStart}° to ${settings.alphaEnd}°`,
-        status: "完了",
-      };
+      const execution = await executeAirfoilAnalysis({
+        targets,
+        settings,
+        runner,
+        signal: controller.signal,
+        createId: (prefix) => `${prefix}-${Date.now()}`,
+        now: () => new Date(),
+        onProgress: (progress) => jobs.updateJob<AirfoilAnalysisJob>(jobId, { progress }),
+      });
       const completedJob: AirfoilAnalysisJob = {
         ...runningJob,
         status: "completed",
         finishedAt: new Date().toISOString(),
-        progress: { completed: targets.length, total: targets.length },
-        result: polars,
-        runId,
+        progress: { completed: execution.polars.length, total: targets.length },
+        result: [...execution.polars],
+        runId: execution.run.id,
       };
 
-      setGeneratedPolars((current) => [...polars, ...current]);
-      setAnalysisRuns((current) => [run, ...current]);
-      setSelectedRunId(runId);
+      data.saveAnalysis(execution.run, execution.polars);
+      setSelectedRunId(execution.run.id);
       jobs.completeJob<AirfoilAnalysisJob>(jobId, completedJob);
       setAnalysisDrawerState((current) => ({ ...current, open: false }));
       return completedJob;
     } catch (error) {
+      if (error instanceof AirfoilAnalysisCancelledError) {
+        jobs.cancelJob(jobId);
+        return { ...runningJob, status: "cancelled" as const, finishedAt: new Date().toISOString() };
+      }
       const failedJob: AirfoilAnalysisJob = {
         ...runningJob,
         status: "failed",
@@ -183,6 +160,8 @@ export function useAirfoilWorkspace() {
       };
       jobs.failJob(jobId, failedJob.errorMessage ?? "XFOIL解析に失敗しました。");
       return failedJob;
+    } finally {
+      controllers.current.delete(jobId);
     }
   };
 
@@ -191,21 +170,22 @@ export function useAirfoilWorkspace() {
     currentJob: analysisJobs.find((job) => job.status === "running") ?? analysisJobs[0] ?? null,
     run: runAnalysis,
     cancel: async (jobId) => {
+      controllers.current.get(jobId)?.abort();
       jobs.cancelJob(jobId);
     },
-    clearCompleted: jobs.clearCompleted,
+    clearCompleted: () => jobs.clearCompleted("airfoil-analysis"),
   };
 
   return {
-    airfoils: airfoilItems,
+    airfoils: data.airfoils,
     polars: allPolars,
-    polarPoints,
+    polarPoints: allPolars[0]?.points ?? [],
     selected,
     selectedRun,
     selectedTargetNames,
     selectedHasPolar,
     chartSeries,
-    analysisRuns,
+    analysisRuns: data.analysisRuns,
     analysisDrawerState,
     editorMode,
     selection,

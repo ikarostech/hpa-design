@@ -2,9 +2,10 @@ import type { WingSection } from "../model/types";
 
 interface WingSectionTableProps {
   sections: WingSection[];
+  airfoilNames?: Readonly<Record<string, string>>;
 }
 
-export function WingSectionTable({ sections }: WingSectionTableProps) {
+export function WingSectionTable({ sections, airfoilNames = {} }: WingSectionTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-left text-sm">
@@ -22,7 +23,7 @@ export function WingSectionTable({ sections }: WingSectionTableProps) {
               <td className="px-3 py-3">{section.chord.toFixed(2)} m</td>
               <td className="px-3 py-3">{section.twist}°</td>
               <td className="px-3 py-3">{section.dihedral}°</td>
-              <td className="px-3 py-3 font-medium text-slate-900">{section.airfoil}</td>
+              <td className="px-3 py-3 font-medium text-slate-900">{airfoilNames[section.airfoilId] ?? section.airfoilId}</td>
               <td className="px-3 py-3">{section.controlSurface}</td>
             </tr>
           ))}

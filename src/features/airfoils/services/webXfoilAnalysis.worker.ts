@@ -1,33 +1,49 @@
 import { parsePolarRows, WebXFOIL } from "webxfoil-wasm";
 import xfoilModuleUrl from "webxfoil-wasm/dist/xfoil.js?url";
 import xfoilWasmUrl from "webxfoil-wasm/dist/xfoil.wasm?url";
-import type { Airfoil, AirfoilPolar } from "./types";
+import type { XfoilAnalysisSettings } from "../model/analysis";
+import type { Airfoil, AirfoilPolar } from "../model/types";
 
-export interface XfoilAnalysisSettings {
-  reynolds: number;
-  mach: number;
-  alphaStart: number;
-  alphaEnd: number;
-  alphaStep: number;
-  ncrit: number;
-  iterations: number;
+interface RunRequest {
+  type: "run";
+  airfoil: Airfoil;
+  settings: XfoilAnalysisSettings;
+  polarId: string;
 }
 
-interface XfoilPolarPoint {
+interface PolarPoint {
   alpha: number;
   cl: number;
   cd: number;
   cm: number;
 }
 
-export async function runXfoilAnalysis(airfoil: Airfoil, settings: XfoilAnalysisSettings): Promise<AirfoilPolar> {
+self.addEventListener("message", async (event: MessageEvent<RunRequest>) => {
+  if (event.data.type !== "run") {
+    return;
+  }
+
+  try {
+    const polar = await runXfoil(event.data);
+    self.postMessage({ type: "success", polar });
+  } catch (error) {
+    self.postMessage({
+      type: "failure",
+      message: error instanceof Error ? error.message : "XFOIL解析に失敗しました。",
+    });
+  } finally {
+    self.close();
+  }
+});
+
+async function runXfoil({ airfoil, settings, polarId }: RunRequest): Promise<AirfoilPolar> {
   const alphas = makeAlphaSweep(settings.alphaStart, settings.alphaEnd, settings.alphaStep);
-  const xfoil = await loadXfoil();
-  const airfoilInput = buildAirfoilInput(airfoil);
+  const xfoil = await WebXFOIL.load({ moduleUrl: xfoilModuleUrl, wasmUrl: xfoilWasmUrl });
   const polarPath = "/work/polar.dat";
 
   try {
     const input = WebXFOIL.input();
+    const airfoilInput = buildAirfoilInput(airfoil);
     if (airfoilInput.kind === "naca") {
       input.naca(airfoilInput.code);
     } else {
@@ -50,10 +66,7 @@ export async function runXfoilAnalysis(airfoil: Airfoil, settings: XfoilAnalysis
       .add("PACC")
       .add("QUIT");
 
-    const result = xfoil.run(input.toString(), {
-      workDir: "/work",
-      files: input.files,
-    });
+    const result = xfoil.run(input.toString(), { workDir: "/work", files: input.files });
     if (result.output.hasFortranError || result.raw.exitCode !== 0) {
       throw new Error("XFOIL実行時にエラーが発生しました。入力条件を確認してください。");
     }
@@ -65,15 +78,18 @@ export async function runXfoilAnalysis(airfoil: Airfoil, settings: XfoilAnalysis
 
     const convergedCount = points.filter((point) => Number.isFinite(point.cl) && Number.isFinite(point.cd)).length;
     return {
-      id: `xfoil-${airfoil.id}-${Date.now()}`,
+      id: polarId,
       airfoilId: airfoil.id,
       caseName: `${airfoil.name}_Re${Math.round(settings.reynolds / 1000)}k_XFOIL`,
       reynolds: settings.reynolds,
       mach: settings.mach,
-      alphaRange: `${settings.alphaStart}° to ${settings.alphaEnd}°`,
+      alphaStart: settings.alphaStart,
+      alphaEnd: settings.alphaEnd,
+      alphaStep: settings.alphaStep,
       ncrit: settings.ncrit,
-      converged: `${convergedCount}/${alphas.length}`,
-      status: convergedCount === alphas.length ? "完了" : "要確認",
+      convergedPoints: convergedCount,
+      requestedPoints: alphas.length,
+      status: convergedCount === alphas.length ? "complete" : "needs-review",
       points,
     };
   } finally {
@@ -81,26 +97,17 @@ export async function runXfoilAnalysis(airfoil: Airfoil, settings: XfoilAnalysis
   }
 }
 
-function loadXfoil() {
-  return WebXFOIL.load({
-    moduleUrl: xfoilModuleUrl,
-    wasmUrl: xfoilWasmUrl,
-  });
-}
-
 function makeAlphaSweep(start: number, end: number, step: number) {
   const safeStep = Math.abs(step) > 0 ? Math.abs(step) : 1;
   const direction = start <= end ? 1 : -1;
   const values: number[] = [];
-
   for (let alpha = start; direction > 0 ? alpha <= end + 1e-9 : alpha >= end - 1e-9; alpha += safeStep * direction) {
     values.push(Number(alpha.toFixed(6)));
   }
-
   return values;
 }
 
-function readPolarPoints(polarText: string): XfoilPolarPoint[] {
+function readPolarPoints(polarText: string): PolarPoint[] {
   return parsePolarRows(polarText).map((row) => ({
     alpha: roundFinite(row.alpha, 3),
     cl: roundFinite(row.cl, 4),
@@ -110,10 +117,7 @@ function readPolarPoints(polarText: string): XfoilPolarPoint[] {
 }
 
 function roundFinite(value: number | undefined, digits: number) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return Number.NaN;
-  }
-  return Number(value.toFixed(digits));
+  return typeof value === "number" && Number.isFinite(value) ? Number(value.toFixed(digits)) : Number.NaN;
 }
 
 function buildAirfoilInput(airfoil: Airfoil): { kind: "naca"; code: string } | { kind: "file"; text: string } {
@@ -124,8 +128,5 @@ function buildAirfoilInput(airfoil: Airfoil): { kind: "naca"; code: string } | {
 
   const upper = [...airfoil.coordinates].reverse().map((point) => `${point.x.toFixed(6)} ${point.upper.toFixed(6)}`);
   const lower = airfoil.coordinates.slice(1).map((point) => `${point.x.toFixed(6)} ${point.lower.toFixed(6)}`);
-  return {
-    kind: "file",
-    text: [airfoil.name, ...upper, ...lower].join("\n"),
-  };
+  return { kind: "file", text: [airfoil.name, ...upper, ...lower].join("\n") };
 }

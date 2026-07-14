@@ -4,13 +4,12 @@ export interface WingSection {
   chord: number;
   twist: number;
   dihedral: number;
-  airfoil: string;
+  airfoilId: string;
   controlSurface: string;
 }
 
 export interface AircraftGeometry {
   id: string;
-  projectId: string;
   span: number;
   rootChord: number;
   tipChord: number;

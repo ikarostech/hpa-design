@@ -1,17 +1,18 @@
-import type { RunStatus } from "../../airfoils/model/types";
-
 export type AnalysisMethod = "LLT" | "VLM";
+export type AnalysisCaseStatus = "completed" | "not-run" | "needs-review";
 
 export interface AnalysisCase {
   id: string;
   name: string;
   method: AnalysisMethod;
-  alphaSweep: string;
+  alphaStart: number;
+  alphaEnd: number;
+  alphaStep: number;
   speed: number;
   altitude: number;
   reynolds: number;
-  geometry: string;
-  status: RunStatus;
+  geometryId: string;
+  status: AnalysisCaseStatus;
 }
 
 export interface AnalysisResult {
@@ -21,6 +22,6 @@ export interface AnalysisResult {
   cdMin: number;
   maxLD: number;
   cm0: number;
-  status: RunStatus;
-  rows: Array<{ caseName: string; alpha: number; cl: number; cd: number; cm: number; ld: number; status: RunStatus }>;
+  status: AnalysisCaseStatus;
+  rows: Array<{ caseId: string; alpha: number; cl: number; cd: number; cm: number; ld: number; status: AnalysisCaseStatus }>;
 }

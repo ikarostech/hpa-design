@@ -1,17 +1,16 @@
-import { BarChart3, Boxes, Download, Gauge, Home, Library, Plane, Workflow } from "lucide-react";
+import { BarChart3, Download, Gauge, Home, Library, Plane, Workflow } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-const navItems = [
-  { label: "ダッシュボード", path: "/", icon: Home },
-  { label: "プロジェクト", path: "/projects", icon: Boxes },
-  { label: "翼型", path: "/airfoils", icon: Library },
-  { label: "機体設計", path: "/aircraft", icon: Plane },
-  { label: "解析", path: "/analysis", icon: Workflow },
-  { label: "結果", path: "/analysis?tab=results", icon: BarChart3 },
-  { label: "エクスポート", path: "/export", icon: Download },
-];
-
 export function Sidebar() {
+  const navItems = [
+    { label: "設計概要", path: "/", icon: Home },
+    { label: "翼型", path: "/airfoils", icon: Library },
+    { label: "機体設計", path: "/aircraft", icon: Plane },
+    { label: "解析", path: "/analysis", icon: Workflow },
+    { label: "結果", path: "/analysis?tab=results", icon: BarChart3 },
+    { label: "入出力", path: "/export", icon: Download },
+  ];
+
   return (
     <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
       <nav className="space-y-1">

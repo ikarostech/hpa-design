@@ -14,10 +14,13 @@ export interface AirfoilPolar {
   caseName: string;
   reynolds: number;
   mach: number;
-  alphaRange: string;
+  alphaStart: number;
+  alphaEnd: number;
+  alphaStep: number;
   ncrit: number;
-  converged: string;
-  status: RunStatus;
+  convergedPoints: number;
+  requestedPoints: number;
+  status: PolarStatus;
   points: Array<{ alpha: number; cl: number; cd: number; cm: number }>;
 }
 
@@ -29,8 +32,11 @@ export interface AirfoilAnalysisRun {
   createdAt: string;
   reynolds: number;
   mach: number;
-  alphaRange: string;
-  status: RunStatus;
+  alphaStart: number;
+  alphaEnd: number;
+  alphaStep: number;
+  status: AirfoilAnalysisRunStatus;
 }
 
-export type RunStatus = string;
+export type PolarStatus = "complete" | "needs-review";
+export type AirfoilAnalysisRunStatus = "complete" | "needs-review";
