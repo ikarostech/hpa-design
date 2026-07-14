@@ -1,6 +1,7 @@
-import { ArrowLeft, Save, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { FormController } from "@/shared/model";
+import { ArrowLeft, Save, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { FormController, ValidationIssue } from "@/shared/model";
+import { createDatAirfoilPreview, createNacaAirfoilPreview, readAirfoilDatFile } from "../services/airfoilCreationService";
 import type { Airfoil } from "../model/types";
 import type { AirfoilEditorMode } from "../model/workspace";
 import { Button } from "../../../shared/ui/Button";
@@ -17,79 +18,93 @@ interface AirfoilEditorDrawerProps {
 interface AirfoilFormState {
   name: string;
   nacaCode: string;
-  thicknessRatio: number;
-  maxCamber: number;
-  leadingEdgeRadius: number;
-  trailingEdgeThickness: number;
   datText: string;
 }
 
 const defaultForm: AirfoilFormState = {
-  name: "NACA0012",
+  name: "",
   nacaCode: "0012",
-  thicknessRatio: 12,
-  maxCamber: 0,
-  leadingEdgeRadius: 1.5,
-  trailingEdgeThickness: 0.2,
   datText: "",
 };
 
 export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: AirfoilEditorDrawerProps) {
   const [form, setForm] = useState<AirfoilFormState>(defaultForm);
+  const createdId = useRef("");
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !mode) {
       return;
     }
-
+    createdId.current = mode === "edit" && airfoil ? airfoil.id : `af-${Date.now().toString(36)}`;
     if (mode === "edit" && airfoil) {
-      setForm({
-        name: airfoil.name,
-        nacaCode: "",
-        thicknessRatio: airfoil.thicknessRatio,
-        maxCamber: airfoil.maxCamber,
-        leadingEdgeRadius: airfoil.leadingEdgeRadius,
-        trailingEdgeThickness: airfoil.trailingEdgeThickness,
-        datText: "",
-      });
+      setForm({ name: airfoil.name, nacaCode: "", datText: "" });
       return;
     }
-
-    if (mode === "import-dat") {
-      setForm({ ...defaultForm, name: "Imported_Airfoil", datText: "Imported_Airfoil\n1.000000 0.000000\n0.500000 0.060000\n0.000000 0.000000\n0.500000 -0.040000\n1.000000 0.000000" });
-      return;
-    }
-
-    setForm(defaultForm);
+    setForm({ ...defaultForm });
   }, [airfoil, mode, open]);
+
+  const datState = useMemo(() => {
+    if (mode !== "import-dat" || !form.datText.trim()) {
+      return null;
+    }
+    return createDatAirfoilPreview({ datText: form.datText, id: createdId.current, name: form.name });
+  }, [form.datText, form.name, mode]);
+
+  const nacaState = useMemo(
+    () => mode === "create-naca" ? createNacaAirfoilPreview(form.nacaCode, createdId.current) : null,
+    [form.nacaCode, mode],
+  );
+  const previewAirfoil = useMemo(() => {
+    if (nacaState?.valid) {
+      return nacaState.airfoil;
+    }
+    if (datState?.valid) {
+      return datState.airfoil;
+    }
+    if (mode === "edit" && airfoil) {
+      return { ...airfoil, name: form.name.trim() || airfoil.name };
+    }
+    return null;
+  }, [airfoil, datState, mode, nacaState]);
 
   if (!open || !mode) {
     return null;
   }
 
-  const title = mode === "edit" ? "翼型を編集" : mode === "import-dat" ? ".datから作成" : "NACA翼型を作成";
-  const previewAirfoil = buildPreviewAirfoil(mode, airfoil?.id, form);
-
+  const error = nacaState && !nacaState.valid ? nacaState.error : datState && !datState.valid ? datState.error : null;
+  const valid = Boolean(previewAirfoil) && !error;
+  const title = mode === "edit" ? "翼型を編集" : mode === "import-dat" ? ".datから翼型を作成" : "NACA翼型を作成";
   const formController: FormController<AirfoilFormState> = {
     state: {
       value: form,
       initialValue: defaultForm,
       errors: {},
       dirty: !isSameForm(form, defaultForm),
-      valid: true,
+      valid,
       submitting: false,
     },
     update: (key, value) => setForm((current) => ({ ...current, [key]: value })),
     patch: (value) => setForm((current) => ({ ...current, ...value })),
     reset: (value = defaultForm) => setForm(value),
     submit: async () => {
-      onSave(previewAirfoil);
+      if (previewAirfoil && valid) {
+        onSave(previewAirfoil);
+      }
     },
   };
 
-  const update = (key: keyof AirfoilFormState, value: string) => {
-    const nextValue = key === "name" || key === "nacaCode" || key === "datText" ? value : Number(value);
-    formController.update(key, nextValue);
+  const update = (key: keyof AirfoilFormState, value: string) => formController.update(key, value);
+  const loadFile = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    const datText = await readAirfoilDatFile(file);
+    let name = form.name;
+    const preview = createDatAirfoilPreview({ datText, id: createdId.current, name });
+    if (preview.valid) {
+      name = name || preview.suggestedName;
+    }
+    formController.patch({ datText, name });
   };
 
   return (
@@ -98,95 +113,67 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
       <aside className="absolute right-0 top-0 flex h-full w-full flex-col border-l bg-white shadow-xl sm:max-w-[440px]">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}>
-              <ArrowLeft size={18} />
-            </Button>
+            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}><ArrowLeft size={18} /></Button>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-semibold text-slate-950">{title}</h2>
-              <p className="mt-1 text-sm text-slate-500">作成・編集はダッシュボードから分離します。</p>
+              <p className="mt-1 text-sm text-slate-500">座標を検証してから保存します。</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" aria-label="編集を閉じる" onClick={onClose}>
-            <X size={18} />
-          </Button>
+          <Button variant="ghost" size="icon" aria-label="編集を閉じる" onClick={onClose}><X size={18} /></Button>
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           {mode === "import-dat" ? (
-            <TextArea label=".dat内容" value={formController.state.value.datText} onChange={(value) => update("datText", value)} />
+            <>
+              <label className="block text-sm font-medium text-slate-700">
+                .dat ファイル
+                <span className="mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 px-3 py-3 text-sm font-normal text-slate-600 hover:border-blue-400 hover:bg-blue-50">
+                  <Upload size={16} /> ファイルを選択
+                  <input className="sr-only" type="file" accept=".dat,.txt,text/plain" onChange={(event) => void loadFile(event.target.files?.[0])} />
+                </span>
+              </label>
+              <TextArea label="または座標を貼り付け" value={form.datText} onChange={(value) => update("datText", value)} />
+              {datState?.valid ? <ImportSummary format={datState.format} points={datState.pointCount} issues={datState.issues} /> : null}
+              {mode === "import-dat" && error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+              <Input label="翼型名" value={form.name} placeholder={datState?.valid ? datState.suggestedName : "ファイル名を使用"} onChange={(value) => update("name", value)} />
+            </>
           ) : mode === "create-naca" ? (
-            <Input label="NACAコード" value={formController.state.value.nacaCode} onChange={(value) => update("nacaCode", value)} />
-          ) : null}
+            <>
+              <Input label="NACA 4桁" value={form.nacaCode} inputMode="numeric" placeholder="2412" onChange={(value) => update("nacaCode", value.replace(/\s/g, ""))} />
+              <p className="text-xs text-slate-500">1桁目: 最大キャンバー、2桁目: その位置、末尾2桁: 最大厚み比。例: 2412</p>
+              {nacaState && !nacaState.valid ? <p className="text-sm text-red-700">{nacaState.error}</p> : null}
+            </>
+          ) : (
+            <>
+              <Input label="翼型名" value={form.name} onChange={(value) => update("name", value)} />
+              <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">形状座標は保持されます。座標を差し替える場合は .dat から新しく作成してください。</p>
+            </>
+          )}
 
-          <Input label="翼型名" value={formController.state.value.name} onChange={(value) => update("name", value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <NumberInput label="厚み比" value={formController.state.value.thicknessRatio} onChange={(value) => update("thicknessRatio", value)} />
-            <NumberInput label="最大キャンバー" value={formController.state.value.maxCamber} onChange={(value) => update("maxCamber", value)} />
-            <NumberInput label="LE半径" value={formController.state.value.leadingEdgeRadius} step="0.01" onChange={(value) => update("leadingEdgeRadius", value)} />
-            <NumberInput label="TE厚" value={formController.state.value.trailingEdgeThickness} step="0.01" onChange={(value) => update("trailingEdgeThickness", value)} />
-          </div>
-
-          <div>
-            <p className="mb-2 text-sm font-semibold text-slate-800">形状プレビュー</p>
-            <AirfoilPlot airfoil={previewAirfoil} className="h-44 min-h-0" />
-          </div>
+          {previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">形状プレビュー</p><AirfoilPlot airfoil={previewAirfoil} className="h-44 min-h-0" /></div> : null}
         </div>
 
         <div className="flex justify-end gap-2 border-t p-4">
           <Button variant="secondary" onClick={onClose}>キャンセル</Button>
-          <Button onClick={formController.submit}>
-            <Save size={16} />
-            保存
-          </Button>
+          <Button disabled={!valid} onClick={formController.submit}><Save size={16} />保存</Button>
         </div>
       </aside>
     </div>
   );
 }
 
+function ImportSummary({ format, points, issues }: { format: string; points: number; issues: readonly ValidationIssue[] }) {
+  return <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"><p><span className="font-semibold text-slate-800">{format === "selig" ? "Selig" : "Lednicer"}</span> 形式として読み込みました（正規化後 {points} 点）。</p>{issues.map((issue) => <p key={issue.message} className="mt-1 text-amber-700">{issue.message}</p>)}</div>;
+}
+
 function isSameForm(left: AirfoilFormState, right: AirfoilFormState) {
   return Object.keys(left).every((key) => left[key as keyof AirfoilFormState] === right[key as keyof AirfoilFormState]);
 }
 
-function Input({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-medium text-slate-700">{label}<input className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
-}
-
-function NumberInput({ label, value, step = "0.1", onChange }: { label: string; value: number; step?: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-medium text-slate-700">{label}<input type="number" step={step} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function Input({ label, value, placeholder, inputMode, onChange }: { label: string; value: string; placeholder?: string; inputMode?: "numeric"; onChange: (value: string) => void }) {
+  return <label className="block text-sm font-medium text-slate-700">{label}<input className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" value={value} placeholder={placeholder} inputMode={inputMode} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-medium text-slate-700">{label}<textarea className="mt-1 h-36 w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
-}
-
-function buildPreviewAirfoil(mode: AirfoilEditorMode, existingId: string | undefined, form: AirfoilFormState): Airfoil {
-  const nacaMatch = /^([0-9])([0-9])([0-9]{2})$/.exec(form.nacaCode.trim());
-  const maxCamber = mode === "create-naca" && nacaMatch ? Number(nacaMatch[1]) : form.maxCamber;
-  const thicknessRatio = mode === "create-naca" && nacaMatch ? Number(nacaMatch[3]) : form.thicknessRatio;
-
-  const id = mode === "edit" && existingId ? existingId : `af-${(mode === "create-naca" && nacaMatch ? `naca${form.nacaCode}` : form.name).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-
-  return {
-    id,
-    name: mode === "create-naca" && nacaMatch ? `NACA${form.nacaCode.trim()}` : form.name,
-    thicknessRatio,
-    maxCamber,
-    leadingEdgeRadius: form.leadingEdgeRadius,
-    trailingEdgeThickness: form.trailingEdgeThickness,
-    coordinates: makeAirfoilCoordinates(maxCamber / 100, thicknessRatio / 100),
-  };
-}
-
-function makeAirfoilCoordinates(camber: number, thickness: number) {
-  return Array.from({ length: 17 }, (_, index) => {
-    const x = index / 16;
-    const thicknessShape = thickness * 0.42 * Math.sin(Math.PI * x) * (1 - 0.18 * x);
-    const camberLine = camber * Math.sin(Math.PI * x) * (1 - 0.28 * x);
-    return {
-      x,
-      upper: camberLine + thicknessShape,
-      lower: camberLine - thicknessShape,
-    };
-  });
+  return <label className="block text-sm font-medium text-slate-700">{label}<textarea className="mt-1 h-40 w-full rounded-md border border-slate-200 px-3 py-2 font-mono text-xs outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
 }
