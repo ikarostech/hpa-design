@@ -1,0 +1,4 @@
+interface:
+  display_name: "TDD Workflow"
+  short_description: "Run repository changes with Red-Green-Refactor"
+  default_prompt: "Use $tdd to implement this change in small Red-Green-Refactor cycles."
