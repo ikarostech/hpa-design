@@ -156,7 +156,7 @@ export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseR
             <CardHeader className="flex items-center justify-between"><h2 className="font-semibold text-slate-950">解析ケース</h2><Button size="sm" onClick={openCreate}><Plus size={15} />新規</Button></CardHeader>
             <CardBody className="space-y-2">
               {cases.length ? cases.map((item) => (
-                <button key={item.id} onClick={() => caseSelection.select(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === caseSelection.selectedId ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
+                <button key={item.id} aria-label={`解析ケース ${item.name}: ${item.method}, ${formatAlphaRange(item.alphaStart, item.alphaEnd, item.alphaStep)}`} onClick={() => caseSelection.select(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === caseSelection.selectedId ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
                   <span>{item.name}</span><span className="mt-1 block text-xs text-slate-500">{item.method} / {formatAlphaRange(item.alphaStart, item.alphaEnd, item.alphaStep)}</span>
                 </button>
               )) : <p className="text-sm text-slate-500">解析ケースはまだありません。</p>}

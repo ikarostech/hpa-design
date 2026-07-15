@@ -22,6 +22,9 @@ function runInWorker(airfoil: Airfoil, settings: XfoilAnalysisSettings, signal: 
   if (signal.aborted) {
     return Promise.reject(new AirfoilAnalysisCancelledError());
   }
+  if (typeof Worker !== "function") {
+    return Promise.reject(new Error("このブラウザでは XFOIL 解析を実行できません。設計の編集は継続できるため、対応ブラウザで再試行してください。"));
+  }
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./webXfoilAnalysis.worker.ts", import.meta.url), { type: "module" });
@@ -45,7 +48,7 @@ function runInWorker(airfoil: Airfoil, settings: XfoilAnalysisSettings, signal: 
     worker.addEventListener("error", (event) => {
       cleanup();
       worker.terminate();
-      reject(event.error instanceof Error ? event.error : new Error(event.message));
+      reject(toRecoverableWorkerError(event.error instanceof Error ? event.error : new Error(event.message)));
     }, { once: true });
     worker.postMessage({
       type: "run",
@@ -54,4 +57,11 @@ function runInWorker(airfoil: Airfoil, settings: XfoilAnalysisSettings, signal: 
       polarId: `xfoil-${airfoil.id}-${Date.now()}`,
     });
   });
+}
+
+function toRecoverableWorkerError(error: Error) {
+  if (/memory|allocation|out of memory/i.test(error.message)) {
+    return new Error("XFOIL 解析のメモリが不足しました。対象翼型または解析範囲を減らして再試行してください。設計の編集は継続できます。");
+  }
+  return new Error(`XFOIL Worker の初期化または実行に失敗しました: ${error.message}。設計の編集は継続できます。`);
 }

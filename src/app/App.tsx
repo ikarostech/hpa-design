@@ -1,17 +1,19 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AirfoilPage } from "../pages/AirfoilPage";
-import { AircraftWorkspacePage } from "../pages/AircraftWorkspacePage";
-import { AnalysisPage } from "../pages/AnalysisPage";
-import { DashboardPage } from "../pages/DashboardPage";
-import { ExportPage } from "../pages/ExportPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
 import { AppLayout } from "../shared/layout/AppLayout";
 import { DesignDocumentProvider, useDesignDocument } from "./DesignDocumentProvider";
 import { listAirfoilReferences } from "./designDocument";
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
+const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
+const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
+const AnalysisPage = lazy(async () => ({ default: (await import("../pages/AnalysisPage")).AnalysisPage }));
+const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
+const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
+
 export default function App() {
-  return <DesignDocumentProvider><JobProvider><AppLayout><Routes>
+  return <DesignDocumentProvider><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
     <Route path="/" element={<DashboardRoute />} />
     <Route path="/airfoils" element={<AirfoilRoute />} />
     <Route path="/aircraft" element={<AircraftRoute />} />
@@ -19,7 +21,7 @@ export default function App() {
     <Route path="/export" element={<ExportRoute />} />
     <Route path="/projects/*" element={<Navigate to="/" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></AppLayout></JobProvider></DesignDocumentProvider>;
+  </Routes></Suspense></AppLayout></JobProvider></DesignDocumentProvider>;
 }
 
 function DashboardRoute() {

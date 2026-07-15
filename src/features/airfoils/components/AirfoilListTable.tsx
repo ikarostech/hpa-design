@@ -31,7 +31,7 @@ export function AirfoilListTable({
         </div>
       </CardHeader>
       <CardBody>
-        <AirfoilTargetTable
+        {airfoils.length ? <AirfoilTargetTable
           airfoils={airfoils}
           airfoilPolars={airfoilPolars}
           selectedId={detailInspector.state.targetId ?? undefined}
@@ -52,7 +52,7 @@ export function AirfoilListTable({
               </Button>
             </div>
           )}
-        />
+        /> : <div className="rounded-md border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">翼型がありません。NACA 生成または .dat 取込で翼型を追加してください。</div>}
       </CardBody>
     </Card>
   );

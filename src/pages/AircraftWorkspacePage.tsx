@@ -99,6 +99,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
       </div>
 
       {!validation.valid && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから保存してください。</div>}
+      {!airfoils.length && <div role="status" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">翼型ライブラリが空です。機体に翼型を割り当てるには、先に翼型を追加してください。</div>}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
         <div className="space-y-5">
@@ -148,7 +149,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-        <div className="flex items-center gap-3 text-sm text-amber-900"><AlertTriangle size={18} /><span>Polar未作成の翼型があります / 重心未設定</span></div>
+        <div className="flex items-center gap-3 text-sm text-amber-900"><AlertTriangle size={18} /><span>Polar未作成の翼型があります。解析前に翼型解析を完了してください。</span></div>
         <Button variant="secondary" onClick={() => navigate("/airfoils")}>Polarへ移動</Button>
       </div>
     </div>

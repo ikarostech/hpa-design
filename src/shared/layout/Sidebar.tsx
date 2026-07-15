@@ -1,7 +1,8 @@
 import { BarChart3, Download, Gauge, Home, Library, Plane, Workflow } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 export function Sidebar() {
+  const location = useLocation();
   const navItems = [
     { label: "設計概要", path: "/", icon: Home },
     { label: "翼型", path: "/airfoils", icon: Library },
@@ -18,11 +19,16 @@ export function Sidebar() {
           <NavLink
             key={item.label}
             to={item.path}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
-                isActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-              }`
-            }
+            className={({ isActive }) => {
+              const active = item.path === "/analysis"
+                ? location.pathname === "/analysis" && location.search !== "?tab=results"
+                : item.path === "/analysis?tab=results"
+                  ? location.pathname === "/analysis" && location.search === "?tab=results"
+                  : isActive;
+              return `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
+                active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+              }`;
+            }}
           >
             <item.icon size={18} />
             {item.label}
