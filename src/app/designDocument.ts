@@ -1,4 +1,5 @@
 import type { AircraftGeometry } from "../features/aircraft/model/types";
+import { applyAircraftDraft, createAircraftDraft } from "../features/aircraft/model/aircraftDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 
@@ -20,6 +21,9 @@ export interface DesignDocumentStore {
   replaceDocument: (document: DesignDocument) => void;
   saveAirfoil: (airfoil: Airfoil) => void;
   removeAirfoil: (airfoilId: string) => void;
+  saveAnalysisCase: (analysisCase: AnalysisCase) => void;
+  removeAnalysisCase: (analysisCaseId: string) => void;
+  saveAnalysisResult: (result: AnalysisResult) => void;
   updateAircraft: (patch: Partial<EditableAircraftGeometry>) => void;
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
 }
@@ -57,29 +61,73 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
       });
     },
     removeAirfoil: (airfoilId) => update(() => { document = { ...document, airfoils: document.airfoils.filter((airfoil) => airfoil.id !== airfoilId) }; }),
-    updateAircraft: (patch) => update(() => { document = { ...document, aircraft: deriveAircraftGeometry({ ...document.aircraft, ...patch }) }; }),
+    saveAnalysisCase: (analysisCase) => update(() => {
+      const previous = document.analysisCases.find((item) => item.id === analysisCase.id);
+      const exists = Boolean(previous);
+      const inputsChanged = previous ? analysisInputsChanged(previous, analysisCase) : false;
+      document = {
+        ...document,
+        analysisCases: exists
+          ? document.analysisCases.map((item) => item.id === analysisCase.id ? { ...analysisCase } : item)
+          : [{ ...analysisCase }, ...document.analysisCases],
+        analysisResults: inputsChanged
+          ? document.analysisResults.map((result) => result.caseId === analysisCase.id
+            ? { ...result, status: "needs-review", rows: result.rows.map((row) => ({ ...row, status: "needs-review" })) }
+            : result)
+          : document.analysisResults,
+      };
+    }),
+    removeAnalysisCase: (analysisCaseId) => update(() => {
+      document = {
+        ...document,
+        analysisCases: document.analysisCases.filter((analysisCase) => analysisCase.id !== analysisCaseId),
+        analysisResults: document.analysisResults.filter((result) => result.caseId !== analysisCaseId),
+      };
+    }),
+    saveAnalysisResult: (result) => update(() => {
+      document = {
+        ...document,
+        analysisCases: document.analysisCases.map((analysisCase) => analysisCase.id === result.caseId ? { ...analysisCase, status: result.status } : analysisCase),
+        analysisResults: [cloneAnalysisResult(result), ...document.analysisResults.filter((item) => item.caseId !== result.caseId)],
+      };
+    }),
+    updateAircraft: (patch) => update(() => {
+      const nextAircraft = { ...document.aircraft, ...patch, sections: patch.sections ?? document.aircraft.sections };
+      document = { ...document, aircraft: applyAircraftDraft(createAircraftDraft(nextAircraft), document.aircraft) };
+    }),
     saveAirfoilAnalysis: (run, polars) => {
       update(() => { document = { ...document, airfoilAnalysisRuns: [cloneRun(run), ...document.airfoilAnalysisRuns], polars: [...polars.map(clonePolar), ...document.polars] }; });
     },
   };
 }
 
-function deriveAircraftGeometry(geometry: AircraftGeometry): AircraftGeometry {
-  const taperRatio = safeDivide(geometry.tipChord, geometry.rootChord);
-  const wingArea = geometry.span * (geometry.rootChord + geometry.tipChord) / 2;
-  const aspectRatio = safeDivide(geometry.span ** 2, wingArea);
-  const mac = geometry.rootChord > 0 ? (2 / 3) * geometry.rootChord * (1 + taperRatio + taperRatio ** 2) / (1 + taperRatio) : 0;
-  return { ...geometry, taperRatio: round(taperRatio, 3), wingArea: round(wingArea, 3), aspectRatio: round(aspectRatio, 3), mac: round(mac, 3), sections: geometry.sections.map((section) => ({ ...section })) };
-}
-
 function cloneDocument(document: DesignDocument): DesignDocument {
   return { ...document, airfoils: document.airfoils.map(cloneAirfoil), polars: document.polars.map(clonePolar), airfoilAnalysisRuns: document.airfoilAnalysisRuns.map(cloneRun), aircraft: cloneAircraft(document.aircraft), analysisCases: document.analysisCases.map((analysisCase) => ({ ...analysisCase })), analysisResults: document.analysisResults.map(cloneAnalysisResult) };
 }
 
-function safeDivide(numerator: number, denominator: number) { return denominator === 0 ? 0 : numerator / denominator; }
-function round(value: number, digits: number) { return Number(value.toFixed(digits)); }
 function cloneAirfoil(airfoil: Airfoil): Airfoil { return { ...airfoil, coordinates: airfoil.coordinates.map((point) => ({ ...point })) }; }
 function clonePolar(polar: AirfoilPolar): AirfoilPolar { return { ...polar, points: polar.points.map((point) => ({ ...point })) }; }
 function cloneRun(run: AirfoilAnalysisRun): AirfoilAnalysisRun { return { ...run, airfoilIds: [...run.airfoilIds], polarIds: [...run.polarIds] }; }
 function cloneAircraft(aircraft: AircraftGeometry): AircraftGeometry { return { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })) }; }
-function cloneAnalysisResult(result: AnalysisResult): AnalysisResult { return { ...result, rows: result.rows.map((row) => ({ ...row })) }; }
+function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
+  return {
+    ...result,
+    caseSnapshot: result.caseSnapshot ? { ...result.caseSnapshot } : undefined,
+    aircraftSnapshot: result.aircraftSnapshot ? cloneAircraft(result.aircraftSnapshot) : undefined,
+    airfoilIds: result.airfoilIds ? [...result.airfoilIds] : undefined,
+    polarIds: result.polarIds ? [...result.polarIds] : undefined,
+    rows: result.rows.map((row) => ({ ...row })),
+  };
+}
+
+function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
+  return left.name !== right.name
+    || left.method !== right.method
+    || left.alphaStart !== right.alphaStart
+    || left.alphaEnd !== right.alphaEnd
+    || left.alphaStep !== right.alphaStep
+    || left.speed !== right.speed
+    || left.altitude !== right.altitude
+    || left.reynolds !== right.reynolds
+    || left.geometryId !== right.geometryId;
+}

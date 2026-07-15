@@ -42,8 +42,8 @@ function AircraftRoute() {
 }
 
 function AnalysisRoute() {
-  const { document } = useDesignDocument();
-  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} />;
+  const { document, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
+  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polarIds={document.polars.map((polar) => polar.id)} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
 }
 
 function ExportRoute() {

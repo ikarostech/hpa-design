@@ -80,4 +80,81 @@ describe("createDesignDocumentStore", () => {
       mac: 0.933,
     });
   });
+
+  it("derives persisted wing metrics from edited sections", () => {
+    const store = createDesignDocumentStore({
+      ...document,
+      aircraft: {
+        ...document.aircraft,
+        span: 4,
+        rootChord: 1,
+        tipChord: 0.5,
+        sections: [
+          { id: "section-root", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+          { id: "section-tip", spanPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+        ],
+      },
+    });
+
+    store.updateAircraft({
+      sections: [
+        { id: "section-root", spanPosition: 0, chord: 1.2, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+        { id: "section-tip", spanPosition: 2, chord: 0.6, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+      ],
+    });
+
+    expect(store.getDocument().aircraft).toMatchObject({
+      rootChord: 1.2,
+      tipChord: 0.6,
+      wingArea: 3.6,
+      aspectRatio: 4.444,
+      mac: 0.933,
+    });
+  });
+
+  it("persists analysis cases and removes their related results with the case", () => {
+    const analysisCase = {
+      id: "case-1", name: "Cruise", method: "LLT" as const,
+      alphaStart: -2, alphaEnd: 10, alphaStep: 2, speed: 20, altitude: 100, reynolds: 400000,
+      geometryId: "aircraft-1", status: "not-run" as const,
+    };
+    const store = createDesignDocumentStore({
+      ...document,
+      analysisCases: [analysisCase],
+      analysisResults: [{
+        id: "result-1", caseId: analysisCase.id, clMax: 1.1, cdMin: 0.02, maxLD: 18, cm0: -0.04,
+        status: "completed" as const, rows: [],
+      }],
+    });
+
+    store.saveAnalysisCase({ ...analysisCase, name: "Updated cruise" });
+    store.removeAnalysisCase(analysisCase.id);
+
+    expect(store.getDocument()).toMatchObject({ analysisCases: [], analysisResults: [] });
+    expect(store.getState().isDirty).toBe(true);
+  });
+
+  it("marks an existing result stale after case inputs change and replaces it after a rerun", () => {
+    const analysisCase = {
+      id: "case-1", name: "Cruise", method: "LLT" as const,
+      alphaStart: -2, alphaEnd: 10, alphaStep: 2, speed: 20, altitude: 100, reynolds: 400000,
+      geometryId: "aircraft-1", status: "completed" as const,
+    };
+    const previousResult = {
+      id: "result-1", caseId: analysisCase.id, clMax: 1.1, cdMin: 0.02, maxLD: 18, cm0: -0.04,
+      status: "completed" as const,
+      caseSnapshot: analysisCase,
+      rows: [{ caseId: analysisCase.id, alpha: 0, cl: 0, cd: 0.02, cm: -0.04, ld: 0, status: "completed" as const }],
+    };
+    const store = createDesignDocumentStore({ ...document, analysisCases: [analysisCase], analysisResults: [previousResult] });
+
+    store.saveAnalysisCase({ ...analysisCase, speed: 22, status: "needs-review" });
+    expect(store.getDocument().analysisResults[0]).toMatchObject({ status: "needs-review", rows: [{ status: "needs-review" }] });
+
+    store.saveAnalysisResult({ ...previousResult, id: "result-2", clMax: 1.2, status: "completed" });
+    expect(store.getDocument()).toMatchObject({
+      analysisCases: [{ id: analysisCase.id, status: "completed" }],
+      analysisResults: [{ id: "result-2", status: "completed" }],
+    });
+  });
 });

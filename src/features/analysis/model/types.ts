@@ -23,5 +23,10 @@ export interface AnalysisResult {
   maxLD: number;
   cm0: number;
   status: AnalysisCaseStatus;
+  caseSnapshot?: AnalysisCase;
+  aircraftSnapshot?: AircraftGeometry;
+  airfoilIds?: readonly string[];
+  polarIds?: readonly string[];
   rows: Array<{ caseId: string; alpha: number; cl: number; cd: number; cm: number; ld: number; status: AnalysisCaseStatus }>;
 }
+import type { AircraftGeometry } from "../../aircraft/model/types";

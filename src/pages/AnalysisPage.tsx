@@ -1,11 +1,14 @@
-import { Download, RotateCcw, Save, Zap } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Copy, Pencil, Play, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
-import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import type { AircraftGeometry } from "../features/aircraft/model/types";
+import { createAnalysisCase, createAnalysisCaseDraft, type AnalysisCaseDraft, updateAnalysisCase, validateAnalysisCaseDraft } from "../features/analysis/model/analysisCaseDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
-import type { SingleSelection } from "../shared/model";
+import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../features/analysis/services/analysisExecutionService";
+import { PolarCharts } from "../features/airfoils/components/PolarCharts";
+import { useJobs } from "../shared/jobs/JobProvider";
+import type { EntityRepository, Job, SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
@@ -15,35 +18,116 @@ interface AnalysisPageProps {
   aircraft: AircraftGeometry;
   cases: readonly AnalysisCase[];
   results: readonly AnalysisResult[];
+  polarIds: readonly string[];
+  analysisCaseRepository: EntityRepository<AnalysisCase, string>;
+  saveAnalysisResult: (result: AnalysisResult) => void;
 }
 
-export function AnalysisPage({ aircraft, cases, results }: AnalysisPageProps) {
+type AnalysisJob = Job<string, AnalysisResult, { caseId: string }>;
+type EditorMode = "create" | "edit" | null;
+
+export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [selectedCase, setSelectedCase] = useState<string | null>(cases[0]?.id ?? null);
-  useEffect(() => setSelectedCase(cases[0]?.id ?? null), [cases]);
-  const caseSelection: SingleSelection<string> = {
-    selectedId: selectedCase,
-    select: setSelectedCase,
-    clear: () => setSelectedCase(null),
-  };
+  const jobs = useJobs();
+  const controllers = useRef(new Map<string, AbortController>());
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id ?? null);
+  const [editorMode, setEditorMode] = useState<EditorMode>(null);
+  const [draft, setDraft] = useState<AnalysisCaseDraft>(() => createNewDraft(aircraft.id));
+  const [errors, setErrors] = useState<Partial<Record<keyof AnalysisCaseDraft, string>>>({});
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedCaseId || !cases.some((item) => item.id === selectedCaseId)) setSelectedCaseId(cases[0]?.id ?? null);
+  }, [cases, selectedCaseId]);
+
+  const caseSelection: SingleSelection<string> = { selectedId: selectedCaseId, select: setSelectedCaseId, clear: () => setSelectedCaseId(null) };
   const selected = cases.find((item) => item.id === caseSelection.selectedId) ?? cases[0];
   const selectedResult = results.find((result) => result.caseId === selected?.id);
-  const hasRun = Boolean(selectedResult);
-  const chartData = useMemo(
-    () => selectedResult?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [],
-    [selectedResult],
-  );
+  const selectedJob = jobs.jobs.find((job) => job.kind === "aircraft-analysis" && job.status === "running" && hasCaseId(job, selected?.id));
+  const hasRun = Boolean(selectedResult && selectedResult.status === "completed");
+  const chartData = useMemo(() => selectedResult?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [], [selectedResult]);
   const activeTab = params.get("tab") === "results" ? "結果" : "解析";
+
+  const openCreate = () => {
+    setDraft(createNewDraft(aircraft.id));
+    setErrors({});
+    setEditorMode("create");
+  };
+  const openEdit = (analysisCase: AnalysisCase) => {
+    setDraft(createAnalysisCaseDraft(analysisCase));
+    setErrors({});
+    setEditorMode("edit");
+  };
+  const saveCase = async () => {
+    const validation = validateAnalysisCaseDraft(draft, new Set([aircraft.id]));
+    if (!validation.valid) {
+      setErrors(validation.errors);
+      return;
+    }
+    const next = editorMode === "edit" && selected
+      ? updateAnalysisCase(selected, draft)
+      : createAnalysisCase(createId("case"), draft);
+    await analysisCaseRepository.save(next);
+    setSelectedCaseId(next.id);
+    setEditorMode(null);
+  };
+  const duplicateCase = async (analysisCase: AnalysisCase) => {
+    const duplicate = createAnalysisCase(createId("case"), { ...createAnalysisCaseDraft(analysisCase), name: `${analysisCase.name} copy` });
+    await analysisCaseRepository.save(duplicate);
+    setSelectedCaseId(duplicate.id);
+  };
+  const deleteCase = async (analysisCaseId: string) => {
+    await analysisCaseRepository.remove(analysisCaseId);
+    setPendingDeleteId(null);
+  };
+  const runAnalysis = async () => {
+    if (!selected || selectedJob) return;
+    const jobId = createId("job-aircraft-analysis");
+    const controller = new AbortController();
+    controllers.current.set(jobId, controller);
+    const startedAt = new Date().toISOString();
+    jobs.createJob<AnalysisJob>({
+      id: jobId,
+      kind: "aircraft-analysis",
+      name: `${selected.name} analysis`,
+      status: "running",
+      createdAt: startedAt,
+      startedAt,
+      progress: { completed: 0, total: countSweepPoints(selected) },
+      settings: { caseId: selected.id },
+    });
+    try {
+      const result = await executeAnalysisCase({
+        analysisCase: selected,
+        aircraft,
+        polarIds,
+        signal: controller.signal,
+        createId: () => createId("analysis-result"),
+        onProgress: (progress) => jobs.updateJob<AnalysisJob>(jobId, { progress }),
+      });
+      saveAnalysisResult(result);
+      jobs.completeJob<AnalysisJob>(jobId, { result, progress: { completed: result.rows.length, total: result.rows.length } });
+      setParams({ tab: "results" });
+    } catch (error) {
+      if (error instanceof AnalysisExecutionCancelledError) {
+        jobs.cancelJob(jobId);
+      } else {
+        jobs.failJob(jobId, error instanceof Error ? error.message : "解析の実行に失敗しました。");
+      }
+    } finally {
+      controllers.current.delete(jobId);
+    }
+  };
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-semibold text-slate-950">解析ケースと結果</h1>
-        <p className="mt-1 text-sm text-slate-500">LLT/VLM風の簡易解析ケースを実行し、結果の形状を確認します。</p>
+        <p className="mt-1 text-sm text-slate-500">LLT / VLM の条件を管理し、設計ドキュメントへ結果を保存します。</p>
       </div>
       <div className="flex gap-2 border-b border-slate-200">
-        {["解析", "結果"].map((tab) => (
+        {(["解析", "結果"] as const).map((tab) => (
           <button key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
         ))}
       </div>
@@ -51,32 +135,24 @@ export function AnalysisPage({ aircraft, cases, results }: AnalysisPageProps) {
       <div className="grid gap-5 xl:grid-cols-[280px_1fr_340px]">
         <div className="space-y-5">
           <Card>
-            <CardHeader><h2 className="font-semibold text-slate-950">解析ケース一覧</h2></CardHeader>
+            <CardHeader className="flex items-center justify-between"><h2 className="font-semibold text-slate-950">解析ケース</h2><Button size="sm" onClick={openCreate}><Plus size={15} />新規</Button></CardHeader>
             <CardBody className="space-y-2">
-              {cases.map((item) => (
+              {cases.length ? cases.map((item) => (
                 <button key={item.id} onClick={() => caseSelection.select(item.id)} className={`w-full rounded-md px-3 py-2 text-left text-sm ${item.id === caseSelection.selectedId ? "bg-blue-50 font-semibold text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}>
-                  <span>{item.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">{item.method} / {formatAlphaRange(item.alphaStart, item.alphaEnd, item.alphaStep)}</span>
+                  <span>{item.name}</span><span className="mt-1 block text-xs text-slate-500">{item.method} / {formatAlphaRange(item.alphaStart, item.alphaEnd, item.alphaStep)}</span>
                 </button>
-              ))}
+              )) : <p className="text-sm text-slate-500">解析ケースはまだありません。</p>}
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader><h2 className="font-semibold text-slate-950">解析設定</h2></CardHeader>
-            <CardBody className="space-y-3">
-              <Setting label="解析手法" value={selected?.method ?? "-"} />
-              <Setting label="α sweep" value={selected ? formatAlphaRange(selected.alphaStart, selected.alphaEnd, selected.alphaStep) : "-"} />
-              <Setting label="速度" value={selected ? `${selected.speed} m/s` : "-"} />
-              <Setting label="高度" value={selected ? `${selected.altitude} m` : "-"} />
-              <Setting label="Re" value={selected?.reynolds.toLocaleString() ?? "-"} />
-              <Setting label="使用ジオメトリ" value={selected?.geometryId ?? "-"} />
-              <Button className="w-full" variant={hasRun ? "success" : "primary"} disabled={!hasRun}>
-                <Zap size={16} />
-                解析を実行
-              </Button>
+          {selected ? <Card>
+            <CardHeader><h2 className="font-semibold text-slate-950">ケース操作</h2></CardHeader>
+            <CardBody className="grid gap-2">
+              <Button variant="secondary" onClick={() => openEdit(selected)}><Pencil size={16} />編集</Button>
+              <Button variant="secondary" onClick={() => void duplicateCase(selected)}><Copy size={16} />複製</Button>
+              <Button variant="destructive" onClick={() => setPendingDeleteId(selected.id)}><Trash2 size={16} />削除</Button>
             </CardBody>
-          </Card>
+          </Card> : null}
         </div>
 
         <div className="space-y-5">
@@ -85,97 +161,54 @@ export function AnalysisPage({ aircraft, cases, results }: AnalysisPageProps) {
             <MetricCard label="CDmin" value={selectedResult?.cdMin.toString() ?? "-"} />
             <MetricCard label="最大 L/D" value={selectedResult?.maxLD.toString() ?? "-"} />
             <MetricCard label="Cm0" value={selectedResult?.cm0.toString() ?? "-"} />
-            <MetricCard label="実行ステータス" value={hasRun ? "完了" : "未実行"} />
+            <MetricCard label="実行状態" value={selectedJob ? "実行中" : analysisStatusLabel(selected?.status ?? "not-run")} />
           </div>
-
-          <Card>
-            <CardHeader><h2 className="font-semibold text-slate-950">結果グラフ</h2></CardHeader>
-            <CardBody>
-              <PolarCharts data={chartData} mode="analysis" />
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader><h2 className="font-semibold text-slate-950">結果一覧</h2></CardHeader>
-            <CardBody>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="text-xs uppercase text-slate-500">
-                    <tr>{["Case", "α", "CL", "CD", "Cm", "L/D", "Status"].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(selectedResult?.rows ?? []).slice(0, 10).map((row) => (
-                      <tr key={`${row.caseId}-${row.alpha}`}>
-                        <td className="px-2 py-3 font-medium">{row.caseId}</td>
-                        <td className="px-2 py-3">{row.alpha}°</td>
-                        <td className="px-2 py-3">{row.cl}</td>
-                        <td className="px-2 py-3">{row.cd}</td>
-                        <td className="px-2 py-3">{row.cm}</td>
-                        <td className="px-2 py-3">{row.ld}</td>
-                        <td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardBody>
-          </Card>
+          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果グラフ</h2></CardHeader><CardBody><PolarCharts data={chartData} mode="analysis" /></CardBody></Card>
+          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果一覧</h2></CardHeader><CardBody><ResultTable result={selectedResult} /></CardBody></Card>
         </div>
 
         <div className="space-y-5">
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-950">揚力分布ビュー</h2>
-              <Badge tone={hasRun ? "green" : "slate"}>{hasRun ? "表示中" : "未実行"}</Badge>
-            </CardHeader>
-            <CardBody>
-              <AircraftPreview lift={hasRun} geometry={aircraft} />
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader><h2 className="font-semibold text-slate-950">エクスポート</h2></CardHeader>
-            <CardBody className="grid gap-2">
-              <Button variant="secondary"><Download size={16} />CSV出力</Button>
-              <Button variant="secondary"><Download size={16} />JSON出力</Button>
-              <Button variant="secondary"><Save size={16} />結果を保存</Button>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardBody className="space-y-3">
-              <Badge tone="blue">MVP2</Badge>
-              <p className="font-semibold text-slate-950">トリム解析はMVP2で対応</p>
-              <p className="text-sm leading-6 text-slate-500">次は重心・尾翼効き・安定微係数を追加し、設計評価を拡張します。</p>
-            </CardBody>
-          </Card>
-
-          <Button className="w-full" variant="secondary" onClick={() => navigate("/aircraft")}>
-            <RotateCcw size={16} />
-            設計へ戻る
-          </Button>
+          <Card><CardHeader className="flex items-center justify-between"><h2 className="font-semibold text-slate-950">翼プレビュー</h2><Badge tone={hasRun ? "green" : "slate"}>{hasRun ? "結果あり" : analysisStatusLabel(selected?.status ?? "not-run")}</Badge></CardHeader><CardBody><AircraftPreview lift={hasRun} geometry={aircraft} /></CardBody></Card>
+          <Card><CardHeader><h2 className="font-semibold text-slate-950">解析設定</h2></CardHeader><CardBody className="space-y-3">
+            <Setting label="解析手法" value={selected?.method ?? "-"} /><Setting label="α sweep" value={selected ? formatAlphaRange(selected.alphaStart, selected.alphaEnd, selected.alphaStep) : "-"} />
+            <Setting label="速度" value={selected ? `${selected.speed} m/s` : "-"} /><Setting label="高度" value={selected ? `${selected.altitude} m` : "-"} />
+            <Setting label="Re" value={selected?.reynolds.toLocaleString() ?? "-"} /><Setting label="使用ジオメトリ" value={selected?.geometryId ?? "-"} />
+            {selectedJob ? <><p className="text-sm text-blue-700">{selectedJob.progress?.message ?? "解析を開始しています…"} ({selectedJob.progress?.completed ?? 0}/{selectedJob.progress?.total ?? 0})</p><Button className="w-full" variant="destructive" onClick={() => controllers.current.get(selectedJob.id)?.abort()}><X size={16} />キャンセル</Button></> : <Button className="w-full" disabled={!selected} onClick={() => void runAnalysis()}><Play size={16} />{hasRun ? "再実行" : "解析を実行"}</Button>}
+          </CardBody></Card>
+          <Button className="w-full" variant="secondary" onClick={() => navigate("/aircraft")}><RotateCcw size={16} />設計へ戻る</Button>
         </div>
       </div>
+
+      {editorMode ? <CaseEditor draft={draft} errors={errors} title={editorMode === "create" ? "解析ケースを新規作成" : "解析ケースを編集"} onChange={setDraft} onSave={() => void saveCase()} onClose={() => setEditorMode(null)} /> : null}
+      {pendingDeleteId ? <DeleteConfirmation hasResult={results.some((result) => result.caseId === pendingDeleteId)} onConfirm={() => void deleteCase(pendingDeleteId)} onCancel={() => setPendingDeleteId(null)} /> : null}
     </div>
   );
 }
 
-function Setting({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-slate-200 px-3 py-2">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-slate-900">{value}</p>
-    </div>
-  );
+function CaseEditor({ draft, errors, title, onChange, onSave, onClose }: { draft: AnalysisCaseDraft; errors: Partial<Record<keyof AnalysisCaseDraft, string>>; title: string; onChange: (draft: AnalysisCaseDraft) => void; onSave: () => void; onClose: () => void }) {
+  const update = <K extends keyof AnalysisCaseDraft>(field: K, value: AnalysisCaseDraft[K]) => onChange({ ...draft, [field]: value });
+  const numberInput = (field: "alphaStart" | "alphaEnd" | "alphaStep" | "speed" | "altitude" | "reynolds", label: string) => <label className="grid gap-1 text-sm text-slate-700"><span>{label}</span><input className="rounded-md border border-slate-300 px-3 py-2" type="number" value={draft[field]} onChange={(event) => update(field, Number(event.target.value))} />{errors[field] ? <span className="text-xs text-red-600">{errors[field]}</span> : null}</label>;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-2xl"><CardHeader className="flex items-center justify-between"><h2 className="font-semibold text-slate-950">{title}</h2><button onClick={onClose} className="rounded p-1 text-slate-500 hover:bg-slate-100"><X size={18} /></button></CardHeader><CardBody className="grid gap-4 md:grid-cols-2">
+    <label className="grid gap-1 text-sm text-slate-700 md:col-span-2"><span>ケース名</span><input className="rounded-md border border-slate-300 px-3 py-2" value={draft.name} onChange={(event) => update("name", event.target.value)} />{errors.name ? <span className="text-xs text-red-600">{errors.name}</span> : null}</label>
+    <label className="grid gap-1 text-sm text-slate-700"><span>解析手法</span><select className="rounded-md border border-slate-300 px-3 py-2" value={draft.method} onChange={(event) => update("method", event.target.value as AnalysisCase["method"])}><option value="LLT">LLT</option><option value="VLM">VLM</option></select></label>
+    <label className="grid gap-1 text-sm text-slate-700"><span>使用ジオメトリ</span><input className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2" value={draft.geometryId} readOnly />{errors.geometryId ? <span className="text-xs text-red-600">{errors.geometryId}</span> : null}</label>
+    {numberInput("alphaStart", "α 開始 (°)")}{numberInput("alphaEnd", "α 終了 (°)")}{numberInput("alphaStep", "α 刻み (°)")}{numberInput("speed", "速度 (m/s)")}{numberInput("altitude", "高度 (m)")}{numberInput("reynolds", "Reynolds 数")}
+    <div className="flex justify-end gap-2 md:col-span-2"><Button variant="secondary" onClick={onClose}>キャンセル</Button><Button onClick={onSave}>保存</Button></div>
+  </CardBody></Card></div>;
 }
 
-function formatAlphaRange(start: number, end: number, step: number) {
-  return `${start}° to ${end}° (${step}°刻み)`;
+function DeleteConfirmation({ hasResult, onConfirm, onCancel }: { hasResult: boolean; onConfirm: () => void; onCancel: () => void }) {
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">解析ケースを削除しますか？</h2></CardHeader><CardBody className="space-y-4"><p className="text-sm text-slate-600">{hasResult ? "このケースの保存済み結果も削除されます。" : "この操作は元に戻せません。"}</p><div className="flex justify-end gap-2"><Button variant="secondary" onClick={onCancel}>キャンセル</Button><Button variant="destructive" onClick={onConfirm}>削除する</Button></div></CardBody></Card></div>;
 }
 
-function analysisStatusLabel(status: "completed" | "not-run" | "needs-review") {
-  if (status === "completed") {
-    return "完了";
-  }
-  return status === "not-run" ? "未実行" : "要確認";
+function ResultTable({ result }: { result: AnalysisResult | undefined }) {
+  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["α", "CL", "CD", "Cm", "L/D", "状態"].map((header) => <th key={header} className="px-2 py-2">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{(result?.rows ?? []).map((row) => <tr key={`${row.caseId}-${row.alpha}`}><td className="px-2 py-3">{row.alpha}°</td><td className="px-2 py-3">{row.cl}</td><td className="px-2 py-3">{row.cd}</td><td className="px-2 py-3">{row.cm}</td><td className="px-2 py-3">{row.ld}</td><td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td></tr>)}</tbody></table>{!result ? <p className="px-2 py-5 text-sm text-slate-500">実行結果はまだありません。</p> : null}</div>;
 }
+
+function Setting({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-slate-200 px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-sm font-medium text-slate-900">{value}</p></div>; }
+function createNewDraft(geometryId: string): AnalysisCaseDraft { return { name: "", method: "LLT", alphaStart: -4, alphaEnd: 12, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId }; }
+function createId(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+function countSweepPoints(analysisCase: AnalysisCase) { return Math.floor((analysisCase.alphaEnd - analysisCase.alphaStart) / analysisCase.alphaStep) + 1; }
+function formatAlphaRange(start: number, end: number, step: number) { return `${start}° to ${end}° (${step}°刻み)`; }
+function analysisStatusLabel(status: "completed" | "not-run" | "needs-review") { return status === "completed" ? "完了" : status === "not-run" ? "未実行" : "要確認"; }
+function hasCaseId(job: Job<string, unknown, unknown>, caseId: string | undefined) { return Boolean(caseId && typeof job.settings === "object" && job.settings !== null && "caseId" in job.settings && job.settings.caseId === caseId); }

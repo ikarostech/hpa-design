@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { AircraftGeometry } from "../features/aircraft/model/types";
+import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult } from "../mocks/mockData";
 import type { EntityRepository } from "../shared/model";
@@ -13,6 +14,9 @@ interface DesignDocumentContextValue {
   replaceDocument: (document: DesignDocument) => void;
   saveAirfoil: (airfoil: Airfoil) => void;
   removeAirfoil: (airfoilId: string) => void;
+  saveAnalysisCase: (analysisCase: AnalysisCase) => void;
+  removeAnalysisCase: (analysisCaseId: string) => void;
+  saveAnalysisResult: (result: AnalysisResult) => void;
   updateAircraft: (patch: Partial<AircraftGeometry>) => void;
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
 }
@@ -90,6 +94,9 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     replaceDocument,
     saveAirfoil: (airfoil) => commit((store) => store.saveAirfoil(airfoil)),
     removeAirfoil: (airfoilId) => commit((store) => store.removeAirfoil(airfoilId)),
+    saveAnalysisCase: (analysisCase) => commit((store) => store.saveAnalysisCase(analysisCase)),
+    removeAnalysisCase: (analysisCaseId) => commit((store) => store.removeAnalysisCase(analysisCaseId)),
+    saveAnalysisResult: (result) => commit((store) => store.saveAnalysisResult(result)),
     updateAircraft: (patch) => commit((store) => store.updateAircraft(patch)),
     saveAirfoilAnalysis: (run, polars) => commit((store) => store.saveAirfoilAnalysis(run, polars)),
   };
@@ -109,8 +116,22 @@ export function useDesignDocument() {
     markDocumentSaved: context.markDocumentSaved,
     replaceDocument: context.replaceDocument,
     airfoilRepository: createAirfoilRepository(context),
+    analysisCaseRepository: createAnalysisCaseRepository(context),
     updateAircraft: context.updateAircraft,
     saveAirfoilAnalysis: context.saveAirfoilAnalysis,
+    saveAnalysisResult: context.saveAnalysisResult,
+  };
+}
+
+function createAnalysisCaseRepository(context: DesignDocumentContextValue): EntityRepository<AnalysisCase, string> {
+  return {
+    list: async () => context.getDocument().analysisCases,
+    get: async (id) => context.getDocument().analysisCases.find((analysisCase) => analysisCase.id === id) ?? null,
+    save: async (analysisCase) => {
+      context.saveAnalysisCase(analysisCase);
+      return analysisCase;
+    },
+    remove: async (id) => context.removeAnalysisCase(id),
   };
 }
 
