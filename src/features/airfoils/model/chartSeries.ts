@@ -13,7 +13,7 @@ export function buildAirfoilChartSeries(
 
       return {
         id: polar.id,
-        name: airfoil ? `${airfoil.name} / ${polar.reynolds.toLocaleString()}` : polar.caseName,
+        name: `${polar.status === "needs-review" ? "要確認: " : ""}${airfoil ? `${airfoil.name} / ${polar.reynolds.toLocaleString()}` : polar.caseName}`,
         color: chartColors[index % chartColors.length],
         data: polar.points,
       };

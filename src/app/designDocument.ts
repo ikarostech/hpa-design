@@ -34,6 +34,16 @@ export interface DesignDocumentState {
   isDirty: boolean;
 }
 
+export class AirfoilReferenceError extends Error {
+  readonly references: readonly string[];
+
+  constructor(references: readonly string[]) {
+    super(`Airfoil is used by ${references.length} saved item(s): ${references.join(", ")}`);
+    this.name = "AirfoilReferenceError";
+    this.references = references;
+  }
+}
+
 type EditableAircraftGeometry = Pick<AircraftGeometry, "span" | "rootChord" | "tipChord" | "twist" | "dihedral" | "sweep" | "incidence" | "sections" | "staticMargin">;
 
 export function createDesignDocumentStore(initialDocument: DesignDocument, { saved = true }: { saved?: boolean } = {}): DesignDocumentStore {
@@ -56,11 +66,25 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
     },
     saveAirfoil: (airfoil) => {
       update(() => {
-        const exists = document.airfoils.some((item) => item.id === airfoil.id);
-        document = { ...document, airfoils: exists ? document.airfoils.map((item) => item.id === airfoil.id ? cloneAirfoil(airfoil) : item) : [cloneAirfoil(airfoil), ...document.airfoils] };
+        const previous = document.airfoils.find((item) => item.id === airfoil.id);
+        const coordinatesChanged = previous ? !sameCoordinates(previous, airfoil) : false;
+        const exists = Boolean(previous);
+        document = {
+          ...document,
+          airfoils: exists ? document.airfoils.map((item) => item.id === airfoil.id ? cloneAirfoil(airfoil) : item) : [cloneAirfoil(airfoil), ...document.airfoils],
+          polars: coordinatesChanged ? document.polars.map((polar) => polar.airfoilId === airfoil.id ? { ...polar, status: "needs-review" } : polar) : document.polars,
+          airfoilAnalysisRuns: coordinatesChanged ? document.airfoilAnalysisRuns.map((run) => run.airfoilIds.includes(airfoil.id) ? { ...run, status: "needs-review" } : run) : document.airfoilAnalysisRuns,
+          analysisResults: coordinatesChanged ? document.analysisResults.map((result) => result.airfoilIds?.includes(airfoil.id)
+            ? { ...result, status: "needs-review", rows: result.rows.map((row) => ({ ...row, status: "needs-review" })) }
+            : result) : document.analysisResults,
+        };
       });
     },
-    removeAirfoil: (airfoilId) => update(() => { document = { ...document, airfoils: document.airfoils.filter((airfoil) => airfoil.id !== airfoilId) }; }),
+    removeAirfoil: (airfoilId) => update(() => {
+      const references = listAirfoilReferences(document, airfoilId);
+      if (references.length) throw new AirfoilReferenceError(references);
+      document = { ...document, airfoils: document.airfoils.filter((airfoil) => airfoil.id !== airfoilId) };
+    }),
     saveAnalysisCase: (analysisCase) => update(() => {
       const previous = document.analysisCases.find((item) => item.id === analysisCase.id);
       const exists = Boolean(previous);
@@ -107,7 +131,7 @@ function cloneDocument(document: DesignDocument): DesignDocument {
 
 function cloneAirfoil(airfoil: Airfoil): Airfoil { return { ...airfoil, coordinates: airfoil.coordinates.map((point) => ({ ...point })) }; }
 function clonePolar(polar: AirfoilPolar): AirfoilPolar { return { ...polar, points: polar.points.map((point) => ({ ...point })) }; }
-function cloneRun(run: AirfoilAnalysisRun): AirfoilAnalysisRun { return { ...run, airfoilIds: [...run.airfoilIds], polarIds: [...run.polarIds] }; }
+function cloneRun(run: AirfoilAnalysisRun): AirfoilAnalysisRun { return { ...run, airfoilIds: [...run.airfoilIds], polarIds: [...run.polarIds], failures: run.failures?.map((failure) => ({ ...failure })) }; }
 function cloneAircraft(aircraft: AircraftGeometry): AircraftGeometry { return { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })) }; }
 function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
   return {
@@ -130,4 +154,18 @@ function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
     || left.altitude !== right.altitude
     || left.reynolds !== right.reynolds
     || left.geometryId !== right.geometryId;
+}
+
+function sameCoordinates(left: Airfoil, right: Airfoil) {
+  return left.coordinates.length === right.coordinates.length
+    && left.coordinates.every((point, index) => point.x === right.coordinates[index]?.x && point.upper === right.coordinates[index]?.upper && point.lower === right.coordinates[index]?.lower);
+}
+
+export function listAirfoilReferences(document: DesignDocument, airfoilId: string) {
+  return [
+    ...document.aircraft.sections.filter((section) => section.airfoilId === airfoilId).map((section) => `aircraft section ${section.id}`),
+    ...document.polars.filter((polar) => polar.airfoilId === airfoilId).map((polar) => `Polar ${polar.id}`),
+    ...document.airfoilAnalysisRuns.filter((run) => run.airfoilIds.includes(airfoilId)).map((run) => `airfoil run ${run.id}`),
+    ...document.analysisResults.filter((result) => result.airfoilIds?.includes(airfoilId)).map((result) => `aircraft result ${result.id}`),
+  ];
 }

@@ -30,5 +30,6 @@ export interface AirfoilWorkspaceData {
   polars: readonly AirfoilPolar[];
   analysisRuns: readonly AirfoilAnalysisRun[];
   airfoilRepository: EntityRepository<Airfoil, string>;
+  getAirfoilReferences: (airfoilId: string) => readonly string[];
   saveAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
 }

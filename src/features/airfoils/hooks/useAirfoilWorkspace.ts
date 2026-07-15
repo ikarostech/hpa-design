@@ -32,15 +32,17 @@ export function useAirfoilWorkspace(
   const [editorMode, setEditorMode] = useState<AirfoilEditorMode | null>(null);
   const [analysisDrawerState, setAnalysisDrawerState] = useState<InspectorState<string>>({ open: false, mode: "create", targetId: null });
   const [selectedRunId, setSelectedRunId] = useState<string | null>(() => data.analysisRuns[0]?.id ?? null);
+  const [displayedRunIds, setDisplayedRunIds] = useState<string[]>(() => data.analysisRuns[0] ? [data.analysisRuns[0].id] : []);
   const [analysisTargetIds, setAnalysisTargetIds] = useState<string[]>(() => data.airfoils.slice(0, 2).map((airfoil) => airfoil.id));
+  const [removalError, setRemovalError] = useState<string | null>(null);
   const analysisJobs = jobs.jobs.filter((job): job is AirfoilAnalysisJob => job.kind === "airfoil-analysis");
 
   const allPolars = data.polars;
   const selected = data.airfoils.find((airfoil) => airfoil.id === detailState.targetId) ?? data.airfoils[0];
   const selectedRun = data.analysisRuns.find((run) => run.id === selectedRunId) ?? data.analysisRuns[0];
   const selectedRunPolars = useMemo(
-    () => selectedRun ? allPolars.filter((polar) => selectedRun.polarIds.includes(polar.id)) : [],
-    [allPolars, selectedRun],
+    () => allPolars.filter((polar) => displayedRunIds.some((runId) => data.analysisRuns.find((run) => run.id === runId)?.polarIds.includes(polar.id))),
+    [allPolars, data.analysisRuns, displayedRunIds],
   );
   const selectedTargetNames = useMemo(
     () => analysisTargetIds
@@ -74,14 +76,14 @@ export function useAirfoilWorkspace(
 
   const displayedRuns: ResultViewController<string> = {
     state: {
-      displayedResultIds: selectedRunId ? [selectedRunId] : [],
+      displayedResultIds: displayedRunIds,
       primaryResultId: selectedRunId,
-      compareMode: false,
+      compareMode: displayedRunIds.length > 1,
     },
-    show: setSelectedRunId,
-    hide: (id) => setSelectedRunId((current) => current === id ? null : current),
-    setPrimary: setSelectedRunId,
-    clear: () => setSelectedRunId(null),
+    show: (id) => setDisplayedRunIds((current) => current.includes(id) ? current : [...current, id]),
+    hide: (id) => setDisplayedRunIds((current) => current.filter((currentId) => currentId !== id)),
+    setPrimary: (id) => { setSelectedRunId(id); setDisplayedRunIds((current) => current.includes(id) ? current : [...current, id]); },
+    clear: () => { setSelectedRunId(null); setDisplayedRunIds([]); },
   };
 
   const selection: AirfoilWorkspaceSelection = {
@@ -103,6 +105,18 @@ export function useAirfoilWorkspace(
     void data.airfoilRepository.save(airfoil);
     setDetailState({ open: false, mode: "detail", targetId: airfoil.id });
     setEditorMode(null);
+  };
+
+  const removeAirfoil = async (airfoilId: string) => {
+    try {
+      await data.airfoilRepository.remove(airfoilId);
+      setRemovalError(null);
+      detailInspector.close();
+      return true;
+    } catch (error) {
+      setRemovalError(error instanceof Error ? error.message : "翼型を削除できませんでした。");
+      return false;
+    }
   };
 
   const runAnalysis = async (settings: XfoilAnalysisSettings) => {
@@ -144,6 +158,7 @@ export function useAirfoilWorkspace(
 
       data.saveAnalysis(execution.run, execution.polars);
       setSelectedRunId(execution.run.id);
+      setDisplayedRunIds([execution.run.id]);
       jobs.completeJob<AirfoilAnalysisJob>(jobId, completedJob);
       setAnalysisDrawerState((current) => ({ ...current, open: false }));
       return completedJob;
@@ -195,5 +210,14 @@ export function useAirfoilWorkspace(
     openEditor,
     closeEditor: () => setEditorMode(null),
     saveAirfoil,
+    removeAirfoil,
+    removalError,
+    clearRemovalError: () => setRemovalError(null),
+    referencesForAirfoil: data.getAirfoilReferences,
+    compareAllRuns: () => {
+      const ids = data.analysisRuns.map((run) => run.id);
+      setDisplayedRunIds(ids);
+      setSelectedRunId(ids[0] ?? null);
+    },
   };
 }

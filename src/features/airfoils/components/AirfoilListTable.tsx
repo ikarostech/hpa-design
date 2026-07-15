@@ -1,4 +1,4 @@
-import { Info, Pencil } from "lucide-react";
+import { Info, Pencil, Trash2 } from "lucide-react";
 import type { InspectorController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import { Button } from "../../../shared/ui/Button";
@@ -11,6 +11,7 @@ interface AirfoilListTableProps {
   detailInspector: InspectorController<string>;
   analysisTargets: MultiSelection<string>;
   onEdit: (airfoilId: string) => void;
+  onRemove: (airfoilId: string) => void;
 }
 
 export function AirfoilListTable({
@@ -19,6 +20,7 @@ export function AirfoilListTable({
   detailInspector,
   analysisTargets,
   onEdit,
+  onRemove,
 }: AirfoilListTableProps) {
   return (
     <Card>
@@ -43,6 +45,10 @@ export function AirfoilListTable({
               <Button variant={isSelected && detailInspector.state.open ? "primary" : "secondary"} size="sm" onClick={() => detailInspector.openDetail(airfoil.id)}>
                 <Info size={14} />
                 詳細
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => onRemove(airfoil.id)}>
+                <Trash2 size={14} />
+                削除
               </Button>
             </div>
           )}

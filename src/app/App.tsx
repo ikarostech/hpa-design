@@ -7,6 +7,7 @@ import { ExportPage } from "../pages/ExportPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
 import { AppLayout } from "../shared/layout/AppLayout";
 import { DesignDocumentProvider, useDesignDocument } from "./DesignDocumentProvider";
+import { listAirfoilReferences } from "./designDocument";
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
 export default function App() {
@@ -33,7 +34,7 @@ function DashboardRoute() {
 
 function AirfoilRoute() {
   const { document, airfoilRepository, saveAirfoilAnalysis } = useDesignDocument();
-  return <AirfoilPage data={{ airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, saveAnalysis: saveAirfoilAnalysis }} />;
+  return <AirfoilPage data={{ airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, getAirfoilReferences: (airfoilId) => listAirfoilReferences(document, airfoilId), saveAnalysis: saveAirfoilAnalysis }} />;
 }
 
 function AircraftRoute() {
@@ -48,7 +49,7 @@ function AnalysisRoute() {
 
 function ExportRoute() {
   const { document, markDocumentSaved } = useDesignDocument();
-  return <ExportPage onExport={() => void exportDocument(document, markDocumentSaved)} />;
+  return <ExportPage document={document} onExportDocument={() => void exportDocument(document, markDocumentSaved)} />;
 }
 
 async function exportDocument(designDocument: Parameters<typeof designDocumentExporter.export>[0], markDocumentSaved: () => void) {

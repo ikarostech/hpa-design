@@ -6,9 +6,10 @@ import type { AircraftGeometry } from "../features/aircraft/model/types";
 import { createAnalysisCase, createAnalysisCaseDraft, type AnalysisCaseDraft, updateAnalysisCase, validateAnalysisCaseDraft } from "../features/analysis/model/analysisCaseDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../features/analysis/services/analysisExecutionService";
+import { formatAnalysisNumber } from "../features/analysis/services/analysisResultExporter";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import { useJobs } from "../shared/jobs/JobProvider";
-import type { EntityRepository, Job, SingleSelection } from "../shared/model";
+import type { EntityRepository, Job, ResultViewController, SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
@@ -36,17 +37,34 @@ export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseR
   const [draft, setDraft] = useState<AnalysisCaseDraft>(() => createNewDraft(aircraft.id));
   const [errors, setErrors] = useState<Partial<Record<keyof AnalysisCaseDraft, string>>>({});
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [displayedResultIds, setDisplayedResultIds] = useState<string[]>(() => results[0] ? [results[0].id] : []);
+  const [primaryResultId, setPrimaryResultId] = useState<string | null>(() => results[0]?.id ?? null);
 
   useEffect(() => {
     if (!selectedCaseId || !cases.some((item) => item.id === selectedCaseId)) setSelectedCaseId(cases[0]?.id ?? null);
   }, [cases, selectedCaseId]);
+  useEffect(() => {
+    setDisplayedResultIds((current) => current.filter((id) => results.some((result) => result.id === id)));
+    setPrimaryResultId((current) => results.some((result) => result.id === current) ? current : results[0]?.id ?? null);
+  }, [results]);
 
   const caseSelection: SingleSelection<string> = { selectedId: selectedCaseId, select: setSelectedCaseId, clear: () => setSelectedCaseId(null) };
   const selected = cases.find((item) => item.id === caseSelection.selectedId) ?? cases[0];
   const selectedResult = results.find((result) => result.caseId === selected?.id);
+  const resultView: ResultViewController<string> = {
+    state: { displayedResultIds, primaryResultId, compareMode: displayedResultIds.length > 1 },
+    show: (id) => setDisplayedResultIds((current) => current.includes(id) ? current : [...current, id]),
+    hide: (id) => setDisplayedResultIds((current) => current.filter((currentId) => currentId !== id)),
+    setPrimary: (id) => { setPrimaryResultId(id); setDisplayedResultIds((current) => current.includes(id) ? current : [...current, id]); },
+    clear: () => { setDisplayedResultIds([]); setPrimaryResultId(null); },
+  };
+  const displayedResults = results.filter((result) => resultView.state.displayedResultIds.includes(result.id));
+  const primaryResult = results.find((result) => result.id === resultView.state.primaryResultId);
+  const resultForView = primaryResult ?? selectedResult;
   const selectedJob = jobs.jobs.find((job) => job.kind === "aircraft-analysis" && job.status === "running" && hasCaseId(job, selected?.id));
   const hasRun = Boolean(selectedResult && selectedResult.status === "completed");
-  const chartData = useMemo(() => selectedResult?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [], [selectedResult]);
+  const chartData = useMemo(() => resultForView?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [], [resultForView]);
+  const chartSeries = useMemo(() => displayedResults.map((result, index) => ({ id: result.id, name: cases.find((analysisCase) => analysisCase.id === result.caseId)?.name ?? result.caseId, color: ["#2563eb", "#0f766e", "#dc2626", "#7c3aed"][index % 4], data: result.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) })), [cases, displayedResults]);
   const activeTab = params.get("tab") === "results" ? "結果" : "解析";
 
   const openCreate = () => {
@@ -157,14 +175,15 @@ export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseR
 
         <div className="space-y-5">
           <div className="grid gap-4 md:grid-cols-5">
-            <MetricCard label="CLmax" value={selectedResult?.clMax.toString() ?? "-"} />
-            <MetricCard label="CDmin" value={selectedResult?.cdMin.toString() ?? "-"} />
-            <MetricCard label="最大 L/D" value={selectedResult?.maxLD.toString() ?? "-"} />
-            <MetricCard label="Cm0" value={selectedResult?.cm0.toString() ?? "-"} />
+            <MetricCard label="CLmax" value={resultForView ? formatAnalysisNumber(resultForView.clMax, 3) : "-"} />
+            <MetricCard label="CDmin" value={resultForView ? formatAnalysisNumber(resultForView.cdMin, 6) : "-"} />
+            <MetricCard label="最大 L/D" value={resultForView ? formatAnalysisNumber(resultForView.maxLD, 2) : "-"} />
+            <MetricCard label="Cm0" value={resultForView ? formatAnalysisNumber(resultForView.cm0, 4) : "-"} />
             <MetricCard label="実行状態" value={selectedJob ? "実行中" : analysisStatusLabel(selected?.status ?? "not-run")} />
           </div>
-          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果グラフ</h2></CardHeader><CardBody><PolarCharts data={chartData} mode="analysis" /></CardBody></Card>
-          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果一覧</h2></CardHeader><CardBody><ResultTable result={selectedResult} /></CardBody></Card>
+          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果グラフ</h2></CardHeader><CardBody><PolarCharts data={chartData} series={chartSeries} mode="analysis" /></CardBody></Card>
+          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果一覧</h2></CardHeader><CardBody><ResultTable result={resultForView} /></CardBody></Card>
+          {activeTab === "結果" ? <AnalysisResultComparison results={results} cases={cases} resultView={resultView} /> : null}
         </div>
 
         <div className="space-y-5">
@@ -201,8 +220,13 @@ function DeleteConfirmation({ hasResult, onConfirm, onCancel }: { hasResult: boo
   return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">解析ケースを削除しますか？</h2></CardHeader><CardBody className="space-y-4"><p className="text-sm text-slate-600">{hasResult ? "このケースの保存済み結果も削除されます。" : "この操作は元に戻せません。"}</p><div className="flex justify-end gap-2"><Button variant="secondary" onClick={onCancel}>キャンセル</Button><Button variant="destructive" onClick={onConfirm}>削除する</Button></div></CardBody></Card></div>;
 }
 
+function AnalysisResultComparison({ results, cases, resultView }: { results: readonly AnalysisResult[]; cases: readonly AnalysisCase[]; resultView: ResultViewController<string> }) {
+  const displayed = new Set(resultView.state.displayedResultIds);
+  return <Card><CardHeader><h2 className="font-semibold text-slate-950">比較する結果</h2><p className="mt-1 text-sm text-slate-500">表示を複数選ぶとグラフを比較できます。主結果は指標と表に表示します。</p></CardHeader><CardBody className="space-y-2">{results.length ? results.map((result) => <div key={result.id} className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm"><input type="checkbox" checked={displayed.has(result.id)} aria-label={`${result.id}を比較に表示`} onChange={() => displayed.has(result.id) ? resultView.hide(result.id) : resultView.show(result.id)} /><input type="radio" checked={resultView.state.primaryResultId === result.id} aria-label={`${result.id}を主結果にする`} onChange={() => resultView.setPrimary(result.id)} /><span>{cases.find((analysisCase) => analysisCase.id === result.caseId)?.name ?? result.caseId}</span><span>CLmax {formatAnalysisNumber(result.clMax, 3)} / L/D {formatAnalysisNumber(result.maxLD, 2)}</span></div>) : <p className="text-sm text-slate-500">比較できる解析結果はまだありません。</p>}</CardBody></Card>;
+}
+
 function ResultTable({ result }: { result: AnalysisResult | undefined }) {
-  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["α", "CL", "CD", "Cm", "L/D", "状態"].map((header) => <th key={header} className="px-2 py-2">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{(result?.rows ?? []).map((row) => <tr key={`${row.caseId}-${row.alpha}`}><td className="px-2 py-3">{row.alpha}°</td><td className="px-2 py-3">{row.cl}</td><td className="px-2 py-3">{row.cd}</td><td className="px-2 py-3">{row.cm}</td><td className="px-2 py-3">{row.ld}</td><td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td></tr>)}</tbody></table>{!result ? <p className="px-2 py-5 text-sm text-slate-500">実行結果はまだありません。</p> : null}</div>;
+  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["α", "CL", "CD", "Cm", "L/D", "状態"].map((header) => <th key={header} className="px-2 py-2">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{(result?.rows ?? []).map((row) => <tr key={`${row.caseId}-${row.alpha}`}><td className="px-2 py-3">{formatAnalysisNumber(row.alpha, 1)}°</td><td className="px-2 py-3">{formatAnalysisNumber(row.cl, 4)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.cd, 6)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.cm, 4)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.ld, 2)}</td><td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td></tr>)}</tbody></table>{!result ? <p className="px-2 py-5 text-sm text-slate-500">実行結果はまだありません。</p> : null}</div>;
 }
 
 function Setting({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-slate-200 px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-sm font-medium text-slate-900">{value}</p></div>; }

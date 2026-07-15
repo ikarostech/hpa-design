@@ -157,4 +157,26 @@ describe("createDesignDocumentStore", () => {
       analysisResults: [{ id: "result-2", status: "completed" }],
     });
   });
+
+  it("rejects deletion of a referenced airfoil and marks dependent data stale after its coordinates change", () => {
+    const referencedAirfoil = { ...document.airfoils[0], coordinates: [{ x: 0, upper: 0, lower: 0 }] };
+    const store = createDesignDocumentStore({
+      ...document,
+      airfoils: [referencedAirfoil],
+      aircraft: { ...document.aircraft, sections: [{ id: "root", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" }] },
+      polars: [{ id: "polar-1", airfoilId: "af-1", caseName: "Cruise", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, ncrit: 9, convergedPoints: 2, requestedPoints: 2, status: "complete", points: [] }],
+      airfoilAnalysisRuns: [{ id: "run-1", name: "Cruise", airfoilIds: ["af-1"], polarIds: ["polar-1"], createdAt: "2026-07-15T00:00:00.000Z", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, status: "complete" }],
+      analysisResults: [{ id: "result-1", caseId: "case-1", clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed", airfoilIds: ["af-1"], polarIds: ["polar-1"], rows: [{ caseId: "case-1", alpha: 0, cl: 0, cd: 0.02, cm: 0, ld: 0, status: "completed" }] }],
+    });
+
+    expect(() => store.removeAirfoil("af-1")).toThrow("used by 4 saved item(s)");
+
+    store.saveAirfoil({ ...referencedAirfoil, coordinates: [{ x: 0, upper: 0.01, lower: 0 }] });
+
+    expect(store.getDocument()).toMatchObject({
+      polars: [{ id: "polar-1", status: "needs-review" }],
+      airfoilAnalysisRuns: [{ id: "run-1", status: "needs-review" }],
+      analysisResults: [{ id: "result-1", status: "needs-review", rows: [{ status: "needs-review" }] }],
+    });
+  });
 });

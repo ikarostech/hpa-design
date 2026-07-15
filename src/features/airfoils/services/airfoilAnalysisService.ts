@@ -38,10 +38,19 @@ export async function executeAirfoilAnalysis({
 }: ExecuteAirfoilAnalysisInput): Promise<AirfoilAnalysisExecution> {
   throwIfCancelled(signal);
   const polars: AirfoilPolar[] = [];
+  const failures: Array<{ airfoilId: string; message: string }> = [];
 
   for (const airfoil of targets) {
     throwIfCancelled(signal);
-    const polar = await runner.run(airfoil, settings, signal);
+    let polar: AirfoilPolar;
+    try {
+      polar = await runner.run(airfoil, settings, signal);
+    } catch (error) {
+      throwIfCancelled(signal);
+      failures.push({ airfoilId: airfoil.id, message: error instanceof Error ? error.message : "XFOIL解析に失敗しました。" });
+      onProgress({ completed: polars.length + failures.length, total: targets.length });
+      continue;
+    }
     throwIfCancelled(signal);
     polars.push(polar);
     onProgress({ completed: polars.length, total: targets.length });
@@ -61,7 +70,8 @@ export async function executeAirfoilAnalysis({
       alphaStart: settings.alphaStart,
       alphaEnd: settings.alphaEnd,
       alphaStep: settings.alphaStep,
-      status: "complete",
+      status: failures.length ? "needs-review" : "complete",
+      failures: failures.length ? failures : undefined,
     },
   };
 }

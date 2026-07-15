@@ -36,6 +36,7 @@ export interface AirfoilAnalysisRun {
   alphaEnd: number;
   alphaStep: number;
   status: AirfoilAnalysisRunStatus;
+  failures?: Array<{ airfoilId: string; message: string }>;
 }
 
 export type PolarStatus = "complete" | "needs-review";

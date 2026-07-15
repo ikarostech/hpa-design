@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { Fragment } from "react";
 import type { ResultViewController } from "@/shared/model";
 import type { Airfoil, AirfoilAnalysisRun } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
@@ -35,10 +36,11 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCrea
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
-              <tr>{["表示", "解析名", "対象翼型", "Re数", "Mach数", "α範囲", "ステータス"].map((heading) => <th key={heading} className="px-2 py-2">{heading}</th>)}</tr>
+              <tr>{["表示", "主結果", "解析名", "対象翼型", "Re数", "Mach数", "α範囲", "ステータス"].map((heading) => <th key={heading} className="px-2 py-2">{heading}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {runs.map((run) => (
+                <Fragment key={run.id}>
                 <tr
                   key={run.id}
                   className={selectedRunId === run.id ? "bg-blue-50/60" : "cursor-pointer hover:bg-slate-50"}
@@ -46,13 +48,15 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCrea
                 >
                   <td className="px-2 py-3">
                     <input
-                      type="radio"
+                      type="checkbox"
                       className="h-4 w-4 border-slate-300 text-blue-600"
-                      checked={selectedRunId === run.id}
+                      checked={displayedRuns.state.displayedResultIds.includes(run.id)}
                       aria-label={`${run.name}をグラフに表示`}
-                      onChange={() => displayedRuns.setPrimary(run.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={() => displayedRuns.state.displayedResultIds.includes(run.id) ? displayedRuns.hide(run.id) : displayedRuns.show(run.id)}
                     />
                   </td>
+                  <td className="px-2 py-3"><input type="radio" className="h-4 w-4 border-slate-300 text-blue-600" checked={selectedRunId === run.id} aria-label={`${run.name}を主結果にする`} onClick={(event) => event.stopPropagation()} onChange={() => displayedRuns.setPrimary(run.id)} /></td>
                   <td className="px-2 py-3 font-medium text-slate-950">
                     <div>{run.name}</div>
                     <div className="mt-1 text-xs font-normal text-slate-500">{run.createdAt}</div>
@@ -63,6 +67,8 @@ export function AirfoilAnalysisCaseTable({ runs, airfoils, displayedRuns, onCrea
                   <td className="px-2 py-3">{formatAlphaRange(run.alphaStart, run.alphaEnd, run.alphaStep)}</td>
                   <td className="px-2 py-3"><Badge tone={run.status === "complete" ? "green" : "amber"}>{run.status === "complete" ? "完了" : "要確認"}</Badge></td>
                 </tr>
+                {run.failures?.length ? <tr className="bg-amber-50"><td colSpan={8} className="px-3 py-2 text-xs text-amber-800">一部失敗: {run.failures.map((failure) => `${airfoils.find((airfoil) => airfoil.id === failure.airfoilId)?.name ?? failure.airfoilId} — ${failure.message}`).join(" / ")}</td></tr> : null}
+                </Fragment>
               ))}
             </tbody>
           </table>

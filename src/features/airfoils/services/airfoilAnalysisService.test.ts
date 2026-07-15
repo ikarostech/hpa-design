@@ -87,4 +87,28 @@ describe("executeAirfoilAnalysis", () => {
     })).rejects.toBeInstanceOf(AirfoilAnalysisCancelledError);
     expect(runner.run).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps successful polars and records a failure breakdown when one target fails", async () => {
+    const runner: AirfoilAnalysisRunner = {
+      run: vi.fn(async (airfoil) => {
+        if (airfoil.id === "af-2") throw new Error("convergence failed");
+        return polar(airfoil.id);
+      }),
+    };
+
+    const result = await executeAirfoilAnalysis({
+      targets: airfoils,
+      settings,
+      runner,
+      createId: (prefix) => `${prefix}-1`,
+      now: () => new Date("2026-07-15T12:00:00.000Z"),
+      onProgress: () => undefined,
+    });
+
+    expect(result.polars.map((item) => item.id)).toEqual(["polar-af-1"]);
+    expect(result.run).toMatchObject({
+      status: "needs-review",
+      failures: [{ airfoilId: "af-2", message: "convergence failed" }],
+    });
+  });
 });

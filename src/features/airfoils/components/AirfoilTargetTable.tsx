@@ -35,7 +35,8 @@ export function AirfoilTargetTable({
         <tbody className="divide-y divide-slate-100">
           {airfoils.map((airfoil) => {
             const isSelected = selectedId === airfoil.id;
-            const hasPolar = airfoilPolars.some((polar) => polar.airfoilId === airfoil.id);
+            const hasPolar = airfoilPolars.some((polar) => polar.airfoilId === airfoil.id && polar.status === "complete");
+            const hasStalePolar = airfoilPolars.some((polar) => polar.airfoilId === airfoil.id && polar.status === "needs-review");
             const isAnalysisTarget = analysisTargets.isSelected(airfoil.id);
 
             return (
@@ -59,7 +60,7 @@ export function AirfoilTargetTable({
                   </>
                 ) : null}
                 <td className="px-2 py-3">
-                  {hasPolar ? <Badge tone="green">Polarあり</Badge> : <Badge tone="amber">未解析</Badge>}
+                  {hasPolar ? <Badge tone="green">Polarあり</Badge> : hasStalePolar ? <Badge tone="amber">Polar要確認</Badge> : <Badge tone="amber">未解析</Badge>}
                 </td>
                 {actions ? (
                   <td className="px-2 py-3">{actions(airfoil, { hasPolar, isSelected })}</td>
