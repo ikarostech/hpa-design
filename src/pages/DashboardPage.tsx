@@ -8,11 +8,12 @@ import { MetricCard } from "../shared/ui/MetricCard";
 
 interface DashboardPageProps {
   document: DesignDocument;
+  isDirty: boolean;
   onImportFile: (file: File) => Promise<void>;
   onExport: () => void;
 }
 
-export function DashboardPage({ document, onImportFile, onExport }: DashboardPageProps) {
+export function DashboardPage({ document, isDirty, onImportFile, onExport }: DashboardPageProps) {
   const navigate = useNavigate();
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -55,6 +56,8 @@ export function DashboardPage({ document, onImportFile, onExport }: DashboardPag
           </div>
         </CardBody>
       </Card>
+
+      {isDirty && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">未保存の変更があります。設計ファイルを書き出して保存してください。</p>}
 
       {importError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{importError}</p>}
 

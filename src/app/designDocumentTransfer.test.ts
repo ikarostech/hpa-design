@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { designDocumentExporter, designDocumentImporter } from "./designDocumentTransfer";
+import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult } from "../mocks/mockData";
+import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
 const document = {
   schemaVersion: 1 as const,
@@ -21,12 +22,120 @@ describe("design document transfer", () => {
     expect(imported).toMatchObject({ name: "Imported Glider", aircraft: { id: "geo-1" } });
   });
 
+  it("accepts the populated document used to initialize the application", async () => {
+    const imported = await designDocumentImporter.parse(await designDocumentExporter.export({
+      schemaVersion: 1,
+      name: "LongRange UAV",
+      airfoils,
+      polars: airfoilPolars,
+      airfoilAnalysisRuns: [{
+        id: "run-initial-polars",
+        name: "Initial Polar analysis",
+        airfoilIds: Array.from(new Set(airfoilPolars.map((polar) => polar.airfoilId))),
+        polarIds: airfoilPolars.map((polar) => polar.id),
+        createdAt: "2026-06-21T00:00:00.000Z",
+        reynolds: 300000,
+        mach: 0.04,
+        alphaStart: -6,
+        alphaEnd: 18,
+        alphaStep: 2,
+        status: "complete",
+      }],
+      aircraft: aircraftGeometry,
+      analysisCases,
+      analysisResults: [analysisResult],
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
+  });
+
   it("rejects a file without the design document schema", async () => {
     const imported = await designDocumentImporter.parse('{"name":"Missing schema"}');
 
     expect(await designDocumentImporter.validate(imported)).toEqual({
       valid: false,
-      issues: [{ path: ["schemaVersion"], message: "対応していない設計ファイルです。", severity: "error" }],
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["schemaVersion"], message: "対応していない設計ファイルのバージョンです。", severity: "error" }),
+      ]),
+    });
+  });
+
+  it("rejects malformed document structures with field paths", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      polars: undefined,
+      aircraft: { ...document.aircraft, span: "four" },
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["polars"], severity: "error" }),
+        expect.objectContaining({ path: ["aircraft", "span"], severity: "error" }),
+      ]),
+    });
+  });
+
+  it("distinguishes invalid JSON from schema validation errors", async () => {
+    await expect(designDocumentImporter.parse('{"name":')).rejects.toThrow("JSON");
+  });
+
+  it("formats validation errors with their document paths", () => {
+    expect(formatValidationIssues([
+      { path: ["aircraft", "span"], message: "有限の数値である必要があります。", severity: "error" },
+      { message: "配列である必要があります。", severity: "error" },
+    ])).toBe("aircraft.span: 有限の数値である必要があります。\n配列である必要があります。");
+  });
+
+  it("rejects duplicate IDs and unknown airfoil references", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      airfoils: [
+        { id: "af-1", name: "First", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1, trailingEdgeThickness: 0, coordinates: [{ x: 0, upper: 0, lower: 0 }, { x: 0.5, upper: 0.1, lower: -0.1 }, { x: 1, upper: 0, lower: 0 }] },
+        { id: "af-1", name: "Duplicate", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1, trailingEdgeThickness: 0, coordinates: [{ x: 0, upper: 0, lower: 0 }, { x: 0.5, upper: 0.1, lower: -0.1 }, { x: 1, upper: 0, lower: 0 }] },
+      ],
+      polars: [{ id: "pol-1", airfoilId: "missing-airfoil", caseName: "Test", reynolds: 300000, mach: 0.04, alphaStart: -4, alphaEnd: 12, alphaStep: 2, ncrit: 9, convergedPoints: 9, requestedPoints: 9, status: "complete", points: [] }],
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["airfoils", "1", "id"], severity: "error" }),
+        expect.objectContaining({ path: ["polars", "0", "airfoilId"], severity: "error" }),
+      ]),
+    });
+  });
+
+  it("rejects a wing section that references a missing airfoil", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      aircraft: {
+        ...document.aircraft,
+        sections: [{ id: "section-1", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "missing-airfoil", controlSurface: "none" }],
+      },
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["aircraft", "sections", "0", "airfoilId"], severity: "error" }),
+      ]),
+    });
+  });
+
+  it("rejects references to missing aircraft geometry and analysis cases", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      analysisCases: [{ id: "case-1", name: "Cruise", method: "LLT", alphaStart: -2, alphaEnd: 8, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId: "missing-geometry", status: "not-run" }],
+      analysisResults: [{ id: "result-1", caseId: "missing-case", clMax: 1, cdMin: 0.01, maxLD: 20, cm0: 0, status: "completed", rows: [] }],
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["analysisCases", "0", "geometryId"], severity: "error" }),
+        expect.objectContaining({ path: ["analysisResults", "0", "caseId"], severity: "error" }),
+      ]),
     });
   });
 });

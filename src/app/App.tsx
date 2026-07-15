@@ -7,7 +7,7 @@ import { ExportPage } from "../pages/ExportPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
 import { AppLayout } from "../shared/layout/AppLayout";
 import { DesignDocumentProvider, useDesignDocument } from "./DesignDocumentProvider";
-import { designDocumentExporter, designDocumentImporter } from "./designDocumentTransfer";
+import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
 export default function App() {
   return <DesignDocumentProvider><JobProvider><AppLayout><Routes>
@@ -22,13 +22,13 @@ export default function App() {
 }
 
 function DashboardRoute() {
-  const { document, replaceDocument } = useDesignDocument();
+  const { document, isDirty, markDocumentSaved, replaceDocument } = useDesignDocument();
   return <DashboardPage document={document} onImportFile={async (file) => {
     const imported = await designDocumentImporter.parse(await file.text());
     const validation = await designDocumentImporter.validate(imported);
-    if (!validation.valid) throw new Error(validation.issues.map((issue) => issue.message).join("\n"));
+    if (!validation.valid) throw new Error(formatValidationIssues(validation.issues));
     replaceDocument(imported);
-  }} onExport={() => void downloadDocument(document)} />;
+  }} isDirty={isDirty} onExport={() => void exportDocument(document, markDocumentSaved)} />;
 }
 
 function AirfoilRoute() {
@@ -47,8 +47,13 @@ function AnalysisRoute() {
 }
 
 function ExportRoute() {
-  const { document } = useDesignDocument();
-  return <ExportPage onExport={() => void downloadDocument(document)} />;
+  const { document, markDocumentSaved } = useDesignDocument();
+  return <ExportPage onExport={() => void exportDocument(document, markDocumentSaved)} />;
+}
+
+async function exportDocument(designDocument: Parameters<typeof designDocumentExporter.export>[0], markDocumentSaved: () => void) {
+  await downloadDocument(designDocument);
+  markDocumentSaved();
 }
 
 async function downloadDocument(designDocument: Parameters<typeof designDocumentExporter.export>[0]) {

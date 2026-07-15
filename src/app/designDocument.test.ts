@@ -30,6 +30,18 @@ const document = {
 };
 
 describe("createDesignDocumentStore", () => {
+  it("marks an edit as unsaved until the document is marked saved", () => {
+    const store = createDesignDocumentStore(document);
+
+    store.updateAircraft({ span: 6 });
+
+    expect(store.getState()).toMatchObject({ revision: 1, savedRevision: 0, isDirty: true });
+
+    store.markSaved();
+
+    expect(store.getState()).toMatchObject({ revision: 1, savedRevision: 1, isDirty: false });
+  });
+
   it("keeps edits in the one active design document", () => {
     const store = createDesignDocumentStore(document);
 
@@ -46,6 +58,13 @@ describe("createDesignDocumentStore", () => {
     store.replaceDocument(imported);
 
     expect(store.getDocument()).toMatchObject({ name: "Imported Glider", airfoils: [] });
+    expect(store.getState()).toMatchObject({ isDirty: false });
+  });
+
+  it("keeps a recovered working document marked as unsaved", () => {
+    const store = createDesignDocumentStore(document, { saved: false });
+
+    expect(store.getState()).toMatchObject({ revision: 0, savedRevision: -1, isDirty: true });
   });
 
   it("derives wing metrics from editable geometry", () => {

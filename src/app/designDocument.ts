@@ -15,6 +15,8 @@ export interface DesignDocument {
 
 export interface DesignDocumentStore {
   getDocument: () => DesignDocument;
+  getState: () => DesignDocumentState;
+  markSaved: () => void;
   replaceDocument: (document: DesignDocument) => void;
   saveAirfoil: (airfoil: Airfoil) => void;
   removeAirfoil: (airfoilId: string) => void;
@@ -22,22 +24,42 @@ export interface DesignDocumentStore {
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
 }
 
+export interface DesignDocumentState {
+  revision: number;
+  savedRevision: number;
+  isDirty: boolean;
+}
+
 type EditableAircraftGeometry = Pick<AircraftGeometry, "span" | "rootChord" | "tipChord" | "twist" | "dihedral" | "sweep" | "incidence" | "sections" | "staticMargin">;
 
-export function createDesignDocumentStore(initialDocument: DesignDocument): DesignDocumentStore {
+export function createDesignDocumentStore(initialDocument: DesignDocument, { saved = true }: { saved?: boolean } = {}): DesignDocumentStore {
   let document = cloneDocument(initialDocument);
+  let revision = 0;
+  let savedRevision = saved ? 0 : -1;
+
+  const update = (change: () => void) => {
+    change();
+    revision += 1;
+  };
 
   return {
     getDocument: () => cloneDocument(document),
-    replaceDocument: (nextDocument) => { document = cloneDocument(nextDocument); },
-    saveAirfoil: (airfoil) => {
-      const exists = document.airfoils.some((item) => item.id === airfoil.id);
-      document = { ...document, airfoils: exists ? document.airfoils.map((item) => item.id === airfoil.id ? cloneAirfoil(airfoil) : item) : [cloneAirfoil(airfoil), ...document.airfoils] };
+    getState: () => ({ revision, savedRevision, isDirty: revision !== savedRevision }),
+    markSaved: () => { savedRevision = revision; },
+    replaceDocument: (nextDocument) => {
+      update(() => { document = cloneDocument(nextDocument); });
+      savedRevision = revision;
     },
-    removeAirfoil: (airfoilId) => { document = { ...document, airfoils: document.airfoils.filter((airfoil) => airfoil.id !== airfoilId) }; },
-    updateAircraft: (patch) => { document = { ...document, aircraft: deriveAircraftGeometry({ ...document.aircraft, ...patch }) }; },
+    saveAirfoil: (airfoil) => {
+      update(() => {
+        const exists = document.airfoils.some((item) => item.id === airfoil.id);
+        document = { ...document, airfoils: exists ? document.airfoils.map((item) => item.id === airfoil.id ? cloneAirfoil(airfoil) : item) : [cloneAirfoil(airfoil), ...document.airfoils] };
+      });
+    },
+    removeAirfoil: (airfoilId) => update(() => { document = { ...document, airfoils: document.airfoils.filter((airfoil) => airfoil.id !== airfoilId) }; }),
+    updateAircraft: (patch) => update(() => { document = { ...document, aircraft: deriveAircraftGeometry({ ...document.aircraft, ...patch }) }; }),
     saveAirfoilAnalysis: (run, polars) => {
-      document = { ...document, airfoilAnalysisRuns: [cloneRun(run), ...document.airfoilAnalysisRuns], polars: [...polars.map(clonePolar), ...document.polars] };
+      update(() => { document = { ...document, airfoilAnalysisRuns: [cloneRun(run), ...document.airfoilAnalysisRuns], polars: [...polars.map(clonePolar), ...document.polars] }; });
     },
   };
 }
