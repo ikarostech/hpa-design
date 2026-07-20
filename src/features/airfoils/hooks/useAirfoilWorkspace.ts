@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import type { InspectorController, InspectorState, ResultViewController } from "@/shared/model";
 import { useJobs } from "@/shared/jobs/JobProvider";
 import { buildAirfoilChartSeries } from "../model/chartSeries";
-import type { Airfoil } from "../model/types";
+import type { Airfoil, AirfoilAnalysisRun } from "../model/types";
 import type {
   AirfoilAnalysisJob,
   AirfoilAnalysisJobController,
@@ -22,6 +22,7 @@ export function useAirfoilWorkspace(
   data: AirfoilWorkspaceData,
   runner: AirfoilAnalysisRunner = webXfoilAnalysisRunner,
 ) {
+  const maxComparisonRuns = 6;
   const jobs = useJobs();
   const controllers = useRef(new Map<string, AbortController>());
   const [detailState, setDetailState] = useState<InspectorState<string>>(() => ({
@@ -35,6 +36,7 @@ export function useAirfoilWorkspace(
   const [displayedRunIds, setDisplayedRunIds] = useState<string[]>(() => data.analysisRuns[0] ? [data.analysisRuns[0].id] : []);
   const [analysisTargetIds, setAnalysisTargetIds] = useState<string[]>(() => data.airfoils.slice(0, 2).map((airfoil) => airfoil.id));
   const [removalError, setRemovalError] = useState<string | null>(null);
+  const [drawerSettings, setDrawerSettings] = useState<XfoilAnalysisSettings | undefined>(undefined);
   const analysisJobs = jobs.jobs.filter((job): job is AirfoilAnalysisJob => job.kind === "airfoil-analysis");
 
   const allPolars = data.polars;
@@ -80,7 +82,7 @@ export function useAirfoilWorkspace(
       primaryResultId: selectedRunId,
       compareMode: displayedRunIds.length > 1,
     },
-    show: (id) => setDisplayedRunIds((current) => current.includes(id) ? current : [...current, id]),
+    show: (id) => setDisplayedRunIds((current) => current.includes(id) || current.length >= maxComparisonRuns ? current : [...current, id]),
     hide: (id) => setDisplayedRunIds((current) => current.filter((currentId) => currentId !== id)),
     setPrimary: (id) => { setSelectedRunId(id); setDisplayedRunIds((current) => current.includes(id) ? current : [...current, id]); },
     clear: () => { setSelectedRunId(null); setDisplayedRunIds([]); },
@@ -149,7 +151,7 @@ export function useAirfoilWorkspace(
       });
       const completedJob: AirfoilAnalysisJob = {
         ...runningJob,
-        status: "completed",
+        status: execution.polars.length ? "completed" : "failed",
         finishedAt: new Date().toISOString(),
         progress: { completed: execution.polars.length, total: targets.length },
         result: [...execution.polars],
@@ -159,11 +161,22 @@ export function useAirfoilWorkspace(
       data.saveAnalysis(execution.run, execution.polars);
       setSelectedRunId(execution.run.id);
       setDisplayedRunIds([execution.run.id]);
-      jobs.completeJob<AirfoilAnalysisJob>(jobId, completedJob);
+      if (execution.polars.length) {
+        jobs.completeJob<AirfoilAnalysisJob>(jobId, completedJob);
+      } else {
+        jobs.updateJob<AirfoilAnalysisJob>(jobId, { result: [...execution.polars], runId: execution.run.id });
+        jobs.failJob(jobId, execution.run.failures?.map((failure) => failure.message).join(" / ") || "No polar was produced.");
+      }
       setAnalysisDrawerState((current) => ({ ...current, open: false }));
       return completedJob;
     } catch (error) {
       if (error instanceof AirfoilAnalysisCancelledError) {
+        if (error.execution.polars.length) {
+          data.saveAnalysis(error.execution.run, error.execution.polars);
+          setSelectedRunId(error.execution.run.id);
+          setDisplayedRunIds([error.execution.run.id]);
+          jobs.updateJob<AirfoilAnalysisJob>(jobId, { result: [...error.execution.polars], runId: error.execution.run.id });
+        }
         jobs.cancelJob(jobId);
         return { ...runningJob, status: "cancelled" as const, finishedAt: new Date().toISOString() };
       }
@@ -202,10 +215,27 @@ export function useAirfoilWorkspace(
     chartSeries,
     analysisRuns: data.analysisRuns,
     analysisDrawerState,
+    drawerSettings,
     editorMode,
     selection,
     analysisJobController,
-    openAnalysisDrawer: () => setAnalysisDrawerState({ open: true, mode: "create", targetId: null }),
+    openAnalysisDrawer: () => { setDrawerSettings(undefined); setAnalysisDrawerState({ open: true, mode: "create", targetId: null }); },
+    retryFailedRun: (run: AirfoilAnalysisRun) => {
+      const failedIds = run.failures?.map((failure) => failure.airfoilId) ?? [];
+      if (!failedIds.length) return;
+      setAnalysisTargetIds(failedIds);
+      setDrawerSettings({ reynolds: run.reynolds, mach: run.mach, alphaStart: run.alphaStart, alphaEnd: run.alphaEnd, alphaStep: run.alphaStep, ncrit: run.ncrit ?? 9, iterations: run.iterations ?? 100 });
+      setAnalysisDrawerState({ open: true, mode: "create", targetId: null });
+    },
+    removeAnalysisRun: data.removeAnalysisRun,
+    renameAnalysisRun: (run: AirfoilAnalysisRun, name: string) => data.updateAnalysisRun({ ...run, name: name.trim() || run.name }),
+    duplicateAnalysisRun: (run: AirfoilAnalysisRun) => {
+      setAnalysisTargetIds(run.airfoilIds);
+      setDrawerSettings({ reynolds: run.reynolds, mach: run.mach, alphaStart: run.alphaStart, alphaEnd: run.alphaEnd, alphaStep: run.alphaStep, ncrit: run.ncrit ?? 9, iterations: run.iterations ?? 100 });
+      setAnalysisDrawerState({ open: true, mode: "create", targetId: null });
+    },
+    comparisonLimitReached: displayedRunIds.length >= maxComparisonRuns,
+    maxComparisonRuns,
     closeAnalysisDrawer: () => setAnalysisDrawerState((current) => ({ ...current, open: false })),
     openEditor,
     closeEditor: () => setEditorMode(null),

@@ -35,8 +35,8 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
     if (!open || !mode) {
       return;
     }
-    createdId.current = mode === "edit" && airfoil ? airfoil.id : `af-${Date.now().toString(36)}`;
-    if (mode === "edit" && airfoil) {
+    createdId.current = (mode === "edit" || mode === "reapply-dat") && airfoil ? airfoil.id : `af-${Date.now().toString(36)}`;
+    if ((mode === "edit" || mode === "reapply-dat") && airfoil) {
       setForm({ name: airfoil.name, nacaCode: "", datText: "" });
       return;
     }
@@ -44,7 +44,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
   }, [airfoil, mode, open]);
 
   const datState = useMemo(() => {
-    if (mode !== "import-dat" || !form.datText.trim()) {
+    if ((mode !== "import-dat" && mode !== "reapply-dat") || !form.datText.trim()) {
       return null;
     }
     return createDatAirfoilPreview({ datText: form.datText, id: createdId.current, name: form.name });
@@ -73,7 +73,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
 
   const error = nacaState && !nacaState.valid ? nacaState.error : datState && !datState.valid ? datState.error : null;
   const valid = Boolean(previewAirfoil) && !error;
-  const title = mode === "edit" ? "翼型を編集" : mode === "import-dat" ? ".datから翼型を作成" : "NACA翼型を作成";
+  const title = mode === "edit" ? "翼型を編集" : mode === "reapply-dat" ? "翼型座標を更新" : mode === "import-dat" ? ".datから翼型を作成" : "NACA翼型を作成";
   const formController: FormController<AirfoilFormState> = {
     state: {
       value: form,
@@ -123,7 +123,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
-          {mode === "import-dat" ? (
+          {mode === "import-dat" || mode === "reapply-dat" ? (
             <>
               <label className="block text-sm font-medium text-slate-700">
                 .dat ファイル
@@ -134,8 +134,9 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
               </label>
               <TextArea label="または座標を貼り付け" value={form.datText} onChange={(value) => update("datText", value)} />
               {datState?.valid ? <ImportSummary format={datState.format} points={datState.pointCount} issues={datState.issues} /> : null}
-              {mode === "import-dat" && error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+              {(mode === "import-dat" || mode === "reapply-dat") && error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
               <Input label="翼型名" value={form.name} placeholder={datState?.valid ? datState.suggestedName : "ファイル名を使用"} onChange={(value) => update("name", value)} />
+              {mode === "reapply-dat" ? <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">保存すると、この翼型を使用する Polar と解析結果は「要確認」になり、再解析が必要です。</p> : null}
             </>
           ) : mode === "create-naca" ? (
             <>
@@ -150,7 +151,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
             </>
           )}
 
-          {previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">形状プレビュー</p><AirfoilPlot airfoil={previewAirfoil} className="h-44 min-h-0" /></div> : null}
+          {mode === "reapply-dat" && airfoil ? <div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-sm font-semibold text-slate-800">更新前</p><AirfoilPlot airfoil={airfoil} className="h-36 min-h-0" /></div>{previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">更新後</p><AirfoilPlot airfoil={previewAirfoil} className="h-36 min-h-0" /></div> : null}</div> : previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">形状プレビュー</p><AirfoilPlot airfoil={previewAirfoil} className="h-44 min-h-0" /></div> : null}
         </div>
 
         <div className="flex justify-end gap-2 border-t p-4">

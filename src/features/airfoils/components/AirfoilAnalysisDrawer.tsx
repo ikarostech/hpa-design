@@ -1,9 +1,10 @@
 import { ArrowLeft, CheckCircle2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import type { AirfoilAnalysisJobController } from "../model/workspace";
 import type { XfoilAnalysisSettings } from "../model/analysis";
+import { validateXfoilAnalysisSettings } from "../model/analysisValidation";
 import { Button } from "../../../shared/ui/Button";
 import { AirfoilTargetTable } from "./AirfoilTargetTable";
 
@@ -24,6 +25,7 @@ interface AirfoilAnalysisDrawerProps {
   analysisTargets: MultiSelection<string>;
   targetNames: string[];
   jobController: AirfoilAnalysisJobController;
+  initialSettings?: XfoilAnalysisSettings;
   onClose: () => void;
 }
 
@@ -34,24 +36,27 @@ export function AirfoilAnalysisDrawer({
   analysisTargets,
   targetNames,
   jobController,
+  initialSettings,
   onClose,
 }: AirfoilAnalysisDrawerProps) {
   const [settings, setSettings] = useState<XfoilAnalysisSettings>(defaultAnalysisSettings);
+  useEffect(() => { if (open && initialSettings) setSettings(initialSettings); }, [initialSettings, open]);
 
   const currentJob = jobController.currentJob;
   const isRunning = currentJob?.status === "running";
   const progress = currentJob?.progress ?? null;
   const error = currentJob?.status === "failed" ? currentJob.errorMessage : null;
-  const canRun = targetNames.length > 0 && !isRunning;
+  const validation = validateXfoilAnalysisSettings(settings);
+  const canRun = targetNames.length > 0 && validation.valid && !isRunning;
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0;
 
   const settingsForm: FormController<XfoilAnalysisSettings> = {
     state: {
       value: settings,
       initialValue: defaultAnalysisSettings,
-      errors: {},
+      errors: validation.valid ? {} : validation.errors,
       dirty: settings !== defaultAnalysisSettings,
-      valid: true,
+      valid: validation.valid,
       submitting: isRunning,
     },
     update: (key, value) => setSettings((current) => ({ ...current, [key]: value })),
@@ -108,15 +113,15 @@ export function AirfoilAnalysisDrawer({
               minWidth="min-w-[520px]"
             />
           </div>
-          <Input label="Re数" value={settingsForm.state.value.reynolds} onChange={(value) => update("reynolds", value)} />
-          <Input label="Mach数" value={settingsForm.state.value.mach} step="0.01" onChange={(value) => update("mach", value)} />
+          <Input label="Re数" value={settingsForm.state.value.reynolds} error={settingsForm.state.errors.reynolds} onChange={(value) => update("reynolds", value)} />
+          <Input label="Mach数" value={settingsForm.state.value.mach} error={settingsForm.state.errors.mach} step="0.01" onChange={(value) => update("mach", value)} />
           <div className="grid grid-cols-3 gap-2">
-            <Input label="α開始" value={settingsForm.state.value.alphaStart} onChange={(value) => update("alphaStart", value)} />
+            <Input label="α開始" value={settingsForm.state.value.alphaStart} error={settingsForm.state.errors.alphaStart} onChange={(value) => update("alphaStart", value)} />
             <Input label="α終了" value={settingsForm.state.value.alphaEnd} onChange={(value) => update("alphaEnd", value)} />
-            <Input label="刻み" value={settingsForm.state.value.alphaStep} onChange={(value) => update("alphaStep", value)} />
+            <Input label="刻み" value={settingsForm.state.value.alphaStep} error={settingsForm.state.errors.alphaStep} onChange={(value) => update("alphaStep", value)} />
           </div>
-          <Input label="Ncrit" value={settingsForm.state.value.ncrit} onChange={(value) => update("ncrit", value)} />
-          <Input label="反復回数" value={settingsForm.state.value.iterations} onChange={(value) => update("iterations", value)} />
+          <Input label="Ncrit" value={settingsForm.state.value.ncrit} error={settingsForm.state.errors.ncrit} onChange={(value) => update("ncrit", value)} />
+          <Input label="反復回数" value={settingsForm.state.value.iterations} error={settingsForm.state.errors.iterations} onChange={(value) => update("iterations", value)} />
           {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
         </div>
 
@@ -134,6 +139,7 @@ export function AirfoilAnalysisDrawer({
           ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose}>キャンセル</Button>
+            {isRunning && currentJob ? <Button variant="destructive" aria-label="解析をキャンセル" onClick={() => void jobController.cancel(currentJob.id)}>解析をキャンセル</Button> : null}
             <Button onClick={settingsForm.submit} disabled={!canRun}>
               <CheckCircle2 size={16} />
               {isRunning ? `XFOIL実行中 ${progressPercent}%` : `${targetNames.length}件を一括解析`}
@@ -145,6 +151,6 @@ export function AirfoilAnalysisDrawer({
   );
 }
 
-function Input({ label, value, step = "1", onChange }: { label: string; value: number; step?: string; onChange: (value: string) => void }) {
-  return <label className="block text-sm font-medium text-slate-700">{label}<input type="number" step={step} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function Input({ label, value, error, step = "1", onChange }: { label: string; value: number; error?: string; step?: string; onChange: (value: string) => void }) {
+  return <label className="block text-sm font-medium text-slate-700">{label}<input aria-invalid={Boolean(error)} type="number" step={step} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400" value={value} onChange={(event) => onChange(event.target.value)} />{error ? <span className="mt-1 block text-xs text-red-700">{error}</span> : null}</label>;
 }

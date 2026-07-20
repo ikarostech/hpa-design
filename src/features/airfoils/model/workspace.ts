@@ -9,7 +9,7 @@ import type {
 import type { XfoilAnalysisSettings } from "./analysis";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "./types";
 
-export type AirfoilEditorMode = "create-naca" | "import-dat" | "edit";
+export type AirfoilEditorMode = "create-naca" | "import-dat" | "reapply-dat" | "edit";
 
 export type AirfoilAnalysisJob = Job<string, AirfoilPolar[], XfoilAnalysisSettings> & {
   kind: "airfoil-analysis";
@@ -26,10 +26,13 @@ export interface AirfoilWorkspaceSelection {
 }
 
 export interface AirfoilWorkspaceData {
+  designName: string;
   airfoils: readonly Airfoil[];
   polars: readonly AirfoilPolar[];
   analysisRuns: readonly AirfoilAnalysisRun[];
   airfoilRepository: EntityRepository<Airfoil, string>;
   getAirfoilReferences: (airfoilId: string) => readonly string[];
   saveAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
+  updateAnalysisRun: (run: AirfoilAnalysisRun) => void;
+  removeAnalysisRun: (runId: string) => void;
 }

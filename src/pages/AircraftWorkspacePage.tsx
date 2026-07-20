@@ -1,6 +1,6 @@
 import { AlertTriangle, ChevronRight, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
 import { applyAircraftDraft, createAircraftDraft, type AircraftDraft, type AircraftDraftValidation, validateAircraftDraft } from "../features/aircraft/model/aircraftDraft";
 import type { AircraftGeometry, WingSection } from "../features/aircraft/model/types";
@@ -18,9 +18,15 @@ interface AircraftWorkspacePageProps {
 
 export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: AircraftWorkspacePageProps) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const initialDraft = useMemo(() => createAircraftDraft(aircraft), [aircraft]);
   const [draft, setDraft] = useState<AircraftDraft>(initialDraft);
   useEffect(() => setDraft(initialDraft), [initialDraft]);
+  useEffect(() => {
+    const airfoilId = params.get("airfoilId");
+    if (!airfoilId || !airfoils.some((airfoil) => airfoil.id === airfoilId)) return;
+    setDraft((current) => ({ ...current, sections: current.sections.map((section, index) => index === 0 ? { ...section, airfoilId } : section) }));
+  }, [airfoils, params]);
 
   const validation = validateAircraftDraft(draft, new Set(airfoils.map((airfoil) => airfoil.id)));
   const preview = applyAircraftDraft(draft, aircraft);
@@ -113,7 +119,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
             <CardBody>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
-                  <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Span位置</th><th className="p-2">Chord</th><th className="p-2">Twist</th><th className="p-2">Dihedral</th><th className="p-2">Airfoil</th><th className="p-2">Control surface</th><th className="p-2">操作</th></tr></thead>
+                  <thead className="border-b border-slate-200 text-slate-500"><tr><th className="p-2">Span位置</th><th className="p-2">Chord</th><th className="p-2">Twist</th><th className="p-2">Dihedral</th><th className="p-2">Airfoil</th><th className="p-2">Control surface</th><th className="p-2 text-right">操作</th></tr></thead>
                   <tbody>{draft.sections.map((section, index) => <tr key={section.id} className="border-b border-slate-100">
                     <td className="p-2"><input aria-label={`Section ${index + 1} span position`} type="number" step="0.01" value={section.spanPosition} onChange={(event) => updateSection(index, { spanPosition: Number(event.target.value) })} className="w-24 rounded border border-slate-200 px-2 py-1" /></td>
                     <td className="p-2"><input aria-label={`Section ${index + 1} chord`} type="number" step="0.01" value={section.chord} onChange={(event) => updateSection(index, { chord: Number(event.target.value) })} className="w-24 rounded border border-slate-200 px-2 py-1" /></td>
@@ -121,7 +127,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
                     <td className="p-2"><input aria-label={`Section ${index + 1} dihedral`} type="number" step="0.1" value={section.dihedral} onChange={(event) => updateSection(index, { dihedral: Number(event.target.value) })} className="w-20 rounded border border-slate-200 px-2 py-1" /></td>
                     <td className="p-2"><select aria-label={`Section ${index + 1} airfoil`} value={section.airfoilId} onChange={(event) => updateSection(index, { airfoilId: event.target.value })} className="rounded border border-slate-200 px-2 py-1">{airfoils.map((airfoil) => <option key={airfoil.id} value={airfoil.id}>{airfoil.name}</option>)}</select></td>
                     <td className="p-2"><select aria-label={`Section ${index + 1} control surface`} value={section.controlSurface} onChange={(event) => updateSection(index, { controlSurface: event.target.value })} className="rounded border border-slate-200 px-2 py-1"><option value="none">なし</option><option value="flap">フラップ</option><option value="aileron">エルロン</option></select></td>
-                    <td className="p-2"><div className="flex gap-1"><Button aria-label={`Section ${index + 1} move up`} variant="ghost" disabled={index === 0} onClick={() => moveSection(index, -1)}>↑</Button><Button aria-label={`Section ${index + 1} move down`} variant="ghost" disabled={index === draft.sections.length - 1} onClick={() => moveSection(index, 1)}>↓</Button><Button aria-label={`Section ${index + 1} delete`} variant="ghost" disabled={draft.sections.length <= 2} onClick={() => removeSection(index)}><Trash2 size={16} /></Button></div></td>
+                    <td className="p-2"><div className="flex justify-end gap-1"><Button aria-label={`Section ${index + 1} move up`} variant="ghost" disabled={index === 0} onClick={() => moveSection(index, -1)}>↑</Button><Button aria-label={`Section ${index + 1} move down`} variant="ghost" disabled={index === draft.sections.length - 1} onClick={() => moveSection(index, 1)}>↓</Button><Button aria-label={`Section ${index + 1} delete`} variant="ghost" disabled={draft.sections.length <= 2} onClick={() => removeSection(index)}><Trash2 size={16} /></Button></div></td>
                   </tr>)}</tbody>
                 </table>
               </div>

@@ -35,8 +35,8 @@ function DashboardRoute() {
 }
 
 function AirfoilRoute() {
-  const { document, airfoilRepository, saveAirfoilAnalysis } = useDesignDocument();
-  return <AirfoilPage data={{ airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, getAirfoilReferences: (airfoilId) => listAirfoilReferences(document, airfoilId), saveAnalysis: saveAirfoilAnalysis }} />;
+  const { document, airfoilRepository, saveAirfoilAnalysis, updateAirfoilAnalysisRun, removeAirfoilAnalysisRun } = useDesignDocument();
+  return <AirfoilPage data={{ designName: document.name, airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, getAirfoilReferences: (airfoilId) => listAirfoilReferences(document, airfoilId), saveAnalysis: saveAirfoilAnalysis, updateAnalysisRun: updateAirfoilAnalysisRun, removeAnalysisRun: removeAirfoilAnalysisRun }} />;
 }
 
 function AircraftRoute() {

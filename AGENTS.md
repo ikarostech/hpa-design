@@ -2,7 +2,7 @@
 
 ## Architecture
 
-- Follow the source dependency direction documented in `src/ARCHITECTURE.md`: `app -> pages -> features -> shared`.
+- Follow the source dependency direction documented in `docs/ARCHITECTURE.md`: `app -> pages -> features -> shared`.
 - Use the shared contracts in `src/shared/model` for selection, inspectors, forms, jobs, tables, repositories, result views, and import/export boundaries.
 - Before introducing a new shared interface category beyond the existing `src/shared/model` contracts, explain why the existing contracts are insufficient and ask the user for confirmation before implementing it.
 - Keep domain-specific fields in feature modules. Shared model interfaces must stay domain-agnostic.
@@ -31,6 +31,10 @@
 - Keep feature-specific fixtures, doubles, and contract extensions inside the owning feature. Tests under `shared` must not import feature code.
 - Before adding either a test or production code that assumes a new shared interface category, explain why the existing shared contracts are insufficient and obtain user confirmation.
 - Treat `src/mocks` as temporary application data, not as a source of reusable test fixtures.
+
+## UI design
+
+- Follow the table-management and row-action rules in `docs/UI_DESIGN.md` when implementing or changing application UI.
 
 ## Verification and reporting
 

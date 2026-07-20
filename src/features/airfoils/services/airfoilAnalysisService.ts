@@ -21,10 +21,20 @@ export interface AirfoilAnalysisExecution {
 }
 
 export class AirfoilAnalysisCancelledError extends Error {
-  constructor() {
+  readonly execution: AirfoilAnalysisExecution;
+
+  constructor(execution: AirfoilAnalysisExecution = emptyCancelledExecution()) {
     super("Airfoil analysis was cancelled.");
     this.name = "AirfoilAnalysisCancelledError";
+    this.execution = execution;
   }
+}
+
+function emptyCancelledExecution(): AirfoilAnalysisExecution {
+  return {
+    polars: [],
+    run: { id: "cancelled", name: "Cancelled analysis", airfoilIds: [], polarIds: [], createdAt: new Date(0).toISOString(), reynolds: 0, mach: 0, alphaStart: 0, alphaEnd: 0, alphaStep: 0, status: "needs-review", failures: [] },
+  };
 }
 
 export async function executeAirfoilAnalysis({
@@ -36,26 +46,40 @@ export async function executeAirfoilAnalysis({
   now,
   onProgress,
 }: ExecuteAirfoilAnalysisInput): Promise<AirfoilAnalysisExecution> {
-  throwIfCancelled(signal);
   const polars: AirfoilPolar[] = [];
   const failures: Array<{ airfoilId: string; message: string }> = [];
 
-  for (const airfoil of targets) {
-    throwIfCancelled(signal);
+  for (let index = 0; index < targets.length; index += 1) {
+    const airfoil = targets[index];
+    if (signal.aborted) {
+      throw new AirfoilAnalysisCancelledError(createExecution(targets, settings, polars, [...failures, ...targets.slice(index).map((target) => ({ airfoilId: target.id, message: "Cancelled" }))], createId, now));
+    }
     let polar: AirfoilPolar;
     try {
       polar = await runner.run(airfoil, settings, signal);
     } catch (error) {
-      throwIfCancelled(signal);
+      if (signal.aborted) {
+        throw new AirfoilAnalysisCancelledError(createExecution(targets, settings, polars, [...failures, ...targets.slice(index).map((target) => ({ airfoilId: target.id, message: "Cancelled" }))], createId, now));
+      }
       failures.push({ airfoilId: airfoil.id, message: error instanceof Error ? error.message : "XFOIL解析に失敗しました。" });
       onProgress({ completed: polars.length + failures.length, total: targets.length });
       continue;
     }
-    throwIfCancelled(signal);
     polars.push(polar);
     onProgress({ completed: polars.length, total: targets.length });
   }
 
+  return createExecution(targets, settings, polars, failures, createId, now);
+}
+
+function createExecution(
+  targets: readonly Airfoil[],
+  settings: XfoilAnalysisSettings,
+  polars: readonly AirfoilPolar[],
+  failures: readonly { airfoilId: string; message: string }[],
+  createId: (prefix: "run") => string,
+  now: () => Date,
+): AirfoilAnalysisExecution {
   const createdAt = now().toISOString();
   return {
     polars,
@@ -70,14 +94,10 @@ export async function executeAirfoilAnalysis({
       alphaStart: settings.alphaStart,
       alphaEnd: settings.alphaEnd,
       alphaStep: settings.alphaStep,
+      ncrit: settings.ncrit,
+      iterations: settings.iterations,
       status: failures.length ? "needs-review" : "complete",
-      failures: failures.length ? failures : undefined,
+      failures: failures.length ? [...failures] : undefined,
     },
   };
-}
-
-function throwIfCancelled(signal: AbortSignal) {
-  if (signal.aborted) {
-    throw new AirfoilAnalysisCancelledError();
-  }
 }

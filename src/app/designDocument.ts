@@ -26,6 +26,8 @@ export interface DesignDocumentStore {
   saveAnalysisResult: (result: AnalysisResult) => void;
   updateAircraft: (patch: Partial<EditableAircraftGeometry>) => void;
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
+  updateAirfoilAnalysisRun: (run: AirfoilAnalysisRun) => void;
+  removeAirfoilAnalysisRun: (runId: string) => void;
 }
 
 export interface DesignDocumentState {
@@ -122,6 +124,16 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
     saveAirfoilAnalysis: (run, polars) => {
       update(() => { document = { ...document, airfoilAnalysisRuns: [cloneRun(run), ...document.airfoilAnalysisRuns], polars: [...polars.map(clonePolar), ...document.polars] }; });
     },
+    updateAirfoilAnalysisRun: (run) => update(() => {
+      document = { ...document, airfoilAnalysisRuns: document.airfoilAnalysisRuns.map((item) => item.id === run.id ? cloneRun(run) : item) };
+    }),
+    removeAirfoilAnalysisRun: (runId) => update(() => {
+      const removedRun = document.airfoilAnalysisRuns.find((run) => run.id === runId);
+      if (!removedRun) return;
+      const remainingRuns = document.airfoilAnalysisRuns.filter((run) => run.id !== runId);
+      const retainedPolarIds = new Set([...remainingRuns.flatMap((run) => run.polarIds), ...document.analysisResults.flatMap((result) => result.polarIds ?? [])]);
+      document = { ...document, airfoilAnalysisRuns: remainingRuns, polars: document.polars.filter((polar) => !removedRun.polarIds.includes(polar.id) || retainedPolarIds.has(polar.id)) };
+    }),
   };
 }
 

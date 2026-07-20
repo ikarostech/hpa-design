@@ -179,4 +179,14 @@ describe("createDesignDocumentStore", () => {
       analysisResults: [{ id: "result-1", status: "needs-review", rows: [{ status: "needs-review" }] }],
     });
   });
+
+  it("removes only orphaned polars when an airfoil analysis run is deleted", () => {
+    const polar = { id: "polar-1", airfoilId: "af-1", caseName: "Cruise", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, ncrit: 9, convergedPoints: 2, requestedPoints: 2, status: "complete" as const, points: [] };
+    const run = { id: "run-1", name: "Cruise", airfoilIds: ["af-1"], polarIds: [polar.id], createdAt: "2026-07-15T00:00:00.000Z", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, status: "complete" as const };
+    const store = createDesignDocumentStore({ ...document, polars: [polar], airfoilAnalysisRuns: [run], analysisResults: [{ id: "result-1", caseId: "case-1", clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed" as const, polarIds: [polar.id], rows: [] }] });
+
+    store.removeAirfoilAnalysisRun(run.id);
+
+    expect(store.getDocument()).toMatchObject({ airfoilAnalysisRuns: [], polars: [{ id: polar.id }] });
+  });
 });

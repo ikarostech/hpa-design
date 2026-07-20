@@ -19,6 +19,8 @@ interface DesignDocumentContextValue {
   saveAnalysisResult: (result: AnalysisResult) => void;
   updateAircraft: (patch: Partial<AircraftGeometry>) => void;
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
+  updateAirfoilAnalysisRun: (run: AirfoilAnalysisRun) => void;
+  removeAirfoilAnalysisRun: (runId: string) => void;
 }
 
 const DesignDocumentContext = createContext<DesignDocumentContextValue | null>(null);
@@ -99,6 +101,8 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     saveAnalysisResult: (result) => commit((store) => store.saveAnalysisResult(result)),
     updateAircraft: (patch) => commit((store) => store.updateAircraft(patch)),
     saveAirfoilAnalysis: (run, polars) => commit((store) => store.saveAirfoilAnalysis(run, polars)),
+    updateAirfoilAnalysisRun: (run) => commit((store) => store.updateAirfoilAnalysisRun(run)),
+    removeAirfoilAnalysisRun: (runId) => commit((store) => store.removeAirfoilAnalysisRun(runId)),
   };
 
   return <DesignDocumentContext.Provider value={value}>{children}</DesignDocumentContext.Provider>;
@@ -119,6 +123,8 @@ export function useDesignDocument() {
     analysisCaseRepository: createAnalysisCaseRepository(context),
     updateAircraft: context.updateAircraft,
     saveAirfoilAnalysis: context.saveAirfoilAnalysis,
+    updateAirfoilAnalysisRun: context.updateAirfoilAnalysisRun,
+    removeAirfoilAnalysisRun: context.removeAirfoilAnalysisRun,
     saveAnalysisResult: context.saveAnalysisResult,
   };
 }

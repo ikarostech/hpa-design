@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  AirfoilAnalysisCancelledError,
-  executeAirfoilAnalysis,
-  type AirfoilAnalysisRunner,
-} from "./airfoilAnalysisService";
+import { executeAirfoilAnalysis, type AirfoilAnalysisRunner } from "./airfoilAnalysisService";
 import type { AirfoilPolar } from "../model/types";
 
 const settings = {
@@ -65,7 +61,7 @@ describe("executeAirfoilAnalysis", () => {
     expect(onProgress).toHaveBeenNthCalledWith(2, { completed: 2, total: 2 });
   });
 
-  it("stops between targets when cancelled and never reports a completed run", async () => {
+  it("stops between targets and returns completed polars as a partial run when cancelled", async () => {
     const controller = new AbortController();
     const runner: AirfoilAnalysisRunner = {
       run: vi.fn(async (airfoil) => {
@@ -76,7 +72,7 @@ describe("executeAirfoilAnalysis", () => {
       }),
     };
 
-    await expect(executeAirfoilAnalysis({
+    const execution = executeAirfoilAnalysis({
       targets: airfoils,
       settings,
       runner,
@@ -84,7 +80,13 @@ describe("executeAirfoilAnalysis", () => {
       createId: (prefix) => `${prefix}-1`,
       now: () => new Date("2026-07-15T12:00:00.000Z"),
       onProgress: () => undefined,
-    })).rejects.toBeInstanceOf(AirfoilAnalysisCancelledError);
+    });
+    await expect(execution).rejects.toMatchObject({
+      execution: {
+        polars: [expect.objectContaining({ id: "polar-af-1" })],
+        run: expect.objectContaining({ status: "needs-review", failures: [{ airfoilId: "af-2", message: "Cancelled" }] }),
+      },
+    });
     expect(runner.run).toHaveBeenCalledTimes(1);
   });
 

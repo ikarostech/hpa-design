@@ -1,13 +1,14 @@
-import { FileUp, Plus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AirfoilAnalysisCaseTable } from "../features/airfoils/components/AirfoilAnalysisCaseTable";
 import { AirfoilAnalysisDrawer } from "../features/airfoils/components/AirfoilAnalysisDrawer";
+import { AirfoilAnalysisRunDrawer } from "../features/airfoils/components/AirfoilAnalysisRunDrawer";
 import { AirfoilChartPanel } from "../features/airfoils/components/AirfoilChartPanel";
 import { AirfoilDetailDrawer } from "../features/airfoils/components/AirfoilDetailDrawer";
 import { AirfoilEditorDrawer } from "../features/airfoils/components/AirfoilEditorDrawer";
 import { AirfoilListTable } from "../features/airfoils/components/AirfoilListTable";
 import { AirfoilNextStepsCard } from "../features/airfoils/components/AirfoilNextStepsCard";
+import { airfoilAnalysisExporter } from "../features/airfoils/services/airfoilAnalysisExporter";
 import { useAirfoilWorkspace } from "../features/airfoils/hooks/useAirfoilWorkspace";
 import type { AirfoilWorkspaceData } from "../features/airfoils/model/workspace";
 import { Button } from "../shared/ui/Button";
@@ -18,25 +19,18 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const navigate = useNavigate();
   const { detailInspector, analysisTargets, displayedRuns } = workspace.selection;
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingRunId, setPendingRunId] = useState<string | null>(null);
+  const [detailRunId, setDetailRunId] = useState<string | null>(null);
+  const [nextStepError, setNextStepError] = useState<string | null>(null);
   const pendingAirfoil = workspace.airfoils.find((airfoil) => airfoil.id === pendingDeleteId);
   const pendingReferences = pendingAirfoil ? workspace.referencesForAirfoil(pendingAirfoil.id) : [];
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
         <div>
           <h1 className="text-2xl font-semibold text-slate-950">翼型ライブラリ</h1>
           <p className="mt-1 text-sm text-slate-500">翼型の比較、Polar設定、解析結果を確認します。</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => workspace.openEditor("create-naca")}>
-            <Plus size={16} />
-            NACA生成
-          </Button>
-          <Button variant="secondary" onClick={() => workspace.openEditor("import-dat")}>
-            <FileUp size={16} />
-            .dat
-          </Button>
         </div>
       </div>
 
@@ -48,6 +42,8 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
           airfoilPolars={[...workspace.polars]}
           detailInspector={detailInspector}
           analysisTargets={analysisTargets}
+          onCreateNaca={() => workspace.openEditor("create-naca")}
+          onImportDat={() => workspace.openEditor("import-dat")}
           onEdit={(airfoilId) => workspace.openEditor("edit", airfoilId)}
           onRemove={setPendingDeleteId}
         />
@@ -55,9 +51,18 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
           runs={[...workspace.analysisRuns]}
           airfoils={[...workspace.airfoils]}
           displayedRuns={displayedRuns}
+          comparisonLimitReached={workspace.comparisonLimitReached}
+          maxComparisonRuns={workspace.maxComparisonRuns}
           onCreateRun={workspace.openAnalysisDrawer}
+          onOpenDetail={(run) => setDetailRunId(run.id)}
+          onRetryRun={workspace.retryFailedRun}
+          onDuplicateRun={workspace.duplicateAnalysisRun}
+          onRenameRun={workspace.renameAnalysisRun}
+          onDeleteRun={(run) => setPendingRunId(run.id)}
+          onExportRun={(run, format) => void exportRun(data.designName, run, workspace.polars, format)}
         />
-        <AirfoilNextStepsCard onAssignToWing={() => navigate("/aircraft")} onAddAnalysisCase={() => navigate("/analysis")} onCompareAirfoils={workspace.compareAllRuns} />
+        <AirfoilNextStepsCard onAssignToWing={() => workspace.selected ? navigate(`/aircraft?airfoilId=${encodeURIComponent(workspace.selected.id)}`) : setNextStepError("翼型を選択してください。")} onAddAnalysisCase={() => workspace.polars.length ? navigate("/analysis") : setNextStepError("先に少なくとも1件のPolar解析を完了してください。")} onCompareAirfoils={workspace.compareAllRuns} />
+        {nextStepError ? <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{nextStepError}</p> : null}
       </div>
 
       <AirfoilDetailDrawer
@@ -65,6 +70,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
         inspector={detailInspector}
         polarReady={workspace.selectedHasPolar}
         onEdit={() => workspace.openEditor("edit", workspace.selected.id)}
+        onReapplyCoordinates={() => workspace.openEditor("reapply-dat", workspace.selected.id)}
       />
       <AirfoilEditorDrawer
         mode={workspace.editorMode}
@@ -80,9 +86,22 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
         analysisTargets={analysisTargets}
         targetNames={workspace.selectedTargetNames}
         jobController={workspace.analysisJobController}
+        initialSettings={workspace.drawerSettings}
         onClose={workspace.closeAnalysisDrawer}
       />
+      <AirfoilAnalysisRunDrawer open={detailRunId !== null} run={workspace.analysisRuns.find((run) => run.id === detailRunId) ?? null} airfoils={workspace.airfoils} onClose={() => setDetailRunId(null)} />
       {pendingAirfoil ? <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">{pendingAirfoil.name} を削除しますか？</h2></CardHeader><CardBody className="space-y-4">{pendingReferences.length ? <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"><p className="font-medium">この翼型は次から参照されています。削除できません。</p><ul className="mt-2 list-disc pl-5">{pendingReferences.map((reference) => <li key={reference}>{reference}</li>)}</ul></div> : <p className="text-sm text-slate-600">参照元はありません。この操作は元に戻せません。</p>}{workspace.removalError ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{workspace.removalError}</p> : null}<div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => { workspace.clearRemovalError(); setPendingDeleteId(null); }}>キャンセル</Button>{!pendingReferences.length ? <Button variant="destructive" onClick={() => void workspace.removeAirfoil(pendingAirfoil.id).then((removed) => { if (removed) setPendingDeleteId(null); })}>削除する</Button> : null}</div></CardBody></Card></div> : null}
+      {pendingRunId ? <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">解析 run を削除しますか？</h2></CardHeader><CardBody className="space-y-4"><p className="text-sm text-slate-600">この run だけが参照する Polar も削除されます。解析結果が参照する Polar は保持されます。</p><div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setPendingRunId(null)}>キャンセル</Button><Button variant="destructive" onClick={() => { workspace.removeAnalysisRun(pendingRunId); setPendingRunId(null); }}>削除する</Button></div></CardBody></Card></div> : null}
     </div>
   );
+}
+
+async function exportRun(designName: string, run: Parameters<typeof airfoilAnalysisExporter.export>[0]["run"], polars: readonly import("../features/airfoils/model/types").AirfoilPolar[], format: "csv" | "json") {
+  const file = format === "csv" ? await airfoilAnalysisExporter.export({ designName, run, polars }) : await airfoilAnalysisExporter.exportJson({ designName, run, polars });
+  const url = URL.createObjectURL(new Blob([file.content], { type: file.mimeType }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }

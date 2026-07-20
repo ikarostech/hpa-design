@@ -2,6 +2,7 @@ import { parsePolarRows, WebXFOIL } from "webxfoil-wasm";
 import xfoilModuleUrl from "webxfoil-wasm/dist/xfoil.js?url";
 import xfoilWasmUrl from "webxfoil-wasm/dist/xfoil.wasm?url";
 import type { XfoilAnalysisSettings } from "../model/analysis";
+import { validateXfoilAnalysisSettings } from "../model/analysisValidation";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 
 interface RunRequest {
@@ -37,6 +38,10 @@ self.addEventListener("message", async (event: MessageEvent<RunRequest>) => {
 });
 
 async function runXfoil({ airfoil, settings, polarId }: RunRequest): Promise<AirfoilPolar> {
+  const validation = validateXfoilAnalysisSettings(settings);
+  if (!validation.valid) {
+    throw new Error(Object.values(validation.errors).join(" "));
+  }
   const alphas = makeAlphaSweep(settings.alphaStart, settings.alphaEnd, settings.alphaStep);
   const xfoil = await WebXFOIL.load({ moduleUrl: xfoilModuleUrl, wasmUrl: xfoilWasmUrl });
   const polarPath = "/work/polar.dat";

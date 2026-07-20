@@ -35,6 +35,8 @@ export interface AirfoilAnalysisRun {
   alphaStart: number;
   alphaEnd: number;
   alphaStep: number;
+  ncrit?: number;
+  iterations?: number;
   status: AirfoilAnalysisRunStatus;
   failures?: Array<{ airfoilId: string; message: string }>;
 }

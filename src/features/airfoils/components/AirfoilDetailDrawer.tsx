@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil, X } from "lucide-react";
+import { ArrowLeft, FileUp, Pencil, X } from "lucide-react";
 import type { InspectorController } from "@/shared/model";
 import type { Airfoil } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
@@ -11,9 +11,10 @@ interface AirfoilDetailDrawerProps {
   inspector: InspectorController<string>;
   polarReady: boolean;
   onEdit: () => void;
+  onReapplyCoordinates: () => void;
 }
 
-export function AirfoilDetailDrawer({ airfoil, inspector, polarReady, onEdit }: AirfoilDetailDrawerProps) {
+export function AirfoilDetailDrawer({ airfoil, inspector, polarReady, onEdit, onReapplyCoordinates }: AirfoilDetailDrawerProps) {
   if (!inspector.state.open) {
     return null;
   }
@@ -36,6 +37,10 @@ export function AirfoilDetailDrawer({ airfoil, inspector, polarReady, onEdit }: 
             <Button variant="secondary" size="sm" onClick={onEdit}>
               <Pencil size={14} />
               編集
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onReapplyCoordinates}>
+              <FileUp size={14} />
+              座標を更新
             </Button>
             <Button variant="ghost" size="icon" aria-label="詳細を閉じる" onClick={inspector.close}>
               <X size={18} />
