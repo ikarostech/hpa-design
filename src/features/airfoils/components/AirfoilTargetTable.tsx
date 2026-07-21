@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import { Badge } from "../../../shared/ui/Badge";
+import { TableActionCell, TableActionHeader } from "../../../shared/ui/table/TableActionColumn";
 
 interface AirfoilTargetTableProps {
   airfoils: Airfoil[];
@@ -21,7 +22,7 @@ export function AirfoilTargetTable({
   actions,
 }: AirfoilTargetTableProps) {
   const headings = actions
-    ? ["解析対象", "翼型", "厚み比", "最大キャンバー", "LE半径", "TE厚", "状態", ""]
+    ? ["解析対象", "翼型", "厚み比", "最大キャンバー", "LE半径", "TE厚", "状態", null]
     : ["解析対象", "翼型", "厚み比", "最大キャンバー", "状態"];
 
   return (
@@ -29,7 +30,9 @@ export function AirfoilTargetTable({
       <table className={`w-full ${minWidth} text-left text-sm`}>
         <thead className="text-xs uppercase text-slate-500">
           <tr>
-            {headings.map((heading) => <th key={heading} className="px-2 py-2">{heading}</th>)}
+            {headings.map((heading, index) => heading === null
+              ? <TableActionHeader key="actions" />
+              : <th key={`${heading}-${index}`} className="px-2 py-2">{heading}</th>)}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -63,7 +66,7 @@ export function AirfoilTargetTable({
                   {hasPolar ? <Badge tone="green">Polarあり</Badge> : hasStalePolar ? <Badge tone="amber">Polar要確認</Badge> : <Badge tone="amber">未解析</Badge>}
                 </td>
                 {actions ? (
-                  <td className="px-2 py-3">{actions(airfoil, { hasPolar, isSelected })}</td>
+                  <TableActionCell>{actions(airfoil, { hasPolar, isSelected })}</TableActionCell>
                 ) : null}
               </tr>
             );

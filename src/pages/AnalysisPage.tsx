@@ -13,6 +13,7 @@ import type { EntityRepository, Job, ResultViewController, SingleSelection } fro
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
+import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 import { MetricCard } from "../shared/ui/MetricCard";
 
 interface AnalysisPageProps {
@@ -199,7 +200,13 @@ export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseR
       </div>
 
       {editorMode ? <CaseEditor draft={draft} errors={errors} title={editorMode === "create" ? "解析ケースを新規作成" : "解析ケースを編集"} onChange={setDraft} onSave={() => void saveCase()} onClose={() => setEditorMode(null)} /> : null}
-      {pendingDeleteId ? <DeleteConfirmation hasResult={results.some((result) => result.caseId === pendingDeleteId)} onConfirm={() => void deleteCase(pendingDeleteId)} onCancel={() => setPendingDeleteId(null)} /> : null}
+      <DeleteConfirmationDialog
+        open={pendingDeleteId !== null}
+        title="解析ケースを削除しますか？"
+        description={results.some((result) => result.caseId === pendingDeleteId) ? "このケースの保存済み結果も削除されます。" : "この操作は元に戻せません。"}
+        onConfirm={() => { if (pendingDeleteId) void deleteCase(pendingDeleteId); }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }
@@ -214,10 +221,6 @@ function CaseEditor({ draft, errors, title, onChange, onSave, onClose }: { draft
     {numberInput("alphaStart", "α 開始 (°)")}{numberInput("alphaEnd", "α 終了 (°)")}{numberInput("alphaStep", "α 刻み (°)")}{numberInput("speed", "速度 (m/s)")}{numberInput("altitude", "高度 (m)")}{numberInput("reynolds", "Reynolds 数")}
     <div className="flex justify-end gap-2 md:col-span-2"><Button variant="secondary" onClick={onClose}>キャンセル</Button><Button onClick={onSave}>保存</Button></div>
   </CardBody></Card></div>;
-}
-
-function DeleteConfirmation({ hasResult, onConfirm, onCancel }: { hasResult: boolean; onConfirm: () => void; onCancel: () => void }) {
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">解析ケースを削除しますか？</h2></CardHeader><CardBody className="space-y-4"><p className="text-sm text-slate-600">{hasResult ? "このケースの保存済み結果も削除されます。" : "この操作は元に戻せません。"}</p><div className="flex justify-end gap-2"><Button variant="secondary" onClick={onCancel}>キャンセル</Button><Button variant="destructive" onClick={onConfirm}>削除する</Button></div></CardBody></Card></div>;
 }
 
 function AnalysisResultComparison({ results, cases, resultView }: { results: readonly AnalysisResult[]; cases: readonly AnalysisCase[]; resultView: ResultViewController<string> }) {

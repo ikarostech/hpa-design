@@ -11,8 +11,7 @@ import { AirfoilNextStepsCard } from "../features/airfoils/components/AirfoilNex
 import { airfoilAnalysisExporter } from "../features/airfoils/services/airfoilAnalysisExporter";
 import { useAirfoilWorkspace } from "../features/airfoils/hooks/useAirfoilWorkspace";
 import type { AirfoilWorkspaceData } from "../features/airfoils/model/workspace";
-import { Button } from "../shared/ui/Button";
-import { Card, CardBody, CardHeader } from "../shared/ui/Card";
+import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 
 export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const workspace = useAirfoilWorkspace(data);
@@ -90,8 +89,25 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
         onClose={workspace.closeAnalysisDrawer}
       />
       <AirfoilAnalysisRunDrawer open={detailRunId !== null} run={workspace.analysisRuns.find((run) => run.id === detailRunId) ?? null} airfoils={workspace.airfoils} onClose={() => setDetailRunId(null)} />
-      {pendingAirfoil ? <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">{pendingAirfoil.name} を削除しますか？</h2></CardHeader><CardBody className="space-y-4">{pendingReferences.length ? <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"><p className="font-medium">この翼型は次から参照されています。削除できません。</p><ul className="mt-2 list-disc pl-5">{pendingReferences.map((reference) => <li key={reference}>{reference}</li>)}</ul></div> : <p className="text-sm text-slate-600">参照元はありません。この操作は元に戻せません。</p>}{workspace.removalError ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{workspace.removalError}</p> : null}<div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => { workspace.clearRemovalError(); setPendingDeleteId(null); }}>キャンセル</Button>{!pendingReferences.length ? <Button variant="destructive" onClick={() => void workspace.removeAirfoil(pendingAirfoil.id).then((removed) => { if (removed) setPendingDeleteId(null); })}>削除する</Button> : null}</div></CardBody></Card></div> : null}
-      {pendingRunId ? <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/35 p-4"><Card className="w-full max-w-md"><CardHeader><h2 className="font-semibold text-slate-950">解析 run を削除しますか？</h2></CardHeader><CardBody className="space-y-4"><p className="text-sm text-slate-600">この run だけが参照する Polar も削除されます。解析結果が参照する Polar は保持されます。</p><div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setPendingRunId(null)}>キャンセル</Button><Button variant="destructive" onClick={() => { workspace.removeAnalysisRun(pendingRunId); setPendingRunId(null); }}>削除する</Button></div></CardBody></Card></div> : null}
+      <DeleteConfirmationDialog
+        open={pendingAirfoil !== undefined}
+        title={pendingAirfoil ? `${pendingAirfoil.name} を削除しますか？` : "翼型を削除しますか？"}
+        description="参照元はありません。この操作は元に戻せません。"
+        blockedReason={pendingReferences.length ? <><p className="font-medium">この翼型は次から参照されています。削除できません。</p><ul className="mt-2 list-disc pl-5">{pendingReferences.map((reference) => <li key={reference}>{reference}</li>)}</ul></> : undefined}
+        error={workspace.removalError ?? undefined}
+        onCancel={() => { workspace.clearRemovalError(); setPendingDeleteId(null); }}
+        onConfirm={() => {
+          if (!pendingAirfoil) return;
+          void workspace.removeAirfoil(pendingAirfoil.id).then((removed) => { if (removed) setPendingDeleteId(null); });
+        }}
+      />
+      <DeleteConfirmationDialog
+        open={pendingRunId !== null}
+        title="解析 run を削除しますか？"
+        description="この run だけが参照する Polar も削除されます。解析結果が参照する Polar は保持されます。"
+        onCancel={() => setPendingRunId(null)}
+        onConfirm={() => { if (pendingRunId) { workspace.removeAnalysisRun(pendingRunId); setPendingRunId(null); } }}
+      />
     </div>
   );
 }

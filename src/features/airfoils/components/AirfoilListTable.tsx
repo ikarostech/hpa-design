@@ -1,8 +1,9 @@
-import { FileUp, Info, Pencil, Plus, Trash2 } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import type { InspectorController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
+import { RowActions } from "../../../shared/ui/table/RowActions";
 import { AirfoilTargetTable } from "./AirfoilTargetTable";
 
 interface AirfoilListTableProps {
@@ -45,11 +46,12 @@ export function AirfoilListTable({
           selectedId={detailInspector.state.targetId ?? undefined}
           analysisTargets={analysisTargets}
           actions={(airfoil, { isSelected }) => (
-            <div className="flex justify-end gap-1">
-              <Button variant={isSelected && detailInspector.state.open ? "primary" : "ghost"} size="icon" aria-label={`${airfoil.name}を詳細表示`} title="詳細" onClick={() => detailInspector.openDetail(airfoil.id)}><Info size={15} /></Button>
-              <Button variant="ghost" size="icon" aria-label={`${airfoil.name}を編集`} title="編集" onClick={() => onEdit(airfoil.id)}><Pencil size={15} /></Button>
-              <Button variant="destructive" size="icon" aria-label={`${airfoil.name}を削除`} title="削除" onClick={() => onRemove(airfoil.id)}><Trash2 size={15} /></Button>
-            </div>
+            <RowActions
+              entityLabel={airfoil.name}
+              detail={{ active: isSelected && detailInspector.state.open, onAction: () => detailInspector.openDetail(airfoil.id) }}
+              edit={{ onAction: () => onEdit(airfoil.id) }}
+              delete={{ onAction: () => onRemove(airfoil.id) }}
+            />
           )}
         /> : <div className="rounded-md border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">翼型がありません。NACA 生成または .dat 取込で翼型を追加してください。</div>}
       </CardBody>
