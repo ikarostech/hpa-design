@@ -4,7 +4,7 @@ import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/ty
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 
 export interface DesignDocument {
-  schemaVersion: 1;
+  schemaVersion: 2;
   name: string;
   airfoils: readonly Airfoil[];
   polars: readonly AirfoilPolar[];
@@ -46,7 +46,7 @@ export class AirfoilReferenceError extends Error {
   }
 }
 
-type EditableAircraftGeometry = Pick<AircraftGeometry, "span" | "rootChord" | "tipChord" | "twist" | "dihedral" | "sweep" | "incidence" | "sections" | "staticMargin">;
+type EditableAircraftGeometry = Pick<AircraftGeometry, "incidence" | "sections" | "staticMargin">;
 
 export function createDesignDocumentStore(initialDocument: DesignDocument, { saved = true }: { saved?: boolean } = {}): DesignDocumentStore {
   let document = cloneDocument(initialDocument);
@@ -118,8 +118,19 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
       };
     }),
     updateAircraft: (patch) => update(() => {
+      const previousAircraft = document.aircraft;
       const nextAircraft = { ...document.aircraft, ...patch, sections: patch.sections ?? document.aircraft.sections };
-      document = { ...document, aircraft: applyAircraftDraft(createAircraftDraft(nextAircraft), document.aircraft) };
+      const aircraft = applyAircraftDraft(createAircraftDraft(nextAircraft), document.aircraft);
+      const geometryChanged = aircraftAnalysisInputsChanged(previousAircraft, aircraft);
+      const affectedCaseIds = new Set(document.analysisCases.filter((analysisCase) => analysisCase.geometryId === aircraft.id).map((analysisCase) => analysisCase.id));
+      document = {
+        ...document,
+        aircraft,
+        analysisCases: geometryChanged ? document.analysisCases.map((analysisCase) => affectedCaseIds.has(analysisCase.id) ? { ...analysisCase, status: "needs-review" } : analysisCase) : document.analysisCases,
+        analysisResults: geometryChanged ? document.analysisResults.map((result) => affectedCaseIds.has(result.caseId)
+          ? { ...result, status: "needs-review", rows: result.rows.map((row) => ({ ...row, status: "needs-review" })) }
+          : result) : document.analysisResults,
+      };
     }),
     saveAirfoilAnalysis: (run, polars) => {
       update(() => { document = { ...document, airfoilAnalysisRuns: [cloneRun(run), ...document.airfoilAnalysisRuns], polars: [...polars.map(clonePolar), ...document.polars] }; });
@@ -166,6 +177,10 @@ function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
     || left.altitude !== right.altitude
     || left.reynolds !== right.reynolds
     || left.geometryId !== right.geometryId;
+}
+
+function aircraftAnalysisInputsChanged(left: AircraftGeometry, right: AircraftGeometry) {
+  return left.incidence !== right.incidence || JSON.stringify(left.sections) !== JSON.stringify(right.sections);
 }
 
 function sameCoordinates(left: Airfoil, right: Airfoil) {

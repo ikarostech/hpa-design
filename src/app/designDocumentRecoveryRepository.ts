@@ -1,6 +1,6 @@
 import type { EntityRepository } from "../shared/model";
 import type { DesignDocument } from "./designDocument";
-import { validateDesignDocument } from "./designDocumentTransfer";
+import { migrateDesignDocument, validateDesignDocument } from "./designDocumentTransfer";
 
 export const WORKING_DOCUMENT_ID = "hpa-design:working-document";
 
@@ -43,7 +43,9 @@ export function readDesignDocumentRecoveryState(storage: Storage): RecoveredDesi
     if (!content) return null;
     const value: unknown = JSON.parse(content);
     const recovered = toRecoveredDocument(value);
-    return recovered && validateDesignDocument(recovered.document).valid ? recovered : discardRecovery(storage);
+    if (!recovered) return discardRecovery(storage);
+    const document = migrateDesignDocument(recovered.document);
+    return validateDesignDocument(document).valid ? { ...recovered, document: document as DesignDocument } : discardRecovery(storage);
   } catch {
     return discardRecovery(storage);
   }

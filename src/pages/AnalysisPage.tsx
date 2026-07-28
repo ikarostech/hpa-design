@@ -8,6 +8,7 @@ import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/ty
 import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../features/analysis/services/analysisExecutionService";
 import { formatAnalysisNumber } from "../features/analysis/services/analysisResultExporter";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
+import type { AirfoilPolar } from "../features/airfoils/model/types";
 import { useJobs } from "../shared/jobs/JobProvider";
 import type { EntityRepository, Job, ResultViewController, SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
@@ -20,7 +21,7 @@ interface AnalysisPageProps {
   aircraft: AircraftGeometry;
   cases: readonly AnalysisCase[];
   results: readonly AnalysisResult[];
-  polarIds: readonly string[];
+  polars: readonly AirfoilPolar[];
   analysisCaseRepository: EntityRepository<AnalysisCase, string>;
   saveAnalysisResult: (result: AnalysisResult) => void;
 }
@@ -28,7 +29,7 @@ interface AnalysisPageProps {
 type AnalysisJob = Job<string, AnalysisResult, { caseId: string }>;
 type EditorMode = "create" | "edit" | null;
 
-export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
+export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const jobs = useJobs();
@@ -120,7 +121,7 @@ export function AnalysisPage({ aircraft, cases, results, polarIds, analysisCaseR
       const result = await executeAnalysisCase({
         analysisCase: selected,
         aircraft,
-        polarIds,
+        polars,
         signal: controller.signal,
         createId: () => createId("analysis-result"),
         onProgress: (progress) => jobs.updateJob<AnalysisJob>(jobId, { progress }),

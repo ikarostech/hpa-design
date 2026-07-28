@@ -1,10 +1,13 @@
 import type { AircraftGeometry } from "../../aircraft/model/types";
+import type { AirfoilPolar } from "../../airfoils/model/types";
 import type { AnalysisCase, AnalysisResult } from "../model/types";
+import { createWingAnalysisMesh, type WingAnalysisMesh } from "./wingAnalysisMesh";
 
 export interface ExecuteAnalysisCaseInput {
   analysisCase: AnalysisCase;
   aircraft: AircraftGeometry;
   polarIds?: readonly string[];
+  polars?: readonly AirfoilPolar[];
   signal?: AbortSignal;
   createId: (prefix: "analysis-result") => string;
   onProgress: (progress: { completed: number; total: number; message: string }) => void;
@@ -21,6 +24,7 @@ export async function executeAnalysisCase({
   analysisCase,
   aircraft,
   polarIds = [],
+  polars = [],
   signal = new AbortController().signal,
   createId,
   onProgress,
@@ -28,11 +32,15 @@ export async function executeAnalysisCase({
   throwIfCancelled(signal);
   const angles = createSweep(analysisCase.alphaStart, analysisCase.alphaEnd, analysisCase.alphaStep);
   const rows: AnalysisResult["rows"] = [];
+  const mesh = createWingAnalysisMesh(aircraft.sections);
+  const selectedPolars = selectSectionPolars(aircraft, polars, analysisCase.reynolds);
 
   for (const alpha of angles) {
     throwIfCancelled(signal);
     await yieldToUserInput();
-    const coefficients = calculateFiniteWingCoefficients(alpha, analysisCase.method, aircraft.aspectRatio);
+    const coefficients = mesh.strips.length
+      ? calculateSectionWingCoefficients(alpha, analysisCase.method, aircraft, mesh, selectedPolars)
+      : calculateFiniteWingCoefficients(alpha + aircraft.incidence, analysisCase.method, aircraft.aspectRatio);
     rows.push({
       caseId: analysisCase.id,
       alpha,
@@ -55,8 +63,75 @@ export async function executeAnalysisCase({
     caseSnapshot: { ...analysisCase },
     aircraftSnapshot: { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })) },
     airfoilIds: Array.from(new Set(aircraft.sections.map((section) => section.airfoilId))),
-    polarIds: [...polarIds],
+    polarIds: polarIds.length ? [...polarIds] : Array.from(new Set(Array.from(selectedPolars.values(), (polar) => polar.id))),
     rows,
+  };
+}
+
+function calculateSectionWingCoefficients(
+  alpha: number,
+  method: AnalysisCase["method"],
+  aircraft: AircraftGeometry,
+  mesh: WingAnalysisMesh,
+  polars: Map<string, AirfoilPolar>,
+) {
+  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
+  let sectionCl = 0;
+  let profileCd = 0;
+  let sectionCm = 0;
+
+  for (const strip of mesh.strips) {
+    const localAlpha = alpha + aircraft.incidence + strip.twist;
+    const root = coefficientsAtAlpha(polars.get(strip.airfoilRootId), localAlpha, method);
+    const tip = coefficientsAtAlpha(polars.get(strip.airfoilTipId), localAlpha, method);
+    const coefficients = {
+      cl: interpolate(root.cl, tip.cl, strip.airfoilInterpolation),
+      cd: interpolate(root.cd, tip.cd, strip.airfoilInterpolation),
+      cm: interpolate(root.cm, tip.cm, strip.airfoilInterpolation),
+    };
+    const geometryFactor = Math.cos(strip.quarterChordSweep) ** 2 * Math.cos(strip.dihedral) ** 2;
+    sectionCl += coefficients.cl * geometryFactor * strip.halfArea;
+    profileCd += coefficients.cd * strip.halfArea;
+    sectionCm += coefficients.cm * strip.halfArea;
+  }
+
+  const oswaldEfficiency = method === "LLT" ? 0.9 : 0.95;
+  const finiteWingFactor = 1 / (1 + 2 / Math.max(oswaldEfficiency * aircraft.aspectRatio, 0.01));
+  const methodFactor = method === "LLT" ? 1 : 1.015;
+  const cl = safeDivide(sectionCl, totalHalfArea) * finiteWingFactor * methodFactor;
+  const cd = safeDivide(profileCd, totalHalfArea) + cl ** 2 / (Math.PI * oswaldEfficiency * Math.max(aircraft.aspectRatio, 0.01));
+  const cm = safeDivide(sectionCm, totalHalfArea);
+  return { cl: round(cl, 4), cd: round(cd, 5), cm: round(cm, 4) };
+}
+
+function selectSectionPolars(aircraft: AircraftGeometry, polars: readonly AirfoilPolar[], reynolds: number) {
+  const selected = new Map<string, AirfoilPolar>();
+  for (const airfoilId of new Set(aircraft.sections.map((section) => section.airfoilId))) {
+    const candidates = polars
+      .filter((polar) => polar.airfoilId === airfoilId && polar.status === "complete" && polar.points.length > 0)
+      .sort((left, right) => Math.abs(left.reynolds - reynolds) - Math.abs(right.reynolds - reynolds));
+    if (candidates[0]) selected.set(airfoilId, candidates[0]);
+  }
+  return selected;
+}
+
+function coefficientsAtAlpha(polar: AirfoilPolar | undefined, alpha: number, method: AnalysisCase["method"]) {
+  if (!polar?.points.length) {
+    const slope = method === "LLT" ? 2 * Math.PI : 2.08 * Math.PI;
+    const cl = slope * alpha * Math.PI / 180;
+    return { cl, cd: 0.018 + cl ** 2 * 0.01, cm: method === "LLT" ? -0.045 : -0.04 };
+  }
+  const points = [...polar.points].sort((left, right) => left.alpha - right.alpha);
+  if (alpha <= points[0].alpha) return points[0];
+  if (alpha >= points[points.length - 1].alpha) return points[points.length - 1];
+  const upperIndex = points.findIndex((point) => point.alpha >= alpha);
+  const lower = points[upperIndex - 1];
+  const upper = points[upperIndex];
+  const ratio = safeDivide(alpha - lower.alpha, upper.alpha - lower.alpha);
+  return {
+    cl: interpolate(lower.cl, upper.cl, ratio),
+    cd: interpolate(lower.cd, upper.cd, ratio),
+    cm: interpolate(lower.cm, upper.cm, ratio),
   };
 }
 
@@ -90,6 +165,14 @@ function throwIfCancelled(signal: AbortSignal) {
 
 function round(value: number, digits: number) {
   return Number(value.toFixed(digits));
+}
+
+function interpolate(start: number, end: number, ratio: number) {
+  return start + (end - start) * ratio;
+}
+
+function safeDivide(numerator: number, denominator: number) {
+  return denominator === 0 ? 0 : numerator / denominator;
 }
 
 function yieldToUserInput() {

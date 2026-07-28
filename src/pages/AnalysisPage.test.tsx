@@ -14,7 +14,7 @@ const cases = [
 describe("AnalysisPage", () => {
   it("updates the visible settings when a different analysis case is selected", async () => {
     const user = userEvent.setup();
-    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polarIds={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
     await user.click(screen.getByRole("button", { name: "解析ケース Climb: VLM, 0° to 12° (2°刻み)" }));
 

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createDesignDocumentStore } from "./designDocument";
 
+const sectionDefaults = { xOffset: 0, chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine" as const, spanwiseDistribution: "uniform" as const };
+const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1" };
+const tipSection = { ...sectionDefaults, id: "section-tip", yPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1" };
+
 const document = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   name: "LongRange UAV",
   airfoils: [
     { id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1.5, trailingEdgeThickness: 0, coordinates: [] },
@@ -23,7 +27,7 @@ const document = {
     aspectRatio: 16 / 3,
     mac: 0.78,
     staticMargin: 8,
-    sections: [],
+    sections: [rootSection, tipSection],
   },
   analysisCases: [],
   analysisResults: [],
@@ -33,7 +37,7 @@ describe("createDesignDocumentStore", () => {
   it("marks an edit as unsaved until the document is marked saved", () => {
     const store = createDesignDocumentStore(document);
 
-    store.updateAircraft({ span: 6 });
+    store.updateAircraft({ incidence: 1 });
 
     expect(store.getState()).toMatchObject({ revision: 1, savedRevision: 0, isDirty: true });
 
@@ -67,10 +71,13 @@ describe("createDesignDocumentStore", () => {
     expect(store.getState()).toMatchObject({ revision: 0, savedRevision: -1, isDirty: true });
   });
 
-  it("derives wing metrics from editable geometry", () => {
+  it("derives wing metrics from edited sections", () => {
     const store = createDesignDocumentStore(document);
 
-    store.updateAircraft({ span: 6, rootChord: 1.2, tipChord: 0.6 });
+    store.updateAircraft({ sections: [
+      { ...rootSection, chord: 1.2 },
+      { ...tipSection, yPosition: 3, chord: 0.6 },
+    ] });
 
     expect(store.getDocument().aircraft).toMatchObject({
       span: 6,
@@ -89,17 +96,14 @@ describe("createDesignDocumentStore", () => {
         span: 4,
         rootChord: 1,
         tipChord: 0.5,
-        sections: [
-          { id: "section-root", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
-          { id: "section-tip", spanPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
-        ],
+        sections: [rootSection, tipSection],
       },
     });
 
     store.updateAircraft({
       sections: [
-        { id: "section-root", spanPosition: 0, chord: 1.2, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
-        { id: "section-tip", spanPosition: 2, chord: 0.6, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+        { ...rootSection, chord: 1.2 },
+        { ...tipSection, chord: 0.6 },
       ],
     });
 
@@ -109,6 +113,22 @@ describe("createDesignDocumentStore", () => {
       wingArea: 3.6,
       aspectRatio: 4.444,
       mac: 0.933,
+    });
+  });
+
+  it("marks aircraft analysis results stale after wing geometry changes", () => {
+    const analysisCase = { id: "case-1", name: "Cruise", method: "LLT" as const, alphaStart: 0, alphaEnd: 4, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId: document.aircraft.id, status: "completed" as const };
+    const store = createDesignDocumentStore({
+      ...document,
+      analysisCases: [analysisCase],
+      analysisResults: [{ id: "result-1", caseId: analysisCase.id, clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed", rows: [{ caseId: analysisCase.id, alpha: 0, cl: 0, cd: 0.02, cm: 0, ld: 0, status: "completed" }] }],
+    });
+
+    store.updateAircraft({ sections: [rootSection, { ...tipSection, xOffset: 0.2 }] });
+
+    expect(store.getDocument()).toMatchObject({
+      analysisCases: [{ id: analysisCase.id, status: "needs-review" }],
+      analysisResults: [{ id: "result-1", status: "needs-review", rows: [{ status: "needs-review" }] }],
     });
   });
 
@@ -163,7 +183,7 @@ describe("createDesignDocumentStore", () => {
     const store = createDesignDocumentStore({
       ...document,
       airfoils: [referencedAirfoil],
-      aircraft: { ...document.aircraft, sections: [{ id: "root", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" }] },
+      aircraft: { ...document.aircraft, sections: [{ ...rootSection, id: "root" }] },
       polars: [{ id: "polar-1", airfoilId: "af-1", caseName: "Cruise", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, ncrit: 9, convergedPoints: 2, requestedPoints: 2, status: "complete", points: [] }],
       airfoilAnalysisRuns: [{ id: "run-1", name: "Cruise", airfoilIds: ["af-1"], polarIds: ["polar-1"], createdAt: "2026-07-15T00:00:00.000Z", reynolds: 300000, mach: 0.04, alphaStart: -2, alphaEnd: 8, alphaStep: 2, status: "complete" }],
       analysisResults: [{ id: "result-1", caseId: "case-1", clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed", airfoilIds: ["af-1"], polarIds: ["polar-1"], rows: [{ caseId: "case-1", alpha: 0, cl: 0, cd: 0.02, cm: 0, ld: 0, status: "completed" }] }],

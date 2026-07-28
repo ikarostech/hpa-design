@@ -1,11 +1,19 @@
+export type PanelDistribution = "uniform" | "cosine" | "sine" | "inverse-sine";
+
 export interface WingSection {
   id: string;
-  spanPosition: number;
+  yPosition: number;
   chord: number;
+  xOffset: number;
   twist: number;
   dihedral: number;
   airfoilId: string;
-  controlSurface: string;
+  chordwisePanels: number;
+  spanwisePanels: number;
+  chordwiseDistribution: PanelDistribution;
+  spanwiseDistribution: PanelDistribution;
+  /** Preserved while control-surface geometry is moved to an explicit model. */
+  controlSurface?: string;
 }
 
 export interface AircraftGeometry {

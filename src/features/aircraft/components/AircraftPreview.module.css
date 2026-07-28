@@ -6,62 +6,97 @@
   background: oklch(0.129 0.042 264.695);
 }
 
+.empty {
+  display: grid;
+  min-height: 18rem;
+  place-items: center;
+  border-radius: var(--radius);
+  background: oklch(0.129 0.042 264.695);
+  color: oklch(0.704 0.04 256.788);
+  font-size: 0.875rem;
+}
+
 .gridLine {
   fill: none;
   stroke: oklch(0.279 0.041 260.031);
   stroke-width: 1;
 }
 
-.fuselage {
-  fill: oklch(0.869 0.022 252.894);
-  opacity: 0.92;
-}
-
 .wing {
-  fill: oklch(0.809 0.105 251.813);
-  opacity: 0.95;
+  fill: oklch(0.623 0.214 259.815 / 0.38);
+  stroke: oklch(0.707 0.165 254.624);
+  stroke-width: 1.5;
 }
 
 .liftWing {
   fill: url("#wing-lift");
+  opacity: 0.78;
 }
 
-.tail {
-  fill: oklch(0.882 0.059 254.128);
-  opacity: 0.92;
-}
-
-.fin {
-  fill: oklch(0.929 0.033 255.585);
-  opacity: 0.92;
-}
-
-.centerLine {
-  stroke: oklch(0.984 0.003 247.858);
-  stroke-width: 2;
-  opacity: 0.8;
-}
-
-.liftTrail {
+.meshLine {
   fill: none;
-  stroke-width: 4;
-  stroke-linecap: round;
+  stroke: oklch(0.623 0.214 259.815 / 0.45);
+  stroke-width: 0.7;
+  pointer-events: none;
 }
 
-.liftTrailPrimary {
-  stroke: oklch(0.723 0.219 149.579);
+.sectionLine {
+  fill: none;
+  stroke: oklch(0.809 0.105 251.813);
+  stroke-width: 1.5;
 }
 
-.liftTrailSecondary {
-  stroke: oklch(0.746 0.16 232.661);
+.selectedLine {
+  stroke: oklch(0.795 0.184 86.047);
+  stroke-width: 3;
+}
+
+.sectionHandle {
+  cursor: pointer;
+  outline: none;
+}
+
+.sectionHandle:focus-visible .sectionPoint {
+  stroke: white;
+  stroke-width: 3;
+}
+
+.hitTarget {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.sectionPoint {
+  fill: oklch(0.707 0.165 254.624);
+  stroke: oklch(0.984 0.003 247.858);
+  stroke-width: 1.5;
+}
+
+.selectedPoint {
+  fill: oklch(0.795 0.184 86.047);
+}
+
+.frontLine {
+  fill: none;
+  stroke: oklch(0.707 0.165 254.624);
+  stroke-width: 3;
+}
+
+.centerLine,
+.axisLine {
+  fill: none;
+  stroke: oklch(0.446 0.043 257.281);
+  stroke-width: 1;
+  stroke-dasharray: 5 5;
 }
 
 .label {
   fill: oklch(0.869 0.022 252.894);
   font-size: 13px;
+  font-weight: 600;
 }
 
 .subLabel {
-  fill: oklch(0.554 0.046 257.417);
+  fill: oklch(0.704 0.04 256.788);
   font-size: 12px;
 }

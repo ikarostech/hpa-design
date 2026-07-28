@@ -80,9 +80,9 @@ export const aircraftGeometry: AircraftGeometry = {
   mac: 0.33,
   staticMargin: 8.4,
   sections: [
-    { id: "ws1", spanPosition: 0, chord: 0.42, twist: 0, dihedral: 4, airfoilId: "af6", controlSurface: "なし" },
-    { id: "ws2", spanPosition: 0.8, chord: 0.33, twist: -1, dihedral: 4, airfoilId: "af1", controlSurface: "フラップ" },
-    { id: "ws3", spanPosition: 1.6, chord: 0.22, twist: -2, dihedral: 4, airfoilId: "af5", controlSurface: "エルロン" },
+    { id: "ws1", yPosition: 0, chord: 0.42, xOffset: 0, twist: 0, dihedral: 4, airfoilId: "af6", chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform", controlSurface: "none" },
+    { id: "ws2", yPosition: 0.8, chord: 0.33, xOffset: 0.042, twist: -1, dihedral: 4, airfoilId: "af1", chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine", spanwiseDistribution: "cosine", controlSurface: "flap" },
+    { id: "ws3", yPosition: 1.6, chord: 0.22, xOffset: 0.084, twist: -2, dihedral: 0, airfoilId: "af5", chordwisePanels: 12, spanwisePanels: 1, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform", controlSurface: "aileron" },
   ],
 };
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDesignDocumentRecoveryRepository, readDesignDocumentRecoveryState, WORKING_DOCUMENT_ID } from "./designDocumentRecoveryRepository";
 
 const document = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   name: "Recovered Glider",
   airfoils: [],
   polars: [],
@@ -44,6 +44,27 @@ describe("design document recovery repository", () => {
     await repository.saveRecovery(document, { isDirty: false });
 
     expect(readDesignDocumentRecoveryState(storage)).toEqual({ document, isDirty: false });
+  });
+
+  it("migrates a recovered version 1 wing document", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(WORKING_DOCUMENT_ID, JSON.stringify({
+      document: {
+        ...document,
+        schemaVersion: 1,
+        airfoils: [{ id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1, trailingEdgeThickness: 0, coordinates: [{ x: 0, upper: 0, lower: 0 }, { x: 0.5, upper: 0.1, lower: -0.1 }, { x: 1, upper: 0, lower: 0 }] }],
+        aircraft: { ...document.aircraft, sections: [
+          { id: "root", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+          { id: "tip", spanPosition: 2, chord: 0.5, twist: -2, dihedral: 0, airfoilId: "af-1", controlSurface: "none" },
+        ] },
+      },
+      isDirty: true,
+    }));
+
+    expect(readDesignDocumentRecoveryState(storage)).toMatchObject({
+      document: { schemaVersion: 2, aircraft: { sections: [expect.objectContaining({ yPosition: 0 }), expect.objectContaining({ yPosition: 2 })] } },
+      isDirty: true,
+    });
   });
 
   it("discards malformed recovery data instead of returning it", async () => {

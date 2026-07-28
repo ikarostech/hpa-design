@@ -3,7 +3,7 @@ import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResul
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
 const document = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   name: "Imported Glider",
   airfoils: [],
   polars: [],
@@ -22,9 +22,36 @@ describe("design document transfer", () => {
     expect(imported).toMatchObject({ name: "Imported Glider", aircraft: { id: "geo-1" } });
   });
 
+  it("migrates version 1 wing sections to the XFLR5-style schema", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      schemaVersion: 1,
+      airfoils: [{ id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1, trailingEdgeThickness: 0, coordinates: [{ x: 0, upper: 0, lower: 0 }, { x: 0.5, upper: 0.1, lower: -0.1 }, { x: 1, upper: 0, lower: 0 }] }],
+      aircraft: {
+        ...document.aircraft,
+        sweep: 10,
+        sections: [
+          { id: "root", spanPosition: 0, chord: 1, twist: 0, dihedral: 5, airfoilId: "af-1", controlSurface: "none" },
+          { id: "tip", spanPosition: 2, chord: 0.5, twist: -2, dihedral: 0, airfoilId: "af-1", controlSurface: "aileron" },
+        ],
+      },
+    }));
+
+    expect(imported).toMatchObject({
+      schemaVersion: 2,
+      aircraft: {
+        sections: [
+          expect.objectContaining({ yPosition: 0, xOffset: 0, chordwisePanels: 12, spanwisePanels: 8 }),
+          expect.objectContaining({ yPosition: 2, xOffset: expect.closeTo(2 * Math.tan(10 * Math.PI / 180), 5) }),
+        ],
+      },
+    });
+    expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
+  });
+
   it("accepts the populated document used to initialize the application", async () => {
     const imported = await designDocumentImporter.parse(await designDocumentExporter.export({
-      schemaVersion: 1,
+      schemaVersion: 2,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,
@@ -111,7 +138,7 @@ describe("design document transfer", () => {
       ...document,
       aircraft: {
         ...document.aircraft,
-        sections: [{ id: "section-1", spanPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "missing-airfoil", controlSurface: "none" }],
+        sections: [{ id: "section-1", yPosition: 0, chord: 1, xOffset: 0, twist: 0, dihedral: 0, airfoilId: "missing-airfoil", chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform" }],
       },
     }));
 
@@ -119,6 +146,24 @@ describe("design document transfer", () => {
       valid: false,
       issues: expect.arrayContaining([
         expect.objectContaining({ path: ["aircraft", "sections", "0", "airfoilId"], severity: "error" }),
+      ]),
+    });
+  });
+
+  it("rejects non-integer or out-of-range wing panel counts", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      aircraft: {
+        ...document.aircraft,
+        sections: [{ id: "section-1", yPosition: 0, chord: 1, xOffset: 0, twist: 0, dihedral: 0, airfoilId: "missing-airfoil", chordwisePanels: 0, spanwisePanels: 2.5, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform" }],
+      },
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["aircraft", "sections", "0", "chordwisePanels"], severity: "error" }),
+        expect.objectContaining({ path: ["aircraft", "sections", "0", "spanwisePanels"], severity: "error" }),
       ]),
     });
   });

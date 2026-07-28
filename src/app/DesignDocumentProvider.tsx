@@ -47,7 +47,7 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     const storage = getBrowserStorage();
     const recoveredDocument = storage ? readDesignDocumentRecoveryState(storage) : null;
     storeRef.current = createDesignDocumentStore(recoveredDocument?.document ?? {
-      schemaVersion: 1,
+      schemaVersion: 2,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,

@@ -48,11 +48,23 @@ function parseDesignDocument(input: string): DesignDocument {
   }
 }
 
-function migrateDesignDocument(document: unknown): unknown {
+export function migrateDesignDocument(document: unknown): unknown {
   if (!isRecord(document)) return document;
 
   switch (document.schemaVersion) {
-    case 1:
+    case 1: {
+      const aircraft = isRecord(document.aircraft) ? document.aircraft : null;
+      const sweep = aircraft && typeof aircraft.sweep === "number" ? aircraft.sweep : 0;
+      const sections = aircraft && Array.isArray(aircraft.sections)
+        ? aircraft.sections.map((section) => migrateVersion1WingSection(section, sweep))
+        : aircraft?.sections;
+      return {
+        ...document,
+        schemaVersion: 2,
+        aircraft: aircraft ? { ...aircraft, sections } : document.aircraft,
+      };
+    }
+    case 2:
       return document;
     default:
       return document;
@@ -60,7 +72,7 @@ function migrateDesignDocument(document: unknown): unknown {
 }
 
 function validateSchemaVersion(document: JsonRecord, issues: ValidationIssue[]) {
-  if (document.schemaVersion !== 1) {
+  if (document.schemaVersion !== 2) {
     addIssue(issues, ["schemaVersion"], "対応していない設計ファイルのバージョンです。");
   }
 }
@@ -184,10 +196,28 @@ function validateWingSections(items: readonly unknown[], airfoilIds: ReadonlySet
       return;
     }
     addUniqueId(item.id, path, ids, issues);
-    for (const field of ["spanPosition", "chord", "twist", "dihedral"]) validateFiniteNumber(item[field], [...path, field], issues);
+    for (const field of ["yPosition", "chord", "xOffset", "twist", "dihedral"]) validateFiniteNumber(item[field], [...path, field], issues);
+    validatePanelCount(item.chordwisePanels, [...path, "chordwisePanels"], issues);
+    validatePanelCount(item.spanwisePanels, [...path, "spanwisePanels"], issues);
     validateReference(item.airfoilId, [...path, "airfoilId"], airfoilIds, "翼型", issues);
-    validateNonEmptyString(item.controlSurface, [...path, "controlSurface"], issues);
+    validateEnum(item.chordwiseDistribution, [...path, "chordwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
+    validateEnum(item.spanwiseDistribution, [...path, "spanwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
   });
+}
+
+function migrateVersion1WingSection(value: unknown, sweep: number): unknown {
+  if (!isRecord(value)) return value;
+  const yPosition = typeof value.spanPosition === "number" ? value.spanPosition : value.spanPosition;
+  const { spanPosition: _spanPosition, ...section } = value;
+  return {
+    ...section,
+    yPosition,
+    xOffset: typeof yPosition === "number" ? Number((yPosition * Math.tan(sweep * Math.PI / 180)).toFixed(6)) : 0,
+    chordwisePanels: 12,
+    spanwisePanels: 8,
+    chordwiseDistribution: "cosine",
+    spanwiseDistribution: "uniform",
+  };
 }
 
 function validateAnalysisCases(items: readonly unknown[], aircraftId: string | null | undefined, issues: ValidationIssue[]) {
@@ -259,6 +289,12 @@ function validateFiniteNumber(value: unknown, path: string[], issues: Validation
     return null;
   }
   return value;
+}
+
+function validatePanelCount(value: unknown, path: string[], issues: ValidationIssue[]) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 200) {
+    addIssue(issues, path, "パネル数は1から200までの整数である必要があります。");
+  }
 }
 
 function validateNonEmptyString(value: unknown, path: string[], issues: ValidationIssue[]) {
