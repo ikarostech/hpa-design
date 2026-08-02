@@ -1,6 +1,7 @@
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import type { Airfoil, AirfoilPolar } from "../features/airfoils/model/types";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
+import type { CarbonMaterial, StructuralDesign } from "../features/structures/model/types";
 
 const makeAirfoilCoordinates = (camber: number, thickness: number) =>
   Array.from({ length: 17 }, (_, index) => {
@@ -85,6 +86,48 @@ export const aircraftGeometry: AircraftGeometry = {
     { id: "ws3", yPosition: 1.6, chord: 0.22, xOffset: 0.084, twist: -2, dihedral: 0, airfoilId: "af5", chordwisePanels: 12, spanwisePanels: 1, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform", controlSurface: "aileron" },
   ],
 };
+
+export const carbonMaterials: CarbonMaterial[] = [{
+  id: "carbon-t700-ud",
+  name: "T700 UD（設計値）",
+  e1: 125e9,
+  e2: 8.5e9,
+  g12: 4.5e9,
+  nu12: 0.3,
+  tensileStrength1: 1500e6,
+  compressiveStrength1: 800e6,
+  tensileStrength2: 45e6,
+  compressiveStrength2: 150e6,
+  shearStrength12: 70e6,
+  density: 1550,
+  plyThickness: 0.000125,
+  reductionFactor: 0.8,
+  note: "初期検討用の代表値。実材料の試験値へ置換してください。",
+}];
+
+export const structuralDesigns: StructuralDesign[] = [{
+  id: "main-spar-1",
+  name: "主翼メインパイプ",
+  sections: [
+    { id: "spar-root", length: 0.4, outerDiameter: 0.08, plies: [{ id: "root-0", materialId: "carbon-t700-ud", angle: 0, count: 8 }, { id: "root-45p", materialId: "carbon-t700-ud", angle: 45, count: 1 }, { id: "root-45m", materialId: "carbon-t700-ud", angle: -45, count: 1 }] },
+    { id: "spar-mid", length: 0.8, outerDiameter: 0.065, plies: [{ id: "mid-0", materialId: "carbon-t700-ud", angle: 0, count: 6 }, { id: "mid-45p", materialId: "carbon-t700-ud", angle: 45, count: 1 }, { id: "mid-45m", materialId: "carbon-t700-ud", angle: -45, count: 1 }] },
+    { id: "spar-tip", length: 0.4, outerDiameter: 0.04, plies: [{ id: "tip-0", materialId: "carbon-t700-ud", angle: 0, count: 4 }, { id: "tip-45p", materialId: "carbon-t700-ud", angle: 45, count: 1 }, { id: "tip-45m", materialId: "carbon-t700-ud", angle: -45, count: 1 }] },
+  ],
+  loadCases: [{
+    id: "structure-load-cruise",
+    name: "巡航楕円荷重",
+    source: "elliptical",
+    loadFactor: 1,
+    safetyFactor: 1.5,
+    distributedLoads: [
+      { yPosition: 0, liftPerLength: 240, torquePerLength: 3 },
+      { yPosition: 0.8, liftPerLength: 208, torquePerLength: 2 },
+      { yPosition: 1.6, liftPerLength: 0, torquePerLength: 0 },
+    ],
+    pointLoads: [],
+    status: "not-run",
+  }],
+}];
 
 export const analysisCases: AnalysisCase[] = [
   { id: "ac1", name: "Cruise_20mps", method: "VLM", alphaStart: -4, alphaEnd: 14, alphaStep: 2, speed: 20, altitude: 120, reynolds: 420000, geometryId: "geo1", status: "completed" },

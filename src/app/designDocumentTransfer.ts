@@ -33,6 +33,9 @@ export function validateDesignDocument(document: unknown): ValidationResult {
   validateAnalysisRuns(arrays.airfoilAnalysisRuns, airfoilIds, polarIds, issues);
   const caseIds = validateAnalysisCases(arrays.analysisCases, aircraft?.id, issues);
   validateAnalysisResults(arrays.analysisResults, caseIds, issues);
+  const materialIds = validateCarbonMaterials(arrays.carbonMaterials, issues);
+  const structuralDesignIds = validateStructuralDesigns(arrays.structuralDesigns, materialIds, issues);
+  validateStructuralResults(arrays.structuralResults, structuralDesignIds, materialIds, issues);
 
   return issues.length ? invalid(issues) : { valid: true };
 }
@@ -58,13 +61,28 @@ export function migrateDesignDocument(document: unknown): unknown {
       const sections = aircraft && Array.isArray(aircraft.sections)
         ? aircraft.sections.map((section) => migrateVersion1WingSection(section, sweep))
         : aircraft?.sections;
-      return {
+      return migrateDesignDocument({
         ...document,
         schemaVersion: 2,
         aircraft: aircraft ? { ...aircraft, sections } : document.aircraft,
-      };
+      });
     }
     case 2:
+      return migrateDesignDocument({
+        ...document,
+        schemaVersion: 3,
+        carbonMaterials: [],
+        structuralDesigns: [],
+        structuralResults: [],
+      });
+    case 3:
+      return {
+        ...document,
+        schemaVersion: 4,
+        structuralDesigns: Array.isArray(document.structuralDesigns) ? document.structuralDesigns.map(migrateVersion3StructuralDesign) : document.structuralDesigns,
+        structuralResults: Array.isArray(document.structuralResults) ? document.structuralResults.map(migrateVersion3StructuralResult) : document.structuralResults,
+      };
+    case 4:
       return document;
     default:
       return document;
@@ -72,7 +90,7 @@ export function migrateDesignDocument(document: unknown): unknown {
 }
 
 function validateSchemaVersion(document: JsonRecord, issues: ValidationIssue[]) {
-  if (document.schemaVersion !== 2) {
+  if (document.schemaVersion !== 4) {
     addIssue(issues, ["schemaVersion"], "対応していない設計ファイルのバージョンです。");
   }
 }
@@ -84,7 +102,104 @@ function validateRequiredArrays(document: JsonRecord, issues: ValidationIssue[])
     airfoilAnalysisRuns: readArray(document.airfoilAnalysisRuns, ["airfoilAnalysisRuns"], issues),
     analysisCases: readArray(document.analysisCases, ["analysisCases"], issues),
     analysisResults: readArray(document.analysisResults, ["analysisResults"], issues),
+    carbonMaterials: readArray(document.carbonMaterials, ["carbonMaterials"], issues),
+    structuralDesigns: readArray(document.structuralDesigns, ["structuralDesigns"], issues),
+    structuralResults: readArray(document.structuralResults, ["structuralResults"], issues),
   };
+}
+
+function validateCarbonMaterials(items: readonly unknown[], issues: ValidationIssue[]) {
+  const ids = new Set<string>();
+  items.forEach((item, index) => {
+    const path = ["carbonMaterials", String(index)];
+    if (!isRecord(item)) { addIssue(issues, path, "材料はオブジェクトである必要があります。"); return; }
+    addUniqueId(item.id, path, ids, issues);
+    validateNonEmptyString(item.name, [...path, "name"], issues);
+    for (const field of ["e1", "e2", "g12", "nu12", "tensileStrength1", "compressiveStrength1", "tensileStrength2", "compressiveStrength2", "shearStrength12", "density", "plyThickness", "reductionFactor"]) {
+      const value = validateFiniteNumber(item[field], [...path, field], issues);
+      if (value !== null && value <= 0) addIssue(issues, [...path, field], "0より大きい値が必要です。");
+    }
+  });
+  return ids;
+}
+
+function validateStructuralDesigns(items: readonly unknown[], materialIds: ReadonlySet<string>, issues: ValidationIssue[]) {
+  const ids = new Set<string>();
+  items.forEach((item, index) => {
+    const path = ["structuralDesigns", String(index)];
+    if (!isRecord(item)) { addIssue(issues, path, "構造設計はオブジェクトである必要があります。"); return; }
+    addUniqueId(item.id, path, ids, issues);
+    validateNonEmptyString(item.name, [...path, "name"], issues);
+    const sections = readArray(item.sections, [...path, "sections"], issues);
+    if (!sections.length) addIssue(issues, [...path, "sections"], "パイプセクションは1つ以上必要です。");
+    sections.forEach((section, sectionIndex) => {
+      const sectionPath = [...path, "sections", String(sectionIndex)];
+      if (!isRecord(section)) { addIssue(issues, sectionPath, "パイプセクションはオブジェクトである必要があります。"); return; }
+      validateNonEmptyString(section.id, [...sectionPath, "id"], issues);
+      const length = validateFiniteNumber(section.length, [...sectionPath, "length"], issues);
+      if (length !== null && length <= 0) addIssue(issues, [...sectionPath, "length"], "セクション長さは0より大きい必要があります。");
+      const diameter = validateFiniteNumber(section.outerDiameter, [...sectionPath, "outerDiameter"], issues);
+      if (diameter !== null && diameter <= 0) addIssue(issues, [...sectionPath, "outerDiameter"], "外径は0より大きい必要があります。");
+      readArray(section.plies, [...sectionPath, "plies"], issues).forEach((ply, plyIndex) => {
+        const plyPath = [...sectionPath, "plies", String(plyIndex)];
+        if (!isRecord(ply)) { addIssue(issues, plyPath, "積層はオブジェクトである必要があります。"); return; }
+        validateReference(ply.materialId, [...plyPath, "materialId"], materialIds, "カーボン材料", issues);
+        if (typeof ply.angle !== "number" || ![0, 45, -45, 90].includes(ply.angle)) addIssue(issues, [...plyPath, "angle"], "積層角は0、45、-45、90のいずれかが必要です。");
+        if (typeof ply.count !== "number" || !Number.isInteger(ply.count) || ply.count < 1) addIssue(issues, [...plyPath, "count"], "層数は1以上の整数が必要です。");
+      });
+    });
+    readArray(item.loadCases, [...path, "loadCases"], issues).forEach((loadCase, loadIndex) => validateStructuralLoadCase(loadCase, [...path, "loadCases", String(loadIndex)], issues));
+  });
+  return ids;
+}
+
+function migrateVersion3StructuralDesign(value: unknown): unknown {
+  if (!isRecord(value) || !Array.isArray(value.stations)) return value;
+  const stations = value.stations.filter(isRecord).sort((left, right) => numericValue(left.yPosition) - numericValue(right.yPosition));
+  const sections = stations.map((station, index) => {
+    const position = numericValue(station.yPosition);
+    const start = index === 0 ? position : (numericValue(stations[index - 1].yPosition) + position) / 2;
+    const end = index === stations.length - 1 ? position : (position + numericValue(stations[index + 1].yPosition)) / 2;
+    const { yPosition: _yPosition, ...section } = station;
+    return { ...section, length: Number((end - start).toFixed(12)) };
+  });
+  const { stations: _stations, ...design } = value;
+  return { ...design, sections };
+}
+
+function migrateVersion3StructuralResult(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return { ...value, designSnapshot: migrateVersion3StructuralDesign(value.designSnapshot) };
+}
+
+function numericValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function validateStructuralLoadCase(value: unknown, path: string[], issues: ValidationIssue[]) {
+  if (!isRecord(value)) { addIssue(issues, path, "構造荷重ケースはオブジェクトである必要があります。"); return; }
+  validateNonEmptyString(value.id, [...path, "id"], issues);
+  validateNonEmptyString(value.name, [...path, "name"], issues);
+  validateEnum(value.source, [...path, "source"], ["aerodynamic", "elliptical", "manual"], issues);
+  validateEnum(value.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
+  validateFiniteNumber(value.loadFactor, [...path, "loadFactor"], issues);
+  validateFiniteNumber(value.safetyFactor, [...path, "safetyFactor"], issues);
+  readArray(value.distributedLoads, [...path, "distributedLoads"], issues);
+  readArray(value.pointLoads, [...path, "pointLoads"], issues);
+}
+
+function validateStructuralResults(items: readonly unknown[], designIds: ReadonlySet<string>, materialIds: ReadonlySet<string>, issues: ValidationIssue[]) {
+  const ids = new Set<string>();
+  items.forEach((item, index) => {
+    const path = ["structuralResults", String(index)];
+    if (!isRecord(item)) { addIssue(issues, path, "構造解析結果はオブジェクトである必要があります。"); return; }
+    addUniqueId(item.id, path, ids, issues);
+    validateReference(item.designId, [...path, "designId"], designIds, "構造設計", issues);
+    validateReferenceList(item.materialIds, [...path, "materialIds"], materialIds, "カーボン材料", issues);
+    validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
+    validateDate(item.createdAt, [...path, "createdAt"], issues);
+    readArray(item.points, [...path, "points"], issues);
+  });
 }
 
 function validateAirfoils(items: readonly unknown[], issues: ValidationIssue[]) {

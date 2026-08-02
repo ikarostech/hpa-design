@@ -3,7 +3,7 @@ import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResul
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
 const document = {
-  schemaVersion: 2 as const,
+  schemaVersion: 4 as const,
   name: "Imported Glider",
   airfoils: [],
   polars: [],
@@ -11,6 +11,9 @@ const document = {
   aircraft: { id: "geo-1", span: 4, rootChord: 1, tipChord: 0.5, taperRatio: 0.5, twist: 0, dihedral: 0, sweep: 0, incidence: 0, wingArea: 3, aspectRatio: 5.333, mac: 0.78, staticMargin: 8, sections: [] },
   analysisCases: [],
   analysisResults: [],
+  carbonMaterials: [],
+  structuralDesigns: [],
+  structuralResults: [],
 };
 
 describe("design document transfer", () => {
@@ -38,7 +41,7 @@ describe("design document transfer", () => {
     }));
 
     expect(imported).toMatchObject({
-      schemaVersion: 2,
+      schemaVersion: 4,
       aircraft: {
         sections: [
           expect.objectContaining({ yPosition: 0, xOffset: 0, chordwisePanels: 12, spanwisePanels: 8 }),
@@ -51,7 +54,7 @@ describe("design document transfer", () => {
 
   it("accepts the populated document used to initialize the application", async () => {
     const imported = await designDocumentImporter.parse(await designDocumentExporter.export({
-      schemaVersion: 2,
+      schemaVersion: 4,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,
@@ -71,9 +74,40 @@ describe("design document transfer", () => {
       aircraft: aircraftGeometry,
       analysisCases,
       analysisResults: [analysisResult],
+      carbonMaterials: [],
+      structuralDesigns: [],
+      structuralResults: [],
     }));
 
     expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
+  });
+
+  it("migrates version 3 interpolation stations to constant-length tube sections", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      schemaVersion: 3,
+      structuralDesigns: [{
+        id: "spar-1", name: "Main spar", loadCases: [],
+        stations: [
+          { id: "root", yPosition: 0, outerDiameter: 0.08, plies: [] },
+          { id: "mid", yPosition: 0.8, outerDiameter: 0.06, plies: [] },
+          { id: "tip", yPosition: 1.6, outerDiameter: 0.04, plies: [] },
+        ],
+      }],
+    }));
+
+    expect(imported).toMatchObject({
+      schemaVersion: 4,
+      structuralDesigns: [{
+        id: "spar-1",
+        sections: [
+          expect.objectContaining({ id: "root", length: 0.4, outerDiameter: 0.08 }),
+          expect.objectContaining({ id: "mid", length: 0.8, outerDiameter: 0.06 }),
+          expect.objectContaining({ id: "tip", length: 0.4, outerDiameter: 0.04 }),
+        ],
+      }],
+    });
+    expect("stations" in imported.structuralDesigns[0]).toBe(false);
   });
 
   it("rejects a file without the design document schema", async () => {

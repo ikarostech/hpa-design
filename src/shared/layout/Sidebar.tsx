@@ -1,4 +1,4 @@
-import { BarChart3, Download, Gauge, Home, Library, Plane, Workflow } from "lucide-react";
+import { BarChart3, Download, Gauge, Hammer, Home, Library, Plane, Workflow } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 export function Sidebar() {
@@ -8,6 +8,7 @@ export function Sidebar() {
     { label: "翼型", path: "/airfoils", icon: Library },
     { label: "機体設計", path: "/aircraft", icon: Plane },
     { label: "解析", path: "/analysis", icon: Workflow },
+    { label: "構造設計", path: "/structures", icon: Hammer },
     { label: "結果", path: "/analysis?tab=results", icon: BarChart3 },
     { label: "入出力", path: "/export", icon: Download },
   ];

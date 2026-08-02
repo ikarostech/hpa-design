@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
-import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult } from "../mocks/mockData";
+import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
+import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult, carbonMaterials, structuralDesigns } from "../mocks/mockData";
 import type { EntityRepository } from "../shared/model";
 import { createDesignDocumentStore, type DesignDocument, type DesignDocumentStore } from "./designDocument";
 import { createDesignDocumentRecoveryRepository, readDesignDocumentRecoveryState, type DesignDocumentRecoveryRepository } from "./designDocumentRecoveryRepository";
@@ -21,6 +22,11 @@ interface DesignDocumentContextValue {
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
   updateAirfoilAnalysisRun: (run: AirfoilAnalysisRun) => void;
   removeAirfoilAnalysisRun: (runId: string) => void;
+  saveCarbonMaterial: (material: CarbonMaterial) => void;
+  removeCarbonMaterial: (materialId: string) => void;
+  saveStructuralDesign: (design: StructuralDesign) => void;
+  removeStructuralDesign: (designId: string) => void;
+  saveStructuralResult: (result: StructuralAnalysisResult) => void;
 }
 
 const DesignDocumentContext = createContext<DesignDocumentContextValue | null>(null);
@@ -47,7 +53,7 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     const storage = getBrowserStorage();
     const recoveredDocument = storage ? readDesignDocumentRecoveryState(storage) : null;
     storeRef.current = createDesignDocumentStore(recoveredDocument?.document ?? {
-      schemaVersion: 2,
+      schemaVersion: 4,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,
@@ -55,6 +61,9 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
       aircraft: aircraftGeometry,
       analysisCases,
       analysisResults: [analysisResult],
+      carbonMaterials,
+      structuralDesigns,
+      structuralResults: [],
     }, { saved: !recoveredDocument?.isDirty });
     recoveryRepositoryRef.current = storage ? createDesignDocumentRecoveryRepository(storage) : null;
   }
@@ -103,6 +112,11 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     saveAirfoilAnalysis: (run, polars) => commit((store) => store.saveAirfoilAnalysis(run, polars)),
     updateAirfoilAnalysisRun: (run) => commit((store) => store.updateAirfoilAnalysisRun(run)),
     removeAirfoilAnalysisRun: (runId) => commit((store) => store.removeAirfoilAnalysisRun(runId)),
+    saveCarbonMaterial: (material) => commit((store) => store.saveCarbonMaterial(material)),
+    removeCarbonMaterial: (materialId) => commit((store) => store.removeCarbonMaterial(materialId)),
+    saveStructuralDesign: (design) => commit((store) => store.saveStructuralDesign(design)),
+    removeStructuralDesign: (designId) => commit((store) => store.removeStructuralDesign(designId)),
+    saveStructuralResult: (result) => commit((store) => store.saveStructuralResult(result)),
   };
 
   return <DesignDocumentContext.Provider value={value}>{children}</DesignDocumentContext.Provider>;
@@ -126,6 +140,11 @@ export function useDesignDocument() {
     updateAirfoilAnalysisRun: context.updateAirfoilAnalysisRun,
     removeAirfoilAnalysisRun: context.removeAirfoilAnalysisRun,
     saveAnalysisResult: context.saveAnalysisResult,
+    saveCarbonMaterial: context.saveCarbonMaterial,
+    removeCarbonMaterial: context.removeCarbonMaterial,
+    saveStructuralDesign: context.saveStructuralDesign,
+    removeStructuralDesign: context.removeStructuralDesign,
+    saveStructuralResult: context.saveStructuralResult,
   };
 }
 

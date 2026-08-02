@@ -6,7 +6,7 @@ const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chor
 const tipSection = { ...sectionDefaults, id: "section-tip", yPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1" };
 
 const document = {
-  schemaVersion: 2 as const,
+  schemaVersion: 4 as const,
   name: "LongRange UAV",
   airfoils: [
     { id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1.5, trailingEdgeThickness: 0, coordinates: [] },
@@ -31,6 +31,9 @@ const document = {
   },
   analysisCases: [],
   analysisResults: [],
+  carbonMaterials: [],
+  structuralDesigns: [],
+  structuralResults: [],
 };
 
 describe("createDesignDocumentStore", () => {
@@ -208,5 +211,33 @@ describe("createDesignDocumentStore", () => {
     store.removeAirfoilAnalysisRun(run.id);
 
     expect(store.getDocument()).toMatchObject({ airfoilAnalysisRuns: [], polars: [{ id: polar.id }] });
+  });
+
+  it("persists structural inputs and marks related results stale after a design edit", () => {
+    const material = { id: "mat-1", name: "UD carbon", e1: 120e9, e2: 8e9, g12: 4e9, nu12: 0.3, tensileStrength1: 1200e6, compressiveStrength1: 700e6, tensileStrength2: 40e6, compressiveStrength2: 120e6, shearStrength12: 60e6, density: 1550, plyThickness: 0.000125, reductionFactor: 0.8 };
+    const design = { id: "struct-1", name: "Main spar", sections: [{ id: "s0", length: 1, outerDiameter: 0.08, plies: [{ id: "p0", materialId: material.id, angle: 0 as const, count: 4 }] }, { id: "s1", length: 1, outerDiameter: 0.05, plies: [{ id: "p1", materialId: material.id, angle: 0 as const, count: 2 }] }], loadCases: [{ id: "load-1", name: "Cruise", source: "elliptical" as const, loadFactor: 1, safetyFactor: 1.5, distributedLoads: [], pointLoads: [], status: "completed" as const }] };
+    const store = createDesignDocumentStore(document);
+
+    store.saveCarbonMaterial(material);
+    store.saveStructuralDesign(design);
+    store.saveStructuralResult({ id: "sr-1", designId: design.id, loadCaseId: "load-1", status: "completed", createdAt: "2026-07-31T00:00:00.000Z", designSnapshot: design, loadCaseSnapshot: design.loadCases[0], materialIds: [material.id], points: [], summary: { mass: 1, maxDeflection: 0.1, maxTwist: 0.01, minReserveFactor: 2, governingLoadCase: "Cruise", governingPosition: 0, governingPlyId: "p0", governingMode: "繊維引張", reactionForce: -100, reactionMoment: -50, forceBalanceError: 0 } });
+    store.saveStructuralDesign({ ...design, sections: design.sections.map((section, index) => index ? section : { ...section, outerDiameter: 0.09 }) });
+
+    expect(store.getDocument()).toMatchObject({
+      carbonMaterials: [{ id: material.id }],
+      structuralDesigns: [{ id: design.id }],
+      structuralResults: [{ id: "sr-1", status: "needs-review" }],
+    });
+  });
+
+  it("marks aerodynamic structural results stale after the aircraft geometry changes", () => {
+    const store = createDesignDocumentStore({
+      ...document,
+      structuralResults: [{ id: "sr-aero", designId: "struct-1", loadCaseId: "load-aero", status: "completed", createdAt: "2026-07-31T00:00:00.000Z", designSnapshot: { id: "struct-1", name: "Spar", sections: [], loadCases: [] }, loadCaseSnapshot: { id: "load-aero", name: "Aero", source: "aerodynamic", aerodynamicResultId: "aero-1", loadFactor: 1, safetyFactor: 1.5, distributedLoads: [], pointLoads: [], status: "completed" }, materialIds: [], points: [], summary: { mass: 0, maxDeflection: 0, maxTwist: 0, minReserveFactor: 2, governingLoadCase: "Aero", governingPosition: 0, governingPlyId: "-", governingMode: "なし", reactionForce: 0, reactionMoment: 0, forceBalanceError: 0 } }],
+    });
+
+    store.updateAircraft({ sections: [rootSection, { ...tipSection, chord: 0.6 }] });
+
+    expect(store.getDocument().structuralResults[0].status).toBe("needs-review");
   });
 });

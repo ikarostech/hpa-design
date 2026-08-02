@@ -2,9 +2,10 @@ import type { AircraftGeometry } from "../features/aircraft/model/types";
 import { applyAircraftDraft, createAircraftDraft } from "../features/aircraft/model/aircraftDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
+import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
 
 export interface DesignDocument {
-  schemaVersion: 2;
+  schemaVersion: 4;
   name: string;
   airfoils: readonly Airfoil[];
   polars: readonly AirfoilPolar[];
@@ -12,6 +13,9 @@ export interface DesignDocument {
   aircraft: AircraftGeometry;
   analysisCases: readonly AnalysisCase[];
   analysisResults: readonly AnalysisResult[];
+  carbonMaterials: readonly CarbonMaterial[];
+  structuralDesigns: readonly StructuralDesign[];
+  structuralResults: readonly StructuralAnalysisResult[];
 }
 
 export interface DesignDocumentStore {
@@ -28,6 +32,11 @@ export interface DesignDocumentStore {
   saveAirfoilAnalysis: (run: AirfoilAnalysisRun, polars: readonly AirfoilPolar[]) => void;
   updateAirfoilAnalysisRun: (run: AirfoilAnalysisRun) => void;
   removeAirfoilAnalysisRun: (runId: string) => void;
+  saveCarbonMaterial: (material: CarbonMaterial) => void;
+  removeCarbonMaterial: (materialId: string) => void;
+  saveStructuralDesign: (design: StructuralDesign) => void;
+  removeStructuralDesign: (designId: string) => void;
+  saveStructuralResult: (result: StructuralAnalysisResult) => void;
 }
 
 export interface DesignDocumentState {
@@ -130,6 +139,7 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
         analysisResults: geometryChanged ? document.analysisResults.map((result) => affectedCaseIds.has(result.caseId)
           ? { ...result, status: "needs-review", rows: result.rows.map((row) => ({ ...row, status: "needs-review" })) }
           : result) : document.analysisResults,
+        structuralResults: geometryChanged ? document.structuralResults.map((result) => result.loadCaseSnapshot.source === "aerodynamic" ? { ...result, status: "needs-review" } : result) : document.structuralResults,
       };
     }),
     saveAirfoilAnalysis: (run, polars) => {
@@ -145,11 +155,44 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
       const retainedPolarIds = new Set([...remainingRuns.flatMap((run) => run.polarIds), ...document.analysisResults.flatMap((result) => result.polarIds ?? [])]);
       document = { ...document, airfoilAnalysisRuns: remainingRuns, polars: document.polars.filter((polar) => !removedRun.polarIds.includes(polar.id) || retainedPolarIds.has(polar.id)) };
     }),
+    saveCarbonMaterial: (material) => update(() => {
+      const previous = document.carbonMaterials.find((item) => item.id === material.id);
+      const changed = previous ? JSON.stringify(previous) !== JSON.stringify(material) : false;
+      document = {
+        ...document,
+        carbonMaterials: previous ? document.carbonMaterials.map((item) => item.id === material.id ? { ...material } : item) : [{ ...material }, ...document.carbonMaterials],
+        structuralResults: changed ? document.structuralResults.map((result) => result.materialIds.includes(material.id) ? { ...result, status: "needs-review" } : result) : document.structuralResults,
+      };
+    }),
+    removeCarbonMaterial: (materialId) => update(() => {
+      const referenced = document.structuralDesigns.some((design) => design.sections.some((section) => section.plies.some((ply) => ply.materialId === materialId)));
+      if (referenced) throw new Error("材料は構造設計で参照されているため削除できません。");
+      document = { ...document, carbonMaterials: document.carbonMaterials.filter((material) => material.id !== materialId) };
+    }),
+    saveStructuralDesign: (design) => update(() => {
+      const previous = document.structuralDesigns.find((item) => item.id === design.id);
+      const changed = previous ? JSON.stringify(previous) !== JSON.stringify(design) : false;
+      document = {
+        ...document,
+        structuralDesigns: previous ? document.structuralDesigns.map((item) => item.id === design.id ? cloneStructuralDesign(design) : item) : [cloneStructuralDesign(design), ...document.structuralDesigns],
+        structuralResults: changed ? document.structuralResults.map((result) => result.designId === design.id ? { ...result, status: "needs-review" } : result) : document.structuralResults,
+      };
+    }),
+    removeStructuralDesign: (designId) => update(() => {
+      document = { ...document, structuralDesigns: document.structuralDesigns.filter((design) => design.id !== designId), structuralResults: document.structuralResults.filter((result) => result.designId !== designId) };
+    }),
+    saveStructuralResult: (result) => update(() => {
+      document = {
+        ...document,
+        structuralDesigns: document.structuralDesigns.map((design) => design.id !== result.designId ? design : { ...design, loadCases: design.loadCases.map((loadCase) => loadCase.id === result.loadCaseId ? { ...loadCase, status: result.status } : loadCase) }),
+        structuralResults: [cloneStructuralResult(result), ...document.structuralResults.filter((item) => item.designId !== result.designId || item.loadCaseId !== result.loadCaseId)],
+      };
+    }),
   };
 }
 
 function cloneDocument(document: DesignDocument): DesignDocument {
-  return { ...document, airfoils: document.airfoils.map(cloneAirfoil), polars: document.polars.map(clonePolar), airfoilAnalysisRuns: document.airfoilAnalysisRuns.map(cloneRun), aircraft: cloneAircraft(document.aircraft), analysisCases: document.analysisCases.map((analysisCase) => ({ ...analysisCase })), analysisResults: document.analysisResults.map(cloneAnalysisResult) };
+  return { ...document, airfoils: document.airfoils.map(cloneAirfoil), polars: document.polars.map(clonePolar), airfoilAnalysisRuns: document.airfoilAnalysisRuns.map(cloneRun), aircraft: cloneAircraft(document.aircraft), analysisCases: document.analysisCases.map((analysisCase) => ({ ...analysisCase })), analysisResults: document.analysisResults.map(cloneAnalysisResult), carbonMaterials: document.carbonMaterials.map((material) => ({ ...material })), structuralDesigns: document.structuralDesigns.map(cloneStructuralDesign), structuralResults: document.structuralResults.map(cloneStructuralResult) };
 }
 
 function cloneAirfoil(airfoil: Airfoil): Airfoil { return { ...airfoil, coordinates: airfoil.coordinates.map((point) => ({ ...point })) }; }
@@ -165,6 +208,14 @@ function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
     polarIds: result.polarIds ? [...result.polarIds] : undefined,
     rows: result.rows.map((row) => ({ ...row })),
   };
+}
+
+function cloneStructuralDesign(design: StructuralDesign): StructuralDesign {
+  return { ...design, sections: design.sections.map((section) => ({ ...section, plies: section.plies.map((ply) => ({ ...ply })) })), loadCases: design.loadCases.map((loadCase) => ({ ...loadCase, distributedLoads: loadCase.distributedLoads.map((load) => ({ ...load })), pointLoads: loadCase.pointLoads.map((load) => ({ ...load })) })), supports: design.supports?.map((support) => ({ ...support })) };
+}
+
+function cloneStructuralResult(result: StructuralAnalysisResult): StructuralAnalysisResult {
+  return { ...result, designSnapshot: cloneStructuralDesign(result.designSnapshot), loadCaseSnapshot: { ...result.loadCaseSnapshot, distributedLoads: result.loadCaseSnapshot.distributedLoads.map((load) => ({ ...load })), pointLoads: result.loadCaseSnapshot.pointLoads.map((load) => ({ ...load })) }, materialIds: [...result.materialIds], materialSnapshots: result.materialSnapshots?.map((material) => ({ ...material })), points: result.points.map((point) => ({ ...point })), summary: { ...result.summary } };
 }
 
 function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
