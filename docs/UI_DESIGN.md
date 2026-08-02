@@ -38,6 +38,13 @@ Use icon-only buttons for compact row actions. Every icon button must have an ac
 - Keep actions that are not applicable out of the row, or render them disabled with a reason when their presence is necessary for layout consistency.
 - Apply this order to new tables and migrate existing tables when they are next changed.
 
+## Ordered entity tables
+
+- Use `OrderedEntityTable` from `src/shared/ui/table` when insertion is relative to a selected row.
+- Keep the collection's authoritative ordering and insertion calculations in the owning page or feature; the shared component only renders the current item order and dispatches the selected entity key.
+- Put the paired “add before” and “add after” creation actions in the table header. Disable them when no row is selected, with a reason when a domain rule prevents one direction.
+- Preserve row selection independently from row actions, and keep contextual actions in the stable right-aligned action column.
+
 ## Airfoils
 
 - On `/airfoils`, NACA generation and DAT import are creation actions in the airfoil table header.

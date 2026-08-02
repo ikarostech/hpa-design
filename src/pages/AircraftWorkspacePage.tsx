@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronRight, Plus, Save } from "lucide-react";
+import { AlertTriangle, ChevronRight, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
@@ -10,9 +10,8 @@ import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
+import { OrderedEntityTable, type OrderedTableColumn } from "../shared/ui/table/OrderedEntityTable";
 import { RowActions } from "../shared/ui/table/RowActions";
-import { TableActionCell, TableActionHeader } from "../shared/ui/table/TableActionColumn";
-import { cn } from "../shared/lib/utils";
 
 interface AircraftWorkspacePageProps {
   aircraft: AircraftGeometry;
@@ -100,6 +99,18 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
   const fieldError = (field: "incidence" | "staticMargin") => validation.valid ? undefined : validation.errors[field];
   const sectionErrors = validation.valid ? [] : validation.errors.sections ?? [];
   const pendingDeleteIndex = draft.sections.findIndex((section) => section.id === pendingDeleteId);
+  const sectionColumns: OrderedTableColumn<WingSection>[] = [
+    { key: "y-position", header: "Y Position", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} Y position`} value={section.yPosition} step={0.01} unit="m" disabled={index === 0} onChange={(value) => updateSection(section.id, { yPosition: value })} /> },
+    { key: "chord", header: "Chord", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} chord`} value={section.chord} step={0.01} unit="m" onChange={(value) => updateSection(section.id, { chord: value })} /> },
+    { key: "x-offset", header: "X Offset", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} X offset`} value={section.xOffset} step={0.01} unit="m" onChange={(value) => updateSection(section.id, { xOffset: value })} /> },
+    { key: "dihedral", header: "Dihedral", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} dihedral`} value={section.dihedral} step={0.1} unit="°" onChange={(value) => updateSection(section.id, { dihedral: value })} /> },
+    { key: "twist", header: "Twist", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} twist`} value={section.twist} step={0.1} unit="°" onChange={(value) => updateSection(section.id, { twist: value })} /> },
+    { key: "airfoil", header: "Airfoil", renderCell: (section, index) => <select aria-label={`Section ${index + 1} airfoil`} value={section.airfoilId} onChange={(event) => updateSection(section.id, { airfoilId: event.target.value })} className="h-9 min-w-32 rounded border border-slate-200 px-2">{airfoils.map((airfoil) => <option key={airfoil.id} value={airfoil.id}>{airfoil.name}</option>)}</select> },
+    { key: "x-panels", header: "X Panels", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} X panels`} value={section.chordwisePanels} step={1} onChange={(value) => updateSection(section.id, { chordwisePanels: value })} /> },
+    { key: "x-distribution", header: "X Distribution", renderCell: (section, index) => <DistributionSelect label={`Section ${index + 1} X distribution`} value={section.chordwiseDistribution} onChange={(value) => updateSection(section.id, { chordwiseDistribution: value })} /> },
+    { key: "y-panels", header: "Y Panels", renderCell: (section, index) => <NumericCell label={`Section ${index + 1} Y panels`} value={section.spanwisePanels} step={1} onChange={(value) => updateSection(section.id, { spanwisePanels: value })} /> },
+    { key: "y-distribution", header: "Y Distribution", renderCell: (section, index) => <DistributionSelect label={`Section ${index + 1} Y distribution`} value={section.spanwiseDistribution} onChange={(value) => updateSection(section.id, { spanwiseDistribution: value })} /> },
+  ];
 
   return (
     <div className="space-y-5">
@@ -125,54 +136,22 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
             <CardBody><AircraftPreview geometry={preview} selectedSectionId={selectedSectionId} onSelectSection={setSelectedSectionId} /></CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="font-semibold text-slate-950">主翼セクション</h2><p className="mt-1 text-xs text-slate-500">Y位置・弦長・前縁オフセット・角度・解析メッシュを半翼で定義します。</p></div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!selectedSectionId}
-                  onClick={() => selectedSectionId && insertSectionBefore(selectedSectionId)}
-                ><Plus size={15} />前にセクションを追加</Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!selectedSectionId}
-                  onClick={() => selectedSectionId && insertSectionAfter(selectedSectionId)}
-                ><Plus size={15} />後ろにセクションを追加</Button>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1380px] text-left text-sm">
-                  <thead className="border-b border-slate-200 text-xs text-slate-500">
-                    <tr>
-                      {[
-                        "Y Position", "Chord", "X Offset", "Dihedral", "Twist", "Airfoil",
-                        "X Panels", "X Distribution", "Y Panels", "Y Distribution",
-                      ].map((heading) => <th key={heading} className="p-2 font-semibold">{heading}</th>)}
-                      <TableActionHeader className="font-semibold" />
-                    </tr>
-                  </thead>
-                  <tbody>{draft.sections.map((section, index) => <tr key={section.id} aria-label={`Section ${index + 1}`} aria-selected={section.id === selectedSectionId} onClick={() => setSelectedSectionId(section.id)} className={cn("border-b border-slate-100 align-top", section.id === selectedSectionId && "bg-blue-50/70")}>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} Y position`} value={section.yPosition} step={0.01} unit="m" disabled={index === 0} onChange={(value) => updateSection(section.id, { yPosition: value })} /></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} chord`} value={section.chord} step={0.01} unit="m" onChange={(value) => updateSection(section.id, { chord: value })} /></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} X offset`} value={section.xOffset} step={0.01} unit="m" onChange={(value) => updateSection(section.id, { xOffset: value })} /></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} dihedral`} value={section.dihedral} step={0.1} unit="°" onChange={(value) => updateSection(section.id, { dihedral: value })} /></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} twist`} value={section.twist} step={0.1} unit="°" onChange={(value) => updateSection(section.id, { twist: value })} /></td>
-                    <td className="p-2"><select aria-label={`Section ${index + 1} airfoil`} value={section.airfoilId} onChange={(event) => updateSection(section.id, { airfoilId: event.target.value })} className="h-9 min-w-32 rounded border border-slate-200 px-2">{airfoils.map((airfoil) => <option key={airfoil.id} value={airfoil.id}>{airfoil.name}</option>)}</select></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} X panels`} value={section.chordwisePanels} step={1} onChange={(value) => updateSection(section.id, { chordwisePanels: value })} /></td>
-                    <td className="p-2"><DistributionSelect label={`Section ${index + 1} X distribution`} value={section.chordwiseDistribution} onChange={(value) => updateSection(section.id, { chordwiseDistribution: value })} /></td>
-                    <td className="p-2"><NumericCell label={`Section ${index + 1} Y panels`} value={section.spanwisePanels} step={1} onChange={(value) => updateSection(section.id, { spanwisePanels: value })} /></td>
-                    <td className="p-2"><DistributionSelect label={`Section ${index + 1} Y distribution`} value={section.spanwiseDistribution} onChange={(value) => updateSection(section.id, { spanwiseDistribution: value })} /></td>
-                    <TableActionCell><RowActions entityLabel={`Section ${index + 1}`} delete={{ disabled: index === 0 || draft.sections.length <= 2, disabledReason: index === 0 ? "ルート断面は削除できません" : draft.sections.length <= 2 ? "主翼には2断面以上必要です" : undefined, onAction: () => setPendingDeleteId(section.id) }} /></TableActionCell>
-                  </tr>)}</tbody>
-                </table>
-              </div>
-              {sectionErrors.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{sectionErrors.map((error) => <li key={error}>{error}</li>)}</ul>}
-            </CardBody>
-          </Card>
+          <OrderedEntityTable
+            title="主翼セクション"
+            description="Y位置・弦長・前縁オフセット・角度・解析メッシュを半翼で定義します。"
+            itemLabel="セクション"
+            items={draft.sections}
+            columns={sectionColumns}
+            getKey={(section) => section.id}
+            getRowLabel={(_, index) => `Section ${index + 1}`}
+            selectedKey={selectedSectionId}
+            onSelect={setSelectedSectionId}
+            insertBefore={{ onAction: insertSectionBefore }}
+            insertAfter={{ onAction: insertSectionAfter }}
+            renderActions={(section, index) => <RowActions entityLabel={`Section ${index + 1}`} delete={{ disabled: index === 0 || draft.sections.length <= 2, disabledReason: index === 0 ? "ルート断面は削除できません" : draft.sections.length <= 2 ? "主翼には2断面以上必要です" : undefined, onAction: () => setPendingDeleteId(section.id) }} />}
+            minWidthClassName="min-w-[1380px]"
+            footer={sectionErrors.length > 0 ? <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{sectionErrors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
+          />
         </div>
 
         <Card>
