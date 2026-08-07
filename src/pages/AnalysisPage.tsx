@@ -16,6 +16,7 @@ import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 import { MetricCard } from "../shared/ui/MetricCard";
+import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 
 interface AnalysisPageProps {
   aircraft: AircraftGeometry;
@@ -141,16 +142,15 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
   };
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-950">解析ケースと結果</h1>
-        <p className="mt-1 text-sm text-slate-500">LLT / VLM の条件を管理し、設計ドキュメントへ結果を保存します。</p>
-      </div>
-      <div className="flex gap-2 border-b border-slate-200">
+    <PageTemplate
+      title="解析ケースと結果"
+      description="LLT / VLM の条件を管理し、設計ドキュメントへ結果を保存します。"
+      tabs={<div role="tablist" className="flex gap-2 border-b border-slate-200">
         {(["解析", "結果"] as const).map((tab) => (
-          <button key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
+          <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
         ))}
-      </div>
+      </div>}
+    >
 
       <div className="grid gap-5 xl:grid-cols-[280px_1fr_340px]">
         <div className="space-y-5">
@@ -208,7 +208,7 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
         onConfirm={() => { if (pendingDeleteId) void deleteCase(pendingDeleteId); }}
         onCancel={() => setPendingDeleteId(null)}
       />
-    </div>
+    </PageTemplate>
   );
 }
 

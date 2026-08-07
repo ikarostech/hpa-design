@@ -12,6 +12,7 @@ import { airfoilAnalysisExporter } from "../features/airfoils/services/airfoilAn
 import { useAirfoilWorkspace } from "../features/airfoils/hooks/useAirfoilWorkspace";
 import type { AirfoilWorkspaceData } from "../features/airfoils/model/workspace";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
+import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 
 export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const workspace = useAirfoilWorkspace(data);
@@ -25,13 +26,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const pendingReferences = pendingAirfoil ? workspace.referencesForAirfoil(pendingAirfoil.id) : [];
 
   return (
-    <div className="space-y-5">
-      <div>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">翼型ライブラリ</h1>
-          <p className="mt-1 text-sm text-slate-500">翼型の比較、Polar設定、解析結果を確認します。</p>
-        </div>
-      </div>
+    <PageTemplate title="翼型ライブラリ" description="翼型の比較、Polar設定、解析結果を確認します。">
 
       <AirfoilChartPanel data={workspace.polarPoints} series={workspace.chartSeries} />
 
@@ -108,7 +103,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
         onCancel={() => setPendingRunId(null)}
         onConfirm={() => { if (pendingRunId) { workspace.removeAnalysisRun(pendingRunId); setPendingRunId(null); } }}
       />
-    </div>
+    </PageTemplate>
   );
 }
 

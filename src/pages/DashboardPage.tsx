@@ -5,6 +5,7 @@ import type { DesignDocument } from "../app/designDocument";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { MetricCard } from "../shared/ui/MetricCard";
+import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 
 interface DashboardPageProps {
   document: DesignDocument;
@@ -31,14 +32,11 @@ export function DashboardPage({ document, isDirty, onImportFile, onExport }: Das
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">設計概要</h1>
-          <p className="mt-1 text-sm text-slate-500">現在開いている設計ファイルを編集します。プロジェクトの切り替えはありません。</p>
-        </div>
-        <Button onClick={() => navigate("/airfoils")}>翼型を編集 <ArrowRight size={16} /></Button>
-      </div>
+    <PageTemplate
+      title="設計概要"
+      description="現在開いている設計ファイルを編集します。プロジェクトの切り替えはありません。"
+      actions={<Button onClick={() => navigate("/airfoils")}>翼型を編集 <ArrowRight size={16} /></Button>}
+    >
 
       <Card className="overflow-hidden">
         <CardBody className="grid gap-5 bg-gradient-to-br from-blue-600 to-sky-500 p-6 text-white md:grid-cols-[1fr_auto]">
@@ -72,7 +70,7 @@ export function DashboardPage({ document, isDirty, onImportFile, onExport }: Das
         <ActionCard title="2. 機体設計" detail="主翼形状と翼型の割り当てを編集します。" action="機体設計へ" onClick={() => navigate("/aircraft")} />
         <ActionCard title="3. 解析と保存" detail="解析結果を確認し、設計ファイルとして保存します。" action="入出力へ" onClick={() => navigate("/export")} />
       </div>
-    </div>
+    </PageTemplate>
   );
 }
 

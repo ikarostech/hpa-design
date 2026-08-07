@@ -3,12 +3,17 @@ import { useEffect, useMemo, useState } from "react";
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import type { AnalysisResult } from "../features/analysis/model/types";
 import type { CarbonMaterial, LaminatePly, StructuralAnalysisResult, StructuralDesign, StructuralLoadCase, StructuralTubeSection } from "../features/structures/model/types";
+import { MaterialPropertyDrawer } from "../features/structures/components/MaterialPropertyDrawer";
+import { TubeSectionDetailDrawer } from "../features/structures/components/TubeSectionDetailDrawer";
 import { calculateLaminate, executeStructuralAnalysis } from "../features/structures/services/structuralAnalysis";
 import { createLoadCaseFromAerodynamicResult, createStructuralResultCsv, createStructuralSummary } from "../features/structures/services/structuralLoadService";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { MetricCard } from "../shared/ui/MetricCard";
+import { PageTemplate } from "../shared/ui/layout/PageTemplate";
+import type { InspectorController, InspectorState } from "../shared/model";
+import { RowActions } from "../shared/ui/table/RowActions";
 
 interface StructuresPageProps {
   aircraft: AircraftGeometry;
@@ -56,36 +61,43 @@ export function StructuresPage(props: StructuresPageProps) {
     }
   };
 
-  return <div className="space-y-5">
-    <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><h1 className="text-2xl font-semibold text-slate-950">主翼カーボンパイプ構造設計</h1><p className="mt-1 text-sm text-slate-500">円形積層管の剛性、重量、たわみ、ねじれ、最大応力リザーブファクターを評価します。</p></div>
-      <div className="flex gap-2">
+  return <PageTemplate
+    title="主翼カーボンパイプ構造設計"
+    description="円形積層管の剛性、重量、たわみ、ねじれ、最大応力リザーブファクターを評価します。"
+    actions={<>
         <select aria-label="構造設計" value={design?.id ?? ""} onChange={(event) => setSelectedDesignId(event.target.value)} className="h-9 rounded-md border bg-white px-3 text-sm">{designs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
         <Button variant="secondary" onClick={() => {
           const next = createDefaultDesign(aircraft, materials[0]);
           onSaveDesign(next); setSelectedDesignId(next.id);
         }}><Plus size={16} />構造案</Button>
         {design ? <Button variant="destructive" size="icon" aria-label={`${design.name}を削除`} title={`${design.name}を削除`} onClick={() => onRemoveDesign(design.id)}><Trash2 size={16} /></Button> : null}
-      </div>
-    </header>
-
-    <div role="tablist" className="flex border-b border-slate-200">{(["設計", "荷重ケース", "結果"] as const).map((tab) => <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>)}</div>
-    {error ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+    </>}
+    tabs={<div role="tablist" className="flex border-b border-slate-200">{(["設計", "荷重ケース", "結果"] as const).map((tab) => <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>)}</div>}
+    notices={error ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div> : null}
+  >
     {!design ? <EmptyDesign onCreate={() => onSaveDesign(createDefaultDesign(aircraft, materials[0]))} /> : activeTab === "設計"
       ? <DesignTab design={design} materials={materials} selectedSectionId={selectedSectionId} onSelectSection={setSelectedSectionId} onSaveDesign={saveDesign} onSaveMaterial={onSaveMaterial} onRemoveMaterial={onRemoveMaterial} />
       : activeTab === "荷重ケース"
         ? <LoadsTab design={design} aircraft={aircraft} aerodynamicResults={aerodynamicResults} onSaveDesign={saveDesign} onRun={run} />
         : <ResultsTab results={designResults} result={result} onSelectResult={setSelectedResultId} />}
-  </div>;
+  </PageTemplate>;
 }
 
 function DesignTab({ design, materials, selectedSectionId, onSelectSection, onSaveDesign, onSaveMaterial, onRemoveMaterial }: { design: StructuralDesign; materials: readonly CarbonMaterial[]; selectedSectionId: string | null; onSelectSection: (id: string) => void; onSaveDesign: (design: StructuralDesign) => void; onSaveMaterial: (material: CarbonMaterial) => void; onRemoveMaterial: (id: string) => void }) {
+  const [detailState, setDetailState] = useState<InspectorState<string>>({ open: false, mode: "detail", targetId: null });
   const selected = design.sections.find((section) => section.id === selectedSectionId) ?? design.sections[0];
   const selectedSummary = selected ? getSectionSummary(selected, materials) : null;
   const bounds = tubeSectionBounds(design.sections);
   const selectedBounds = bounds.find((bound) => bound.section.id === selected?.id);
+  const detailBounds = bounds.find((bound) => bound.section.id === detailState.targetId);
+  const detailInspector: InspectorController<string> = {
+    state: detailState,
+    openDetail: (id) => setDetailState({ open: true, mode: "detail", targetId: id }),
+    openCreate: () => setDetailState({ open: true, mode: "create", targetId: null }),
+    openEdit: (id) => setDetailState({ open: true, mode: "edit", targetId: id }),
+    close: () => setDetailState((current) => ({ ...current, open: false })),
+  };
   const updateSection = (id: string, patch: Partial<StructuralTubeSection>) => onSaveDesign({ ...design, sections: design.sections.map((section) => section.id === id ? { ...section, ...patch } : section) });
-  const updatePly = (section: StructuralTubeSection, id: string, patch: Partial<LaminatePly>) => updateSection(section.id, { plies: section.plies.map((ply) => ply.id === id ? { ...ply, ...patch } : ply) });
   return <div className="space-y-5">
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
       <Card><CardHeader className="flex items-center justify-between"><h2 className="font-semibold">パイプ配置プレビュー</h2><Badge tone="blue">片翼・段階切替</Badge></CardHeader><CardBody><SparPreview design={design} selectedId={selected?.id} onSelect={onSelectSection} /></CardBody></Card>
@@ -99,21 +111,28 @@ function DesignTab({ design, materials, selectedSectionId, onSelectSection, onSa
         {selectedSummary ? <><ReadValue label="積層厚さ / 内径" value={`${(selectedSummary.thickness * 1000).toFixed(3)} / ${(selectedSummary.innerDiameter * 1000).toFixed(2)} mm`} /><ReadValue label="単位長さ重量" value={`${selectedSummary.linearMass.toFixed(3)} kg/m`} /></> : null}
       </> : <p className="text-sm text-slate-500">パイプセクションを選択してください。</p>}</CardBody></Card>
     </div>
-    <Card><CardHeader className="flex items-center justify-between"><div><h2 className="font-semibold">CFRPパイプセクション</h2><p className="mt-1 text-sm text-slate-500">各セクションは指定長さの全域で同じ外径・積層構成です。線形補間は行いません。</p></div><Button size="sm" onClick={() => { const section = createTubeSection(materials[0]); onSaveDesign({ ...design, sections: [...design.sections, section] }); onSelectSection(section.id); }} disabled={!materials.length}><Plus size={15} />セクション</Button></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">範囲</th><th>長さ</th><th>外径</th><th>積層</th><th className="text-right">操作</th></tr></thead><tbody>{bounds.map(({ section, start, end }) => <tr key={section.id} className={`border-t ${section.id === selected?.id ? "bg-blue-50" : ""}`} onClick={() => onSelectSection(section.id)}><td className="px-2 py-2">{start.toFixed(3)}–{end.toFixed(3)} m</td><td>{section.length.toFixed(3)} m</td><td>{(section.outerDiameter * 1000).toFixed(1)} mm</td><td>{layupLabel(section.plies)}</td><td className="text-right"><Button variant="ghost" size="icon" aria-label={`${section.id}を削除`} title={`${section.id}を削除`} disabled={design.sections.length <= 1} onClick={(event) => { event.stopPropagation(); onSaveDesign({ ...design, sections: design.sections.filter((item) => item.id !== section.id) }); }}><Trash2 size={15} /></Button></td></tr>)}</tbody></table></div></CardBody></Card>
+    <Card><CardHeader className="flex items-center justify-between"><div><h2 className="font-semibold">CFRPパイプセクション</h2><p className="mt-1 text-sm text-slate-500">各セクションは指定長さの全域で同じ外径・積層構成です。線形補間は行いません。</p></div><Button size="sm" onClick={() => { const section = createTubeSection(materials[0]); onSaveDesign({ ...design, sections: [...design.sections, section] }); onSelectSection(section.id); }} disabled={!materials.length}><Plus size={15} />セクション</Button></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">範囲</th><th>長さ</th><th>外径</th><th>積層</th><th className="text-right">操作</th></tr></thead><tbody>{bounds.map(({ section, start, end }) => <tr key={section.id} className={`border-t ${section.id === selected?.id ? "bg-blue-50" : ""}`} onClick={() => onSelectSection(section.id)}><td className="px-2 py-2">{start.toFixed(3)}–{end.toFixed(3)} m</td><td>{section.length.toFixed(3)} m</td><td>{(section.outerDiameter * 1000).toFixed(1)} mm</td><td>{layupLabel(section.plies)}</td><td className="text-right"><RowActions entityLabel={section.id} detail={{ active: detailState.open && detailState.targetId === section.id, onAction: () => { onSelectSection(section.id); detailInspector.openDetail(section.id); } }} delete={{ disabled: design.sections.length <= 1, disabledReason: design.sections.length <= 1 ? "最低1本のパイプが必要です" : undefined, onAction: () => onSaveDesign({ ...design, sections: design.sections.filter((item) => item.id !== section.id) }) }} /></td></tr>)}</tbody></table></div></CardBody></Card>
     <SupportEditor design={design} onSave={onSaveDesign} />
-    {selected ? <Card><CardHeader className="flex items-center justify-between"><h2 className="font-semibold">セクション積層構成</h2><Button size="sm" onClick={() => updateSection(selected.id, { plies: [...selected.plies, { id: createId("ply"), materialId: materials[0]?.id ?? "", angle: 0, count: 1 }] })} disabled={!materials.length}><Plus size={15} />積層</Button></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">材料</th><th>角度</th><th>層数</th><th className="text-right">操作</th></tr></thead><tbody>{selected.plies.map((ply) => <tr key={ply.id} className="border-t"><td className="px-2 py-2"><select aria-label={`${ply.id}の材料`} value={ply.materialId} onChange={(event) => updatePly(selected, ply.id, { materialId: event.target.value })} className="h-8 rounded border bg-white px-2">{materials.map((material) => <option key={material.id} value={material.id}>{material.name}</option>)}</select></td><td><select aria-label={`${ply.id}の角度`} value={ply.angle} onChange={(event) => updatePly(selected, ply.id, { angle: Number(event.target.value) as LaminatePly["angle"] })} className="h-8 rounded border bg-white px-2">{[0, 45, -45, 90].map((angle) => <option key={angle} value={angle}>{angle}°</option>)}</select></td><td><input aria-label={`${ply.id}の層数`} type="number" min={1} value={ply.count} onChange={(event) => updatePly(selected, ply.id, { count: Math.max(1, Number(event.target.value)) })} className="h-8 w-20 rounded border px-2" /></td><td className="text-right"><Button variant="ghost" size="icon" aria-label={`${ply.id}を削除`} title={`${ply.id}を削除`} disabled={selected.plies.length <= 1} onClick={() => updateSection(selected.id, { plies: selected.plies.filter((item) => item.id !== ply.id) })}><Trash2 size={15} /></Button></td></tr>)}</tbody></table></div></CardBody></Card> : null}
     <MaterialLibrary materials={materials} onSave={onSaveMaterial} onRemove={onRemoveMaterial} />
+    {detailBounds ? <TubeSectionDetailDrawer section={detailBounds.section} start={detailBounds.start} end={detailBounds.end} materials={materials} inspector={detailInspector} onChange={(section) => updateSection(section.id, section)} /> : null}
   </div>;
 }
 
 function MaterialLibrary({ materials, onSave, onRemove }: { materials: readonly CarbonMaterial[]; onSave: (material: CarbonMaterial) => void; onRemove: (id: string) => void }) {
-  const [selectedId, setSelectedId] = useState<string | null>(materials[0]?.id ?? null);
-  const selected = materials.find((material) => material.id === selectedId) ?? materials[0];
-  const add = () => { const material = createDefaultMaterial(); onSave(material); setSelectedId(material.id); };
-  const patch = (value: Partial<CarbonMaterial>) => { if (selected) onSave({ ...selected, ...value }); };
-  return <Card><CardHeader className="flex items-center justify-between"><div><h2 className="font-semibold">カーボン材料ライブラリ</h2><p className="mt-1 text-sm text-slate-500">値はSI単位で保存されます。実材料の試験値を使用してください。</p></div><Button size="sm" onClick={add}><Plus size={15} />材料</Button></CardHeader><CardBody className="space-y-5"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">名称</th><th>E1</th><th>E2</th><th>G12</th><th>層厚</th><th>密度</th><th>低減係数</th><th className="text-right">操作</th></tr></thead><tbody>{materials.map((material) => <tr key={material.id} className={`border-t ${material.id === selected?.id ? "bg-blue-50" : ""}`}><td className="px-2 py-3 font-medium">{material.name}</td><td>{formatGPa(material.e1)}</td><td>{formatGPa(material.e2)}</td><td>{formatGPa(material.g12)}</td><td>{(material.plyThickness * 1000).toFixed(3)} mm</td><td>{material.density} kg/m³</td><td>{material.reductionFactor.toFixed(2)}</td><td className="text-right"><div className="flex justify-end"><Button variant="ghost" size="icon" aria-label={`${material.name}を編集`} title={`${material.name}を編集`} onClick={() => setSelectedId(material.id)}><Pencil size={15} /></Button><Button variant="ghost" size="icon" aria-label={`${material.name}を削除`} title={`${material.name}を削除`} onClick={() => onRemove(material.id)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></div>
-    {selected ? <div><h3 className="mb-3 text-sm font-semibold">材料プロパティ</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="text-xs text-slate-500">名称<input aria-label="材料名" value={selected.name} onChange={(event) => patch({ name: event.target.value })} className="mt-1 h-9 w-full rounded border px-2 text-sm text-slate-900" /></label><MaterialField label="E1" value={selected.e1 / 1e9} unit="GPa" onChange={(value) => patch({ e1: value * 1e9 })} /><MaterialField label="E2" value={selected.e2 / 1e9} unit="GPa" onChange={(value) => patch({ e2: value * 1e9 })} /><MaterialField label="G12" value={selected.g12 / 1e9} unit="GPa" onChange={(value) => patch({ g12: value * 1e9 })} /><MaterialField label="ν12" value={selected.nu12} unit="" onChange={(value) => patch({ nu12: value })} /><MaterialField label="繊維引張強度" value={selected.tensileStrength1 / 1e6} unit="MPa" onChange={(value) => patch({ tensileStrength1: value * 1e6 })} /><MaterialField label="繊維圧縮強度" value={selected.compressiveStrength1 / 1e6} unit="MPa" onChange={(value) => patch({ compressiveStrength1: value * 1e6 })} /><MaterialField label="横引張強度" value={selected.tensileStrength2 / 1e6} unit="MPa" onChange={(value) => patch({ tensileStrength2: value * 1e6 })} /><MaterialField label="横圧縮強度" value={selected.compressiveStrength2 / 1e6} unit="MPa" onChange={(value) => patch({ compressiveStrength2: value * 1e6 })} /><MaterialField label="せん断強度" value={selected.shearStrength12 / 1e6} unit="MPa" onChange={(value) => patch({ shearStrength12: value * 1e6 })} /><MaterialField label="密度" value={selected.density} unit="kg/m³" onChange={(value) => patch({ density: value })} /><MaterialField label="1層厚さ" value={selected.plyThickness * 1000} unit="mm" onChange={(value) => patch({ plyThickness: value / 1000 })} /><MaterialField label="低減係数" value={selected.reductionFactor} unit="" onChange={(value) => patch({ reductionFactor: value })} /></div></div> : null}
-  </CardBody></Card>;
+  const [drawerState, setDrawerState] = useState<InspectorState<string>>({ open: false, mode: "edit", targetId: null });
+  const drawerMaterial = materials.find((material) => material.id === drawerState.targetId);
+  const inspector: InspectorController<string> = {
+    state: drawerState,
+    openDetail: (id) => setDrawerState({ open: true, mode: "detail", targetId: id }),
+    openCreate: () => setDrawerState({ open: true, mode: "create", targetId: null }),
+    openEdit: (id) => setDrawerState({ open: true, mode: "edit", targetId: id }),
+    close: () => setDrawerState((current) => ({ ...current, open: false })),
+  };
+  const add = () => { const material = createDefaultMaterial(); onSave(material); inspector.openEdit(material.id); };
+  return <>
+    <Card><CardHeader className="flex items-center justify-between"><div><h2 className="font-semibold">カーボン材料ライブラリ</h2><p className="mt-1 text-sm text-slate-500">値はSI単位で保存されます。実材料の試験値を使用してください。</p></div><Button size="sm" onClick={add}><Plus size={15} />材料</Button></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">名称</th><th>E1</th><th>E2</th><th>G12</th><th>層厚</th><th>密度</th><th>低減係数</th><th className="text-right">操作</th></tr></thead><tbody>{materials.map((material) => <tr key={material.id} className={`border-t ${drawerState.open && material.id === drawerState.targetId ? "bg-blue-50" : ""}`}><td className="px-2 py-3 font-medium">{material.name}</td><td>{formatGPa(material.e1)}</td><td>{formatGPa(material.e2)}</td><td>{formatGPa(material.g12)}</td><td>{(material.plyThickness * 1000).toFixed(3)} mm</td><td>{material.density} kg/m³</td><td>{material.reductionFactor.toFixed(2)}</td><td className="text-right"><div className="flex justify-end"><Button variant="ghost" size="icon" aria-label={`${material.name}を編集`} title={`${material.name}を編集`} onClick={() => inspector.openEdit(material.id)}><Pencil size={15} /></Button><Button variant="ghost" size="icon" aria-label={`${material.name}を削除`} title={`${material.name}を削除`} onClick={() => onRemove(material.id)}><Trash2 size={15} /></Button></div></td></tr>)}</tbody></table></div></CardBody></Card>
+    {drawerMaterial ? <MaterialPropertyDrawer material={drawerMaterial} inspector={inspector} onChange={onSave} /> : null}
+  </>;
 }
 
 function SupportEditor({ design, onSave }: { design: StructuralDesign; onSave: (design: StructuralDesign) => void }) {
@@ -163,7 +182,6 @@ function ResultChart({ points, label }: { points: readonly { x: number; value: n
 
 function EmptyDesign({ onCreate }: { onCreate: () => void }) { return <Card><CardBody className="py-10 text-center"><p className="text-sm text-slate-500">構造設計がありません。</p><Button className="mt-4" onClick={onCreate}>最初の構造設計を作成</Button></CardBody></Card>; }
 function NumberField({ label, unit, value, onChange }: { label: string; unit: string; value: number; onChange: (value: number) => void }) { return <label className="block text-sm"><span className="mb-1 block text-xs text-slate-500">{label}</span><span className="flex items-center gap-2"><input aria-label={label} type="number" step="any" value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-9 min-w-0 flex-1 rounded border px-2" /><span className="text-xs text-slate-500">{unit}</span></span></label>; }
-function MaterialField({ label, unit, value, onChange }: { label: string; unit: string; value: number; onChange: (value: number) => void }) { return <label className="text-xs text-slate-500">{label}<span className="mt-1 flex items-center gap-1"><input aria-label={label} type="number" step="any" value={value} onChange={(event) => onChange(Number(event.target.value))} className="h-9 min-w-0 flex-1 rounded border px-2 text-sm text-slate-900" /><span>{unit}</span></span></label>; }
 function ReadValue({ label, value }: { label: string; value: string }) { return <div className="rounded border px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>; }
 function layupLabel(plies: readonly LaminatePly[]) { return `[${plies.map((ply) => `${ply.angle}°×${ply.count}`).join(" / ")}]`; }
 function formatGPa(value: number) { return `${(value / 1e9).toFixed(1)} GPa`; }

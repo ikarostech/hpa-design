@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, X } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FormController, MultiSelection } from "@/shared/model";
 import type { Airfoil, AirfoilPolar } from "../model/types";
@@ -6,6 +6,7 @@ import type { AirfoilAnalysisJobController } from "../model/workspace";
 import type { XfoilAnalysisSettings } from "../model/analysis";
 import { validateXfoilAnalysisSettings } from "../model/analysisValidation";
 import { Button } from "../../../shared/ui/Button";
+import { InspectorDrawer } from "../../../shared/ui/inspector/InspectorDrawer";
 import { AirfoilTargetTable } from "./AirfoilTargetTable";
 
 const defaultAnalysisSettings: XfoilAnalysisSettings = {
@@ -78,25 +79,36 @@ export function AirfoilAnalysisDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button className="absolute inset-0 bg-slate-950/10" aria-label="解析作成を閉じる" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full flex-col border-l bg-white shadow-xl sm:max-w-[440px]">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}>
-              <ArrowLeft size={18} />
-            </Button>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-semibold text-slate-950">2D翼型解析を作成</h2>
-              <p className="mt-1 text-sm text-slate-500">翼型リストで選択した対象を一括解析します。</p>
+    <InspectorDrawer
+      open={open}
+      title="2D翼型解析を作成"
+      subtitle="翼型リストで選択した対象を一括解析します。"
+      closeLabel="解析作成を閉じる"
+      backLabel="一覧に戻る"
+      onClose={onClose}
+      footer={<div className="space-y-3">
+        {isRunning && progress ? (
+          <div className="space-y-2" role="status" aria-live="polite">
+            <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+              <span>XFOIL実行中</span>
+              <span>{progress.completed}/{progress.total}件・{progressPercent}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
-          <Button variant="ghost" size="icon" aria-label="解析作成を閉じる" onClick={onClose}>
-            <X size={18} />
+        ) : null}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>キャンセル</Button>
+          {isRunning && currentJob ? <Button variant="destructive" aria-label="解析をキャンセル" onClick={() => void jobController.cancel(currentJob.id)}>解析をキャンセル</Button> : null}
+          <Button onClick={settingsForm.submit} disabled={!canRun}>
+            <CheckCircle2 size={16} />
+            {isRunning ? `XFOIL実行中 ${progressPercent}%` : `${targetNames.length}件を一括解析`}
           </Button>
         </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      </div>}
+    >
+        <div className="space-y-3">
           <div className="rounded-md border border-slate-200 px-3 py-2">
             <p className="text-xs text-slate-500">解析対象</p>
             <p className="mt-1 text-sm font-medium text-slate-900">{targetNames.length > 0 ? targetNames.join(", ") : "翼型リストから選択"}</p>
@@ -124,30 +136,7 @@ export function AirfoilAnalysisDrawer({
           <Input label="反復回数" value={settingsForm.state.value.iterations} error={settingsForm.state.errors.iterations} onChange={(value) => update("iterations", value)} />
           {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
         </div>
-
-        <div className="space-y-3 border-t p-4">
-          {isRunning && progress ? (
-            <div className="space-y-2" role="status" aria-live="polite">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-600">
-                <span>XFOIL実行中</span>
-                <span>{progress.completed}/{progress.total}件・{progressPercent}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
-              </div>
-            </div>
-          ) : null}
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose}>キャンセル</Button>
-            {isRunning && currentJob ? <Button variant="destructive" aria-label="解析をキャンセル" onClick={() => void jobController.cancel(currentJob.id)}>解析をキャンセル</Button> : null}
-            <Button onClick={settingsForm.submit} disabled={!canRun}>
-              <CheckCircle2 size={16} />
-              {isRunning ? `XFOIL実行中 ${progressPercent}%` : `${targetNames.length}件を一括解析`}
-            </Button>
-          </div>
-        </div>
-      </aside>
-    </div>
+    </InspectorDrawer>
   );
 }
 

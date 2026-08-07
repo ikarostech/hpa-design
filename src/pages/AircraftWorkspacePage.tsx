@@ -12,6 +12,7 @@ import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 import { OrderedEntityTable, type OrderedTableColumn } from "../shared/ui/table/OrderedEntityTable";
 import { RowActions } from "../shared/ui/table/RowActions";
+import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 
 interface AircraftWorkspacePageProps {
   aircraft: AircraftGeometry;
@@ -113,21 +114,19 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
   ];
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">機体ワークスペース</h1>
-          <p className="mt-1 text-sm text-slate-500">XFLR5形式の主翼セクションを編集し、検証後に解析用ジオメトリへ保存します。</p>
-        </div>
-        <div className="flex gap-2">
+    <PageTemplate
+      title="機体ワークスペース"
+      description="XFLR5形式の主翼セクションを編集し、検証後に解析用ジオメトリへ保存します。"
+      actions={<>
           <Button variant="secondary" disabled={!dirty} onClick={() => formController.reset()}>キャンセル</Button>
           <Button disabled={!dirty || !validation.valid} onClick={() => void formController.submit()}><Save size={16} />保存</Button>
           <Button onClick={() => navigate("/analysis")}>解析に進む<ChevronRight size={16} /></Button>
-        </div>
-      </div>
-
-      {!validation.valid && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから保存してください。</div>}
-      {!airfoils.length && <div role="status" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">翼型ライブラリが空です。機体に翼型を割り当てるには、先に翼型を追加してください。</div>}
+      </>}
+      notices={<>
+        {!validation.valid && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから保存してください。</div>}
+        {!airfoils.length && <div role="status" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">翼型ライブラリが空です。機体に翼型を割り当てるには、先に翼型を追加してください。</div>}
+      </>}
+    >
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-5">
@@ -185,7 +184,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
         onCancel={() => setPendingDeleteId(null)}
         onConfirm={() => pendingDeleteId && removeSection(pendingDeleteId)}
       />
-    </div>
+    </PageTemplate>
   );
 }
 

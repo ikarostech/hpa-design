@@ -1,10 +1,11 @@
-import { ArrowLeft, Save, Upload, X } from "lucide-react";
+import { Save, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormController, ValidationIssue } from "@/shared/model";
 import { createDatAirfoilPreview, createNacaAirfoilPreview, readAirfoilDatFile } from "../services/airfoilCreationService";
 import type { Airfoil } from "../model/types";
 import type { AirfoilEditorMode } from "../model/workspace";
 import { Button } from "../../../shared/ui/Button";
+import { InspectorDrawer } from "../../../shared/ui/inspector/InspectorDrawer";
 import { AirfoilPlot } from "./AirfoilPlot";
 
 interface AirfoilEditorDrawerProps {
@@ -108,21 +109,19 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
   };
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button className="absolute inset-0 bg-slate-950/10" aria-label="編集を閉じる" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full flex-col border-l bg-white shadow-xl sm:max-w-[440px]">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="icon" aria-label="一覧に戻る" onClick={onClose}><ArrowLeft size={18} /></Button>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-semibold text-slate-950">{title}</h2>
-              <p className="mt-1 text-sm text-slate-500">座標を検証してから保存します。</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" aria-label="編集を閉じる" onClick={onClose}><X size={18} /></Button>
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+    <InspectorDrawer
+      open={open}
+      title={title}
+      subtitle="座標を検証してから保存します。"
+      closeLabel="編集を閉じる"
+      backLabel="一覧に戻る"
+      onClose={onClose}
+      footer={<div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>キャンセル</Button>
+        <Button disabled={!valid} onClick={formController.submit}><Save size={16} />保存</Button>
+      </div>}
+    >
+        <div className="space-y-4">
           {mode === "import-dat" || mode === "reapply-dat" ? (
             <>
               <label className="block text-sm font-medium text-slate-700">
@@ -153,13 +152,7 @@ export function AirfoilEditorDrawer({ mode, airfoil, open, onClose, onSave }: Ai
 
           {mode === "reapply-dat" && airfoil ? <div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-sm font-semibold text-slate-800">更新前</p><AirfoilPlot airfoil={airfoil} className="h-36 min-h-0" /></div>{previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">更新後</p><AirfoilPlot airfoil={previewAirfoil} className="h-36 min-h-0" /></div> : null}</div> : previewAirfoil ? <div><p className="mb-2 text-sm font-semibold text-slate-800">形状プレビュー</p><AirfoilPlot airfoil={previewAirfoil} className="h-44 min-h-0" /></div> : null}
         </div>
-
-        <div className="flex justify-end gap-2 border-t p-4">
-          <Button variant="secondary" onClick={onClose}>キャンセル</Button>
-          <Button disabled={!valid} onClick={formController.submit}><Save size={16} />保存</Button>
-        </div>
-      </aside>
-    </div>
+    </InspectorDrawer>
   );
 }
 

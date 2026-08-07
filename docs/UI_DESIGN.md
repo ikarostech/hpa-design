@@ -6,6 +6,14 @@
 - This document defines user-interface structure and interaction consistency.
 - `AGENTS.md` links to the applicable documents and defines agent workflow; it should not duplicate detailed UI specifications.
 
+## Page and inspector templates
+
+- Compose every route-level screen with `PageTemplate` from `src/shared/ui/layout`. Put the page title, description, header actions, tabs, and page-level notices in its named slots; keep domain grids, cards, tables, and state in the owning page or feature.
+- Render right-side detail, edit, creation, and run panels with `InspectorDrawer` from `src/shared/ui/inspector`. Keep domain fields, validation, persistence, and job controls in the owning feature.
+- Use the standard 440 px drawer for ordinary detail and forms. Use the wide 520 px drawer for dense engineering properties and tables.
+- Supply specific close and back labels. The shared drawer owns dialog semantics, backdrop behavior, scrolling, header layout, and the optional fixed footer.
+- Keep centered confirmation and short-form modal workflows as dialogs; do not force them into the inspector template when they are not associated with a selected row or page-side context.
+
 ## Entity-management tables
 
 Use the table as the primary management surface when users maintain a collection of entities.
