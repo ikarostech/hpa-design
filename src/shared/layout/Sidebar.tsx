@@ -14,7 +14,7 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-slate-200 bg-white p-3 lg:block">
+    <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 self-start overflow-y-auto border-r border-slate-200 bg-white p-3 lg:block">
       <nav className="space-y-1">
         {navItems.map((item) => (
           <NavLink
