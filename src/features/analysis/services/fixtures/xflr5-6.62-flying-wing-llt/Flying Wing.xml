@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE explane>
+<explane version="1.0">
+    <Units>
+        <length_unit_to_meter>0.001</length_unit_to_meter>
+        <mass_unit_to_kg>1</mass_unit_to_kg>
+    </Units>
+    <Plane>
+        <Name>Flying Wing</Name>
+        <Description></Description>
+        <Inertia/>
+        <has_body>false</has_body>
+        <wing>
+            <Name>Main Wing</Name>
+            <Type>MAINWING</Type>
+            <Position>0, 0, 0</Position>
+            <Tilt_angle>0.000</Tilt_angle>
+            <Symetric>true</Symetric>
+            <isFin>false</isFin>
+            <Sections>
+                <Section>
+                    <y_position>0.000</y_position>
+                    <Chord>300.000</Chord>
+                    <xOffset>0.000</xOffset>
+                    <Dihedral>0.000</Dihedral>
+                    <Twist>0.000</Twist>
+                    <x_number_of_panels>11</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>15</y_number_of_panels>
+                    <y_panel_distribution>INVERSE SINE</y_panel_distribution>
+                    <Left_Side_FoilName>MH 45 Flap Up 2 deg</Left_Side_FoilName>
+                    <Right_Side_FoilName>MH 45 Flap Up 2 deg</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>1000.000</y_position>
+                    <Chord>120.000</Chord>
+                    <xOffset>500.000</xOffset>
+                    <Dihedral>90.000</Dihedral>
+                    <Twist>0.000</Twist>
+                    <x_number_of_panels>11</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>2</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>MH 45 Flap Up 2 deg</Left_Side_FoilName>
+                    <Right_Side_FoilName>MH 45 Flap Up 2 deg</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>1010.000</y_position>
+                    <Chord>110.000</Chord>
+                    <xOffset>510.000</xOffset>
+                    <Dihedral>90.000</Dihedral>
+                    <Twist>0.000</Twist>
+                    <x_number_of_panels>11</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>8</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>NACA 0007 Free Transitions</Left_Side_FoilName>
+                    <Right_Side_FoilName>NACA 0007 Free Transitions</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>1130.000</y_position>
+                    <Chord>80.000</Chord>
+                    <xOffset>650.000</xOffset>
+                    <Dihedral>90.000</Dihedral>
+                    <Twist>0.000</Twist>
+                    <x_number_of_panels>8</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>2</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>NACA 0007 Free Transitions</Left_Side_FoilName>
+                    <Right_Side_FoilName>NACA 0007 Free Transitions</Right_Side_FoilName>
+                </Section>
+            </Sections>
+        </wing>
+    </Plane>
+</explane>

@@ -20,6 +20,6 @@ describe("Sidebar", () => {
     render(<MemoryRouter initialEntries={["/analysis?tab=results"]}><Sidebar /></MemoryRouter>);
 
     expect(screen.getByRole("link", { name: "結果" }).className).toContain("bg-blue-50");
-    expect(screen.getByRole("link", { name: "解析" }).className).not.toContain("bg-blue-50");
+    expect(screen.getByRole("link", { name: "空力解析" }).className).not.toContain("bg-blue-50");
   });
 });

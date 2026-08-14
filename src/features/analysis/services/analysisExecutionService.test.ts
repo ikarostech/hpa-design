@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AirfoilPolar } from "../../airfoils/model/types";
 import { AnalysisExecutionCancelledError, executeAnalysisCase } from "./analysisExecutionService";
+import { calculateLltCoefficients } from "./lltSolver";
+import { calculateVlmCoefficients } from "./vlmSolver";
+import { createWingAnalysisMesh } from "./wingAnalysisMesh";
 
 const sectionDefaults = { xOffset: 0, chordwisePanels: 4, spanwisePanels: 4, chordwiseDistribution: "cosine" as const, spanwiseDistribution: "uniform" as const };
 const aircraft = {
@@ -110,5 +113,47 @@ describe("executeAnalysisCase", () => {
       createId: () => "result-1",
       onProgress: () => controller.abort(),
     })).rejects.toBeInstanceOf(AnalysisExecutionCancelledError);
+  });
+
+  it("uses the vortex-lattice solution for a VLM analysis case", async () => {
+    const vlmCase = { ...analysisCase, method: "VLM" as const, alphaStart: 2, alphaEnd: 2 };
+    const expected = calculateVlmCoefficients(aircraft, createWingAnalysisMesh(aircraft.sections), 2);
+
+    const result = await executeAnalysisCase({
+      analysisCase: vlmCase,
+      aircraft,
+      createId: () => "vlm-result",
+      onProgress: () => undefined,
+    });
+
+    expect(result.rows[0].cl).toBeCloseTo(expected.cl, 4);
+    expect(result.rows[0].cd).toBeCloseTo(expected.cdi, 5);
+    expect(result.rows[0].cm).toBeCloseTo(expected.cm, 4);
+  });
+
+  it("reports a finite zero lift-to-drag ratio at the inviscid zero-lift condition", async () => {
+    const result = await executeAnalysisCase({
+      analysisCase: { ...analysisCase, method: "VLM", alphaStart: 0, alphaEnd: 0 },
+      aircraft,
+      createId: () => "zero-lift-result",
+      onProgress: () => undefined,
+    });
+
+    expect(result.rows[0]).toMatchObject({ cl: 0, cd: 0, ld: 0 });
+  });
+
+  it("uses the lifting-line solution for an LLT analysis case", async () => {
+    const lltCase = { ...analysisCase, alphaStart: 2, alphaEnd: 2 };
+    const expected = calculateLltCoefficients(aircraft, 2);
+
+    const result = await executeAnalysisCase({
+      analysisCase: lltCase,
+      aircraft,
+      createId: () => "llt-result",
+      onProgress: () => undefined,
+    });
+
+    expect(result.rows[0].cl).toBeCloseTo(expected.cl, 4);
+    expect(result.rows[0].cd).toBeCloseTo(expected.cdi, 5);
   });
 });

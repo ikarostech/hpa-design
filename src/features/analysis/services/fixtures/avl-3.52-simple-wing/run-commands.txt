@@ -1,0 +1,14 @@
+OPER
+A A -2
+X
+FT
+alpha-minus2.txt
+A A 0
+X
+FT
+alpha-0.txt
+A A 2
+X
+FT
+alpha-2.txt
+

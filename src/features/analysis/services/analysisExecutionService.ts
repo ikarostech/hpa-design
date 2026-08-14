@@ -1,6 +1,8 @@
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { AirfoilPolar } from "../../airfoils/model/types";
 import type { AnalysisCase, AnalysisResult } from "../model/types";
+import { calculateLltCoefficients } from "./lltSolver";
+import { calculateVlmCoefficients } from "./vlmSolver";
 import { createWingAnalysisMesh, type WingAnalysisMesh } from "./wingAnalysisMesh";
 
 export interface ExecuteAnalysisCaseInput {
@@ -39,13 +41,15 @@ export async function executeAnalysisCase({
     throwIfCancelled(signal);
     await yieldToUserInput();
     const coefficients = mesh.strips.length
-      ? calculateSectionWingCoefficients(alpha, analysisCase.method, aircraft, mesh, selectedPolars)
+      ? analysisCase.method === "VLM"
+        ? calculateVlmWingCoefficients(alpha, aircraft, mesh, selectedPolars)
+        : calculateLltWingCoefficients(alpha, aircraft, mesh, selectedPolars)
       : calculateFiniteWingCoefficients(alpha + aircraft.incidence, analysisCase.method, aircraft.aspectRatio);
     rows.push({
       caseId: analysisCase.id,
       alpha,
       ...coefficients,
-      ld: round(coefficients.cl / coefficients.cd, 2),
+      ld: round(safeDivide(coefficients.cl, coefficients.cd), 2),
       status: "completed",
     });
     onProgress({ completed: rows.length, total: angles.length, message: `${analysisCase.method}: ${alpha}°` });
@@ -68,40 +72,86 @@ export async function executeAnalysisCase({
   };
 }
 
-function calculateSectionWingCoefficients(
+function calculateLltWingCoefficients(
   alpha: number,
-  method: AnalysisCase["method"],
   aircraft: AircraftGeometry,
   mesh: WingAnalysisMesh,
   polars: Map<string, AirfoilPolar>,
 ) {
-  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
-  let sectionCl = 0;
-  let profileCd = 0;
-  let sectionCm = 0;
+  const characteristics = estimateSectionCharacteristics(polars);
+  const inviscid = calculateLltCoefficients(aircraft, alpha, characteristics);
+  if (!polars.size) return { cl: round(inviscid.cl, 4), cd: round(inviscid.cdi, 5), cm: 0 };
 
+  const profile = averageProfileCoefficients(alpha, aircraft, mesh, polars, "LLT");
+  return {
+    cl: round(inviscid.cl, 4),
+    cd: round(inviscid.cdi + profile.cd, 5),
+    cm: round(profile.cm, 4),
+  };
+}
+
+function estimateSectionCharacteristics(polars: Map<string, AirfoilPolar>) {
+  if (!polars.size) return undefined;
+  const estimates = Array.from(polars.values()).map((polar) => {
+    const points = [...polar.points].sort((left, right) => left.alpha - right.alpha);
+    const lower = points[0];
+    const upper = points[points.length - 1];
+    const slopePerDegree = safeDivide(upper.cl - lower.cl, upper.alpha - lower.alpha);
+    return {
+      slope: slopePerDegree * 180 / Math.PI,
+      zeroLiftAngle: lower.alpha - safeDivide(lower.cl, slopePerDegree),
+    };
+  });
+  return {
+    sectionLiftCurveSlope: safeDivide(estimates.reduce((sum, item) => sum + item.slope, 0), estimates.length),
+    zeroLiftAngle: safeDivide(estimates.reduce((sum, item) => sum + item.zeroLiftAngle, 0), estimates.length),
+  };
+}
+
+function averageProfileCoefficients(
+  alpha: number,
+  aircraft: AircraftGeometry,
+  mesh: WingAnalysisMesh,
+  polars: Map<string, AirfoilPolar>,
+  method: AnalysisCase["method"],
+) {
+  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
+  let cd = 0;
+  let cm = 0;
   for (const strip of mesh.strips) {
     const localAlpha = alpha + aircraft.incidence + strip.twist;
     const root = coefficientsAtAlpha(polars.get(strip.airfoilRootId), localAlpha, method);
     const tip = coefficientsAtAlpha(polars.get(strip.airfoilTipId), localAlpha, method);
-    const coefficients = {
-      cl: interpolate(root.cl, tip.cl, strip.airfoilInterpolation),
-      cd: interpolate(root.cd, tip.cd, strip.airfoilInterpolation),
-      cm: interpolate(root.cm, tip.cm, strip.airfoilInterpolation),
-    };
-    const geometryFactor = Math.cos(strip.quarterChordSweep) ** 2 * Math.cos(strip.dihedral) ** 2;
-    sectionCl += coefficients.cl * geometryFactor * strip.halfArea;
-    profileCd += coefficients.cd * strip.halfArea;
-    sectionCm += coefficients.cm * strip.halfArea;
+    cd += interpolate(root.cd, tip.cd, strip.airfoilInterpolation) * strip.halfArea;
+    cm += interpolate(root.cm, tip.cm, strip.airfoilInterpolation) * strip.halfArea;
   }
+  return { cd: safeDivide(cd, totalHalfArea), cm: safeDivide(cm, totalHalfArea) };
+}
 
-  const oswaldEfficiency = method === "LLT" ? 0.9 : 0.95;
-  const finiteWingFactor = 1 / (1 + 2 / Math.max(oswaldEfficiency * aircraft.aspectRatio, 0.01));
-  const methodFactor = method === "LLT" ? 1 : 1.015;
-  const cl = safeDivide(sectionCl, totalHalfArea) * finiteWingFactor * methodFactor;
-  const cd = safeDivide(profileCd, totalHalfArea) + cl ** 2 / (Math.PI * oswaldEfficiency * Math.max(aircraft.aspectRatio, 0.01));
-  const cm = safeDivide(sectionCm, totalHalfArea);
-  return { cl: round(cl, 4), cd: round(cd, 5), cm: round(cm, 4) };
+function calculateVlmWingCoefficients(
+  alpha: number,
+  aircraft: AircraftGeometry,
+  mesh: WingAnalysisMesh,
+  polars: Map<string, AirfoilPolar>,
+) {
+  const inviscid = calculateVlmCoefficients(aircraft, mesh, alpha);
+  if (!polars.size) return { cl: round(inviscid.cl, 4), cd: round(inviscid.cdi, 5), cm: round(inviscid.cm, 4) };
+
+  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
+  let profileCd = 0;
+  let sectionCm = 0;
+  for (const strip of mesh.strips) {
+    const localAlpha = alpha + aircraft.incidence + strip.twist;
+    const root = coefficientsAtAlpha(polars.get(strip.airfoilRootId), localAlpha, "VLM");
+    const tip = coefficientsAtAlpha(polars.get(strip.airfoilTipId), localAlpha, "VLM");
+    profileCd += interpolate(root.cd, tip.cd, strip.airfoilInterpolation) * strip.halfArea;
+    sectionCm += interpolate(root.cm, tip.cm, strip.airfoilInterpolation) * strip.halfArea;
+  }
+  return {
+    cl: round(inviscid.cl, 4),
+    cd: round(inviscid.cdi + safeDivide(profileCd, totalHalfArea), 5),
+    cm: round(inviscid.cm + safeDivide(sectionCm, totalHalfArea), 4),
+  };
 }
 
 function selectSectionPolars(aircraft: AircraftGeometry, polars: readonly AirfoilPolar[], reynolds: number) {
