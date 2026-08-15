@@ -8,6 +8,76 @@ import { StructuresPage } from "./StructuresPage";
 afterEach(cleanup);
 
 describe("StructuresPage", () => {
+  it("confirms before deleting the selected structural design", async () => {
+    const user = userEvent.setup();
+    const removeDesign = vi.fn();
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={vi.fn()} onRemoveDesign={removeDesign} onSaveResult={vi.fn()} /></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "主翼メインパイプを削除" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "構造案を削除" });
+    expect(within(dialog).getByText(/関連する解析結果も削除/)).toBeTruthy();
+    expect(removeDesign).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "削除する" }));
+    expect(removeDesign).toHaveBeenCalledWith("main-spar-1");
+  });
+
+  it("blocks deletion of a material referenced by a pipe layup", async () => {
+    const user = userEvent.setup();
+    const removeMaterial = vi.fn();
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={removeMaterial} onSaveDesign={vi.fn()} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "T700 UD（設計値）を削除" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "材料を削除" });
+    expect(within(dialog).getByText(/3本のパイプセクションで使用中/)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "削除する" })).toHaveProperty("disabled", true);
+    expect(removeMaterial).not.toHaveBeenCalled();
+  });
+
+  it("confirms before deleting a pipe section", async () => {
+    const user = userEvent.setup();
+    const saveDesign = vi.fn();
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "spar-midを削除" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "パイプセクションを削除" });
+    expect(saveDesign).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "削除する" }));
+    expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({
+      sections: expect.not.arrayContaining([expect.objectContaining({ id: "spar-mid" })]),
+    }));
+  });
+
+  it("confirms before deleting a structural support", async () => {
+    const user = userEvent.setup();
+    const saveDesign = vi.fn();
+    const designWithSupport = { ...structuralDesigns[0], supports: [{ id: "support-1", yPosition: 0.8, kind: "rigid" as const }] };
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={[designWithSupport]} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "支持点1を削除" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "支持点を削除" });
+    expect(saveDesign).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "削除する" }));
+    expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({ supports: [] }));
+  });
+
+  it("confirms before deleting a structural load case", async () => {
+    const user = userEvent.setup();
+    const saveDesign = vi.fn();
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
+    await user.click(screen.getByRole("tab", { name: "荷重ケース" }));
+
+    await user.click(screen.getByRole("button", { name: "巡航楕円荷重を削除" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "荷重ケースを削除" });
+    expect(saveDesign).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "削除する" }));
+    expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({ loadCases: [] }));
+  });
+
   it("opens carbon material properties in a right-side drawer and saves edits", async () => {
     const user = userEvent.setup();
     const saveMaterial = vi.fn();
