@@ -37,4 +37,15 @@ describe("calculateVlmCoefficients", () => {
     expect(Math.abs(result.cl - cl)).toBeLessThan(Math.max(0.002, Math.abs(cl) * 0.02));
     expect(Math.abs(result.cdi - cdi)).toBeLessThan(Math.max(0.0002, cdi * 0.1));
   });
+
+  it("exposes panel circulation and load contributions that conserve the total coefficients", () => {
+    const mesh = createWingAnalysisMesh(avlWing.sections);
+    const result = calculateVlmCoefficients(avlWing, mesh, 2);
+
+    expect(result.panelLoads).toHaveLength(mesh.panels.length);
+    expect(result.panelLoads.every((load) => Number.isFinite(load.circulation))).toBe(true);
+    expect(result.panelLoads.reduce((sum, load) => sum + load.cl, 0)).toBeCloseTo(result.cl, 10);
+    expect(result.panelLoads.reduce((sum, load) => sum + load.cdi, 0)).toBeCloseTo(result.cdi, 10);
+    expect(result.panelLoads.reduce((sum, load) => sum + load.cm, 0)).toBeCloseTo(result.cm, 10);
+  });
 });

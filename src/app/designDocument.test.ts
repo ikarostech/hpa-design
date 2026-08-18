@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDesignDocumentStore } from "./designDocument";
+import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
 
 const sectionDefaults = { xOffset: 0, chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine" as const, spanwiseDistribution: "uniform" as const };
 const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1" };
@@ -239,5 +240,41 @@ describe("createDesignDocumentStore", () => {
     store.updateAircraft({ sections: [rootSection, { ...tipSection, chord: 0.6 }] });
 
     expect(store.getDocument().structuralResults[0].status).toBe("needs-review");
+  });
+
+  it("persists coupled results and marks them for review after an aircraft edit", () => {
+    const store = createDesignDocumentStore(document);
+    const mesh = { nodes: [], panels: [], strips: [] };
+    const coupledResult = {
+      id: "aeroelastic-1",
+      createdAt: "2026-08-15T00:00:00.000Z",
+      status: "converged",
+      reviewStatus: "current",
+      aircraftSnapshot: document.aircraft,
+      structuralDesignId: "spar-1",
+      materialIds: ["carbon-1"],
+      condition: { mode: "fixed-alpha", alphaDegrees: 4 },
+      settings: { maxIterations: 50, relaxationFactor: 0.3, displacementTolerance: 1e-5, loadTolerance: 1e-5, liftTolerance: 1e-4 },
+      density: 1.225,
+      speed: 10,
+      elasticAxisChordFraction: 0.4,
+      alphaDegrees: 4,
+      cl: 0.5,
+      cdi: 0.02,
+      cm: 0,
+      totalLift: 100,
+      spanLoads: [],
+      structuralResult: { id: "structure-1", designId: "spar-1", loadCaseId: "load-1", status: "completed", createdAt: "2026-08-15T00:00:00.000Z", designSnapshot: { id: "spar-1", name: "Spar", sections: [], loadCases: [] }, loadCaseSnapshot: { id: "load-1", name: "Coupled", source: "aerodynamic", loadFactor: 1, safetyFactor: 1, distributedLoads: [], pointLoads: [], status: "completed" }, materialIds: ["carbon-1"], points: [], summary: { mass: 0, maxDeflection: 0, maxTwist: 0, minReserveFactor: 2, governingLoadCase: "Coupled", governingPosition: 0, governingPlyId: "-", governingMode: "なし", reactionForce: 0, reactionMoment: 0, forceBalanceError: 0 } },
+      undeformedMesh: mesh,
+      deformedMesh: mesh,
+      iterations: [],
+      warnings: [],
+    } satisfies StaticAeroelasticResult;
+
+    store.saveAeroelasticResult(coupledResult);
+    expect(store.getDocument().aeroelasticResults).toMatchObject([{ id: coupledResult.id, reviewStatus: "current" }]);
+
+    store.updateAircraft({ incidence: 1 });
+    expect(store.getDocument().aeroelasticResults).toMatchObject([{ id: coupledResult.id, reviewStatus: "needs-review" }]);
   });
 });

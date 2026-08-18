@@ -3,6 +3,7 @@ import type { AircraftGeometry } from "../features/aircraft/model/types";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
+import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
 import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult, carbonMaterials, structuralDesigns } from "../mocks/mockData";
 import type { EntityRepository } from "../shared/model";
 import { createDesignDocumentStore, type DesignDocument, type DesignDocumentStore } from "./designDocument";
@@ -27,6 +28,7 @@ interface DesignDocumentContextValue {
   saveStructuralDesign: (design: StructuralDesign) => void;
   removeStructuralDesign: (designId: string) => void;
   saveStructuralResult: (result: StructuralAnalysisResult) => void;
+  saveAeroelasticResult: (result: StaticAeroelasticResult) => void;
 }
 
 const DesignDocumentContext = createContext<DesignDocumentContextValue | null>(null);
@@ -117,6 +119,7 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     saveStructuralDesign: (design) => commit((store) => store.saveStructuralDesign(design)),
     removeStructuralDesign: (designId) => commit((store) => store.removeStructuralDesign(designId)),
     saveStructuralResult: (result) => commit((store) => store.saveStructuralResult(result)),
+    saveAeroelasticResult: (result) => commit((store) => store.saveAeroelasticResult(result)),
   };
 
   return <DesignDocumentContext.Provider value={value}>{children}</DesignDocumentContext.Provider>;
@@ -145,6 +148,7 @@ export function useDesignDocument() {
     saveStructuralDesign: context.saveStructuralDesign,
     removeStructuralDesign: context.removeStructuralDesign,
     saveStructuralResult: context.saveStructuralResult,
+    saveAeroelasticResult: context.saveAeroelasticResult,
   };
 }
 

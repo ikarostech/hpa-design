@@ -36,6 +36,7 @@ export function validateDesignDocument(document: unknown): ValidationResult {
   const materialIds = validateCarbonMaterials(arrays.carbonMaterials, issues);
   const structuralDesignIds = validateStructuralDesigns(arrays.structuralDesigns, materialIds, issues);
   validateStructuralResults(arrays.structuralResults, structuralDesignIds, materialIds, issues);
+  validateAeroelasticResults(arrays.aeroelasticResults, structuralDesignIds, materialIds, aircraft?.id, issues);
 
   return issues.length ? invalid(issues) : { valid: true };
 }
@@ -105,6 +106,7 @@ function validateRequiredArrays(document: JsonRecord, issues: ValidationIssue[])
     carbonMaterials: readArray(document.carbonMaterials, ["carbonMaterials"], issues),
     structuralDesigns: readArray(document.structuralDesigns, ["structuralDesigns"], issues),
     structuralResults: readArray(document.structuralResults, ["structuralResults"], issues),
+    aeroelasticResults: document.aeroelasticResults === undefined ? [] : readArray(document.aeroelasticResults, ["aeroelasticResults"], issues),
   };
 }
 
@@ -199,6 +201,35 @@ function validateStructuralResults(items: readonly unknown[], designIds: Readonl
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
     validateDate(item.createdAt, [...path, "createdAt"], issues);
     readArray(item.points, [...path, "points"], issues);
+  });
+}
+
+function validateAeroelasticResults(
+  items: readonly unknown[],
+  designIds: ReadonlySet<string>,
+  materialIds: ReadonlySet<string>,
+  aircraftId: string | null | undefined,
+  issues: ValidationIssue[],
+) {
+  const ids = new Set<string>();
+  items.forEach((item, index) => {
+    const path = ["aeroelasticResults", String(index)];
+    if (!isRecord(item)) { addIssue(issues, path, "空力構造連成結果はオブジェクトである必要があります。"); return; }
+    addUniqueId(item.id, path, ids, issues);
+    validateReference(item.structuralDesignId, [...path, "structuralDesignId"], designIds, "構造設計", issues);
+    validateReferenceList(item.materialIds, [...path, "materialIds"], materialIds, "カーボン材料", issues);
+    validateEnum(item.status, [...path, "status"], ["converged", "max-iterations", "diverged"], issues);
+    validateEnum(item.reviewStatus, [...path, "reviewStatus"], ["current", "needs-review"], issues);
+    validateDate(item.createdAt, [...path, "createdAt"], issues);
+    for (const field of ["density", "speed", "elasticAxisChordFraction", "alphaDegrees", "cl", "cdi", "cm", "totalLift"]) validateFiniteNumber(item[field], [...path, field], issues);
+    readArray(item.materialIds, [...path, "materialIds"], issues);
+    readArray(item.spanLoads, [...path, "spanLoads"], issues);
+    readArray(item.iterations, [...path, "iterations"], issues);
+    readArray(item.warnings, [...path, "warnings"], issues);
+    if (!isRecord(item.aircraftSnapshot)) addIssue(issues, [...path, "aircraftSnapshot"], "機体スナップショットが必要です。");
+    else if (aircraftId && item.aircraftSnapshot.id !== aircraftId) addIssue(issues, [...path, "aircraftSnapshot", "id"], "現在の設計に存在しない機体を参照しています。");
+    if (!isRecord(item.structuralResult)) addIssue(issues, [...path, "structuralResult"], "構造解析結果が必要です。");
+    if (!isRecord(item.undeformedMesh) || !isRecord(item.deformedMesh)) addIssue(issues, [...path, "deformedMesh"], "変形前後の空力メッシュが必要です。");
   });
 }
 

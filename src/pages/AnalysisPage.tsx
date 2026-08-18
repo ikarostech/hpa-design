@@ -8,6 +8,9 @@ import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../feature
 import { formatAnalysisNumber } from "../features/analysis/services/analysisResultExporter";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import type { AirfoilPolar } from "../features/airfoils/model/types";
+import { AeroelasticAnalysisPanel } from "../features/aeroelastic/components/AeroelasticAnalysisPanel";
+import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
+import type { CarbonMaterial, StructuralDesign } from "../features/structures/model/types";
 import { useJobs } from "../shared/jobs/JobProvider";
 import type { EntityRepository, Job, ResultViewController, SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
@@ -27,12 +30,16 @@ interface AnalysisPageProps {
   polars: readonly AirfoilPolar[];
   analysisCaseRepository: EntityRepository<AnalysisCase, string>;
   saveAnalysisResult: (result: AnalysisResult) => void;
+  materials?: readonly CarbonMaterial[];
+  structuralDesigns?: readonly StructuralDesign[];
+  aeroelasticResults?: readonly StaticAeroelasticResult[];
+  saveAeroelasticResult?: (result: StaticAeroelasticResult) => void;
 }
 
 type AnalysisJob = Job<string, AnalysisResult, { caseId: string }>;
 type EditorMode = "create" | "edit" | null;
 
-export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
+export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult, materials = [], structuralDesigns = [], aeroelasticResults = [], saveAeroelasticResult = () => undefined }: AnalysisPageProps) {
   const [params, setParams] = useSearchParams();
   const jobs = useJobs();
   const controllers = useRef(new Map<string, AbortController>());
@@ -70,7 +77,7 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
   const hasRun = Boolean(selectedResult && selectedResult.status === "completed");
   const chartData = useMemo(() => resultForView?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [], [resultForView]);
   const chartSeries = useMemo(() => displayedResults.map((result, index) => ({ id: result.id, name: cases.find((analysisCase) => analysisCase.id === result.caseId)?.name ?? result.caseId, color: ["#2563eb", "#0f766e", "#dc2626", "#7c3aed"][index % 4], data: result.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) })), [cases, displayedResults]);
-  const activeTab = params.get("tab") === "results" ? "結果" : "解析";
+  const activeTab = params.get("tab") === "results" ? "結果" : params.get("tab") === "aeroelastic" ? "空力構造連成" : "解析";
 
   const openCreate = () => {
     setDraft(createNewDraft(aircraft.id));
@@ -149,13 +156,13 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
       title="空力解析"
       description="LLT / VLM の解析ケースを管理し、翼の空力特性を比較します。"
       tabs={<div role="tablist" className="flex gap-2 border-b border-slate-200">
-        {(["解析", "結果"] as const).map((tab) => (
-          <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
+        {(["解析", "結果", "空力構造連成"] as const).map((tab) => (
+          <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : tab === "空力構造連成" ? { tab: "aeroelastic" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
         ))}
       </div>}
     >
 
-      {activeTab === "解析" ? <div className="space-y-5">
+      {activeTab === "空力構造連成" ? <AeroelasticAnalysisPanel aircraft={aircraft} materials={materials} structuralDesigns={structuralDesigns} results={aeroelasticResults} onSaveResult={saveAeroelasticResult} polars={polars} /> : activeTab === "解析" ? <div className="space-y-5">
         <Card><CardHeader className="flex items-center justify-between gap-3"><div><h2 className="font-semibold text-slate-950">選択ケースの解析結果</h2><p className="mt-1 text-sm text-slate-500">解析ケース表の「表示」で選んだ結果を同じグラフ上で比較します。</p></div><Badge tone={displayedResults.length ? "green" : "slate"}>{displayedResults.length}件表示</Badge></CardHeader><CardBody>{displayedResults.length ? <PolarCharts data={chartData} series={chartSeries} mode="analysis" /> : <p className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">解析済みケースの「表示」を選ぶと、結果グラフがここに表示されます。</p>}</CardBody></Card>
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-3">

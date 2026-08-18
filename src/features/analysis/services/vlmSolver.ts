@@ -14,6 +14,18 @@ export interface VlmCoefficients {
   cl: number;
   cdi: number;
   cm: number;
+  panelLoads: VlmPanelLoad[];
+}
+
+export interface VlmPanelLoad {
+  side: "left" | "right";
+  stripIndex: number;
+  chordIndex: number;
+  applicationPoint: Vector;
+  circulation: number;
+  cl: number;
+  cdi: number;
+  cm: number;
 }
 
 export function calculateVlmCoefficients(
@@ -22,7 +34,7 @@ export function calculateVlmCoefficients(
   alphaDegrees: number,
 ): VlmCoefficients {
   const panels = mesh.panels.map(createVortexPanel);
-  if (!panels.length) return { cl: 0, cdi: 0, cm: 0 };
+  if (!panels.length) return { cl: 0, cdi: 0, cm: 0, panelLoads: [] };
 
   const alpha = (alphaDegrees + aircraft.incidence) * Math.PI / 180;
   const freestream = { x: Math.cos(alpha), y: 0, z: Math.sin(alpha) };
@@ -38,25 +50,40 @@ export function calculateVlmCoefficients(
   let inducedDrag = 0;
   let pitchingMoment = 0;
   const referenceX = aircraft.mac / 4;
+  const area = Math.max(aircraft.wingArea, 1e-9);
+  const panelLoads: VlmPanelLoad[] = [];
   panels.forEach((panel, index) => {
     const spanVector = subtract(panel.end, panel.start);
     const spanWidth = spanVector.y;
     const panelLift = 2 * circulation[index] * spanWidth * Math.cos(alpha);
     lift += panelLift;
-    pitchingMoment -= panelLift * (((panel.start.x + panel.end.x) / 2) - referenceX) / Math.max(aircraft.mac, 1e-9);
+    const panelPitchingMoment = -panelLift * (((panel.start.x + panel.end.x) / 2) - referenceX) / Math.max(aircraft.mac, 1e-9);
+    pitchingMoment += panelPitchingMoment;
 
     const boundMidpoint = scale(add(panel.start, panel.end), 0.5);
     const induced = panels.reduce<Vector>((velocity, source, sourceIndex) => {
       return add(velocity, scale(wakeVelocity(boundMidpoint, source.start, source.end, wakeLength), circulation[sourceIndex]));
     }, { x: 0, y: 0, z: 0 });
-    inducedDrag += -2 * circulation[index] * spanWidth * induced.z;
+    const panelInducedDrag = -2 * circulation[index] * spanWidth * induced.z;
+    inducedDrag += panelInducedDrag;
+    panelLoads.push({
+      side: mesh.panels[index].side,
+      stripIndex: mesh.panels[index].stripIndex,
+      chordIndex: mesh.panels[index].chordIndex,
+      applicationPoint: boundMidpoint,
+      circulation: circulation[index],
+      cl: panelLift / area,
+      cdi: panelInducedDrag / area,
+      cm: panelPitchingMoment / area,
+    });
   });
 
-  const area = Math.max(aircraft.wingArea, 1e-9);
+  if (inducedDrag < 0) panelLoads.forEach((load) => { load.cdi = 0; });
   return {
     cl: lift / area,
     cdi: Math.max(0, inducedDrag / area),
     cm: pitchingMoment / area,
+    panelLoads,
   };
 }
 

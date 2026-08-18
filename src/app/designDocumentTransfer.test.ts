@@ -217,4 +217,25 @@ describe("design document transfer", () => {
       ]),
     });
   });
+
+  it("validates saved aeroelastic result references", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      aeroelasticResults: [{
+        id: "coupled-1",
+        createdAt: "2026-08-15T00:00:00.000Z",
+        status: "converged",
+        reviewStatus: "current",
+        structuralDesignId: "missing-structure",
+        materialIds: [],
+      }],
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toEqual({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["aeroelasticResults", "0", "structuralDesignId"], severity: "error" }),
+      ]),
+    });
+  });
 });

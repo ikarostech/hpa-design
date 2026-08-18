@@ -68,6 +68,16 @@ describe("AnalysisPage", () => {
     expect(screen.getByRole("button", { name: "解析ケースを保存" })).toBeTruthy();
   });
 
+  it("opens the integrated aerostructural analysis workspace", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+
+    await user.click(screen.getByRole("tab", { name: "空力構造連成" }));
+
+    expect(screen.getByRole("heading", { name: "空力構造連成" })).toBeTruthy();
+    expect(screen.getByText(/構造設計を作成/)).toBeTruthy();
+  });
+
   it("shows the selected case result charts instead of the wing layout", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={results} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
