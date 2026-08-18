@@ -10,6 +10,7 @@ export interface LltCoefficients {
   cl: number;
   cdi: number;
   spanEfficiency: number;
+  fourierCoefficients: readonly number[];
 }
 
 export function calculateLltCoefficients(
@@ -21,7 +22,7 @@ export function calculateLltCoefficients(
   const sectionSlope = options.sectionLiftCurveSlope ?? 2 * Math.PI;
   const zeroLiftAngle = options.zeroLiftAngle ?? 0;
   const halfSpan = aircraft.span / 2;
-  if (halfSpan <= 0 || aircraft.wingArea <= 0 || aircraft.sections.length < 2) return { cl: 0, cdi: 0, spanEfficiency: 0 };
+  if (halfSpan <= 0 || aircraft.wingArea <= 0 || aircraft.sections.length < 2) return { cl: 0, cdi: 0, spanEfficiency: 0, fourierCoefficients: [] };
 
   const matrix: number[][] = [];
   const rhs: number[] = [];
@@ -54,7 +55,7 @@ export function calculateLltCoefficients(
   }, 0);
   const spanEfficiency = fourier[0] === 0 ? 1 : 1 / (1 + dragFactor);
   const cdi = cl ** 2 / (Math.PI * aspectRatio * spanEfficiency);
-  return { cl, cdi, spanEfficiency };
+  return { cl, cdi, spanEfficiency, fourierCoefficients: fourier };
 }
 
 function interpolateSection(sections: readonly WingSection[], yPosition: number) {

@@ -4,10 +4,21 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnalysisPage } from "./AnalysisPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
+import type { StructuralAnalysisResult } from "../features/structures/model/types";
 
 vi.mock("../features/airfoils/components/PolarCharts", () => ({
   PolarCharts: ({ series = [] }: { series?: Array<{ id: string; name: string }> }) => <div data-testid="polar-charts">{series.map((item) => <span key={item.id}>{item.name}</span>)}</div>,
 }));
+
+vi.mock("./components/IntegratedSpanwiseCharts", () => ({
+  IntegratedSpanwiseCharts: ({ structuralResult, aerodynamicResult, alphaDegrees }: { structuralResult: StructuralAnalysisResult; aerodynamicResult?: { id: string }; alphaDegrees?: number }) => <div role="img" aria-label="空力・構造の翼幅方向グラフ">{aerodynamicResult?.id}/{alphaDegrees}/{structuralResult.id}</div>,
+}));
+
+const spanwise = (alphaDegrees: number) => ({
+  axis: { key: "semi-span" as const, unit: "m" as const, label: "半翼幅" },
+  reference: { side: "right" as const, origin: "centerline" as const, alphaDegrees, speed: 20, density: 1.225, elasticAxisChordFraction: 0.35 },
+  samples: [],
+});
 
 const aircraft = { id: "aircraft-1", span: 4, rootChord: 1, tipChord: 0.5, taperRatio: 0.5, twist: 0, dihedral: 0, sweep: 0, incidence: 0, wingArea: 3, aspectRatio: 5.33, mac: 0.78, staticMargin: 8, sections: [] };
 const cases = [
@@ -23,8 +34,8 @@ const results = [{
   cm0: -0.04,
   status: "completed" as const,
   rows: [
-    { caseId: "case-1", alpha: 0, cl: 0.2, cd: 0.02, cm: -0.04, ld: 10, status: "completed" as const },
-    { caseId: "case-1", alpha: 4, cl: 0.8, cd: 0.03, cm: -0.05, ld: 26.67, status: "completed" as const },
+    { caseId: "case-1", alpha: 0, cl: 0.2, cd: 0.02, cm: -0.04, ld: 10, status: "completed" as const, spanwise: spanwise(0) },
+    { caseId: "case-1", alpha: 4, cl: 0.8, cd: 0.03, cm: -0.05, ld: 26.67, status: "completed" as const, spanwise: spanwise(4) },
   ],
 }, {
   id: "result-2",
@@ -39,6 +50,14 @@ const results = [{
     { caseId: "case-2", alpha: 4, cl: 1, cd: 0.035, cm: -0.04, ld: 28.57, status: "completed" as const },
   ],
 }];
+const structuralResults = [{
+  id: "structural-result-1",
+  createdAt: "2026-08-19T00:00:00.000Z",
+  status: "completed",
+  designSnapshot: { id: "spar-1", name: "Main spar", sections: [], loadCases: [] },
+  loadCaseSnapshot: { id: "load-1", name: "Cruise load", source: "aerodynamic", aerodynamicResultId: "result-1", aerodynamicAlphaDegrees: 4, loadFactor: 1, safetyFactor: 1.5, distributedLoads: [], pointLoads: [], status: "completed" },
+  summary: { minReserveFactor: 2.5, governingPosition: 0.4, governingMode: "繊維圧縮", maxDeflection: 0.01, maxTwist: 0.02 },
+}] as unknown as StructuralAnalysisResult[];
 
 afterEach(cleanup);
 
@@ -68,14 +87,12 @@ describe("AnalysisPage", () => {
     expect(screen.getByRole("button", { name: "解析ケースを保存" })).toBeTruthy();
   });
 
-  it("opens the integrated aerostructural analysis workspace", async () => {
-    const user = userEvent.setup();
+  it("keeps aerodynamic and structural execution as separate workflows", () => {
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
-    await user.click(screen.getByRole("tab", { name: "空力構造連成" }));
-
-    expect(screen.getByRole("heading", { name: "空力構造連成" })).toBeTruthy();
-    expect(screen.getByText(/構造設計を作成/)).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "解析" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "結果" })).toBeTruthy();
   });
 
   it("shows the selected case result charts instead of the wing layout", async () => {
@@ -97,5 +114,15 @@ describe("AnalysisPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Cruiseを詳細表示" }));
     expect(screen.queryByRole("img", { name: "主翼形状プレビュー" })).toBeNull();
+  });
+
+  it("combines a linked aerodynamic result and structural result on the results tab", () => {
+    render(<MemoryRouter initialEntries={["/analysis?tab=results"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={results} structuralResults={structuralResults} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+
+    expect(screen.getByRole("heading", { name: "空力・構造 統合結果" })).toBeTruthy();
+    expect((screen.getByRole("combobox", { name: "空力運用点" }) as HTMLSelectElement).value).toBe("4");
+    expect(screen.getByText("空力運用点と関連付け済み")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "構造解析結果" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "空力・構造の翼幅方向グラフ" }).textContent).toBe("result-1/4/structural-result-1");
   });
 });

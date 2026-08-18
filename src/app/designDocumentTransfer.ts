@@ -406,7 +406,36 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       if (caseId && rowCaseId && caseId !== rowCaseId) addIssue(issues, [...rowPath, "caseId"], "解析結果の行は親の解析ケースを参照する必要があります。");
       for (const field of ["alpha", "cl", "cd", "cm", "ld"]) validateFiniteNumber(row[field], [...rowPath, field], issues);
       validateEnum(row.status, [...rowPath, "status"], ["completed", "not-run", "needs-review"], issues);
+      if (row.spanwise !== undefined) validateAerodynamicSpanwise(row.spanwise, [...rowPath, "spanwise"], row.alpha, issues);
     });
+  });
+}
+
+function validateAerodynamicSpanwise(value: unknown, path: string[], rowAlpha: unknown, issues: ValidationIssue[]) {
+  if (!isRecord(value)) { addIssue(issues, path, "翼幅方向分布はオブジェクトである必要があります。"); return; }
+  if (!isRecord(value.axis)) addIssue(issues, [...path, "axis"], "分布軸が必要です。");
+  else {
+    if (value.axis.key !== "semi-span") addIssue(issues, [...path, "axis", "key"], "空力分布軸はsemi-spanである必要があります。");
+    if (value.axis.unit !== "m") addIssue(issues, [...path, "axis", "unit"], "空力分布軸の単位はmである必要があります。");
+  }
+  if (!isRecord(value.reference)) addIssue(issues, [...path, "reference"], "空力分布の基準条件が必要です。");
+  else {
+    for (const field of ["alphaDegrees", "speed", "density", "elasticAxisChordFraction"]) validateFiniteNumber(value.reference[field], [...path, "reference", field], issues);
+    if (typeof rowAlpha === "number" && value.reference.alphaDegrees !== rowAlpha) addIssue(issues, [...path, "reference", "alphaDegrees"], "解析行の迎角と一致する必要があります。");
+    if (value.reference.side !== "right") addIssue(issues, [...path, "reference", "side"], "MVPの空力分布は右半翼である必要があります。");
+    if (value.reference.origin !== "centerline") addIssue(issues, [...path, "reference", "origin"], "翼幅座標の原点はcenterlineである必要があります。");
+  }
+  let previous = Number.NEGATIVE_INFINITY;
+  readArray(value.samples, [...path, "samples"], issues).forEach((sample, index) => {
+    const samplePath = [...path, "samples", String(index)];
+    if (!isRecord(sample)) { addIssue(issues, samplePath, "分布標本はオブジェクトである必要があります。"); return; }
+    const position = validateFiniteNumber(sample.position, [...samplePath, "position"], issues);
+    if (position !== null && position <= previous) addIssue(issues, [...samplePath, "position"], "翼幅座標は昇順かつ重複なしである必要があります。");
+    if (position !== null) previous = position;
+    if (!isRecord(sample.values)) { addIssue(issues, [...samplePath, "values"], "分布値が必要です。"); return; }
+    for (const field of ["stationWidth", "chord", "circulation", "localLiftCoefficient", "liftPerLength", "inducedDragPerLength", "profileDragPerLength", "dragPerLength", "pitchingMomentPerLength", "torqueAboutElasticAxisPerLength"]) {
+      validateFiniteNumber(sample.values[field], [...samplePath, "values", field], issues);
+    }
   });
 }
 

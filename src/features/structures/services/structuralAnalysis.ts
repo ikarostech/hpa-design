@@ -185,10 +185,42 @@ function tubeSectionProperties(section: StructuralTubeSection, materials: Readon
   };
 }
 
-function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "thickness" | "ei" | "gj" | "linearMass" | "axialStress" | "shearStress" | "minReserveFactor" | "criticalPlyId" | "criticalMode">, section: SectionProperties, materials: ReadonlyMap<string, CarbonMaterial>): StructuralResultPoint {
+function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "thickness" | "ei" | "gj" | "linearMass" | "axialStress" | "shearStress" | "bendingMomentCapacity" | "bendingReserveFactor" | "torqueCapacity" | "torsionReserveFactor" | "minReserveFactor" | "criticalPlyId" | "criticalMode">, section: SectionProperties, materials: ReadonlyMap<string, CarbonMaterial>): StructuralResultPoint {
   const radius = section.outerDiameter / 2;
   const axialStress = base.bendingMoment * radius / section.secondMoment;
   const shearStress = base.torque * radius / section.polarMoment;
+  const critical = evaluateFailure(axialStress, shearStress, section, materials);
+  const axialStressCapacity = Math.min(
+    evaluateFailure(1, 0, section, materials).reserveFactor,
+    evaluateFailure(-1, 0, section, materials).reserveFactor,
+  );
+  const shearStressCapacity = Math.min(
+    evaluateFailure(0, 1, section, materials).reserveFactor,
+    evaluateFailure(0, -1, section, materials).reserveFactor,
+  );
+  const bendingMomentCapacity = axialStressCapacity * section.secondMoment / radius;
+  const torqueCapacity = shearStressCapacity * section.polarMoment / radius;
+
+  return {
+    ...base,
+    outerDiameter: section.outerDiameter,
+    thickness: section.thickness,
+    ei: section.ei,
+    gj: section.gj,
+    linearMass: section.linearMass,
+    axialStress,
+    shearStress,
+    bendingMomentCapacity,
+    bendingReserveFactor: reserveFactor(bendingMomentCapacity, base.bendingMoment),
+    torqueCapacity,
+    torsionReserveFactor: reserveFactor(torqueCapacity, base.torque),
+    minReserveFactor: critical.reserveFactor,
+    criticalPlyId: critical.plyId,
+    criticalMode: critical.mode,
+  };
+}
+
+function evaluateFailure(axialStress: number, shearStress: number, section: SectionProperties, materials: ReadonlyMap<string, CarbonMaterial>) {
   let critical = { reserveFactor: Number.POSITIVE_INFINITY, plyId: "-", mode: "なし" };
 
   for (const ply of section.section.plies) {
@@ -210,7 +242,11 @@ function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "
     }
   }
 
-  return { ...base, outerDiameter: section.outerDiameter, thickness: section.thickness, ei: section.ei, gj: section.gj, linearMass: section.linearMass, axialStress, shearStress, minReserveFactor: critical.reserveFactor, criticalPlyId: critical.plyId, criticalMode: critical.mode };
+  return critical;
+}
+
+function reserveFactor(capacity: number, demand: number) {
+  return Math.abs(demand) < 1e-12 ? Number.POSITIVE_INFINITY : capacity / Math.abs(demand);
 }
 
 function transformedReducedStiffness(material: CarbonMaterial, angle: number): Matrix3 {

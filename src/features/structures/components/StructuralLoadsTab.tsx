@@ -1,5 +1,5 @@
 import { Play, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { AnalysisResult } from "../../analysis/model/types";
 import { Badge } from "../../../shared/ui/Badge";
@@ -26,7 +26,18 @@ export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSav
 }) {
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(design.loadCases[0]?.id ?? null);
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
+  const [selectedAerodynamicResultId, setSelectedAerodynamicResultId] = useState<string | null>(aerodynamicResults[0]?.id ?? null);
+  const selectedAerodynamicResult = aerodynamicResults.find((result) => result.id === selectedAerodynamicResultId) ?? aerodynamicResults[0];
+  const aerodynamicRows = selectedAerodynamicResult?.rows.filter((row) => row.spanwise) ?? [];
+  const [selectedAerodynamicAlpha, setSelectedAerodynamicAlpha] = useState<number | null>(() => preferredAerodynamicAlpha(aerodynamicResults[0]));
   const selectedLoad = design.loadCases.find((loadCase) => loadCase.id === selectedLoadId) ?? design.loadCases[0];
+
+  useEffect(() => {
+    if (!aerodynamicResults.some((result) => result.id === selectedAerodynamicResultId)) setSelectedAerodynamicResultId(aerodynamicResults[0]?.id ?? null);
+  }, [aerodynamicResults, selectedAerodynamicResultId]);
+  useEffect(() => {
+    if (!aerodynamicRows.some((row) => row.alpha === selectedAerodynamicAlpha)) setSelectedAerodynamicAlpha(preferredAerodynamicAlpha(selectedAerodynamicResult));
+  }, [aerodynamicRows, selectedAerodynamicAlpha, selectedAerodynamicResult]);
 
   const update = (id: string, patch: Partial<StructuralLoadCase>) => onSaveDesign({
     ...design,
@@ -66,9 +77,17 @@ export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSav
     <Card>
       <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <div><h2 className="font-semibold">構造荷重ケース</h2><p className="mt-1 text-sm text-slate-500">荷重倍数と安全係数は解析荷重へ乗算されます。</p></div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" onClick={addManual}><Plus size={15} />手入力</Button>
-          {aerodynamicResults[0] ? <Button size="sm" onClick={() => onSaveDesign({ ...design, loadCases: [...design.loadCases, createLoadCaseFromAerodynamicResult({ result: aerodynamicResults[0], aircraft })] })}><Plus size={15} />空力結果から作成</Button> : null}
+          {selectedAerodynamicResult ? <>
+            <select aria-label="空力解析結果" value={selectedAerodynamicResult.id} onChange={(event) => { setSelectedAerodynamicResultId(event.target.value); setSelectedAerodynamicAlpha(preferredAerodynamicAlpha(aerodynamicResults.find((result) => result.id === event.target.value))); }} className="h-8 rounded border bg-white px-2 text-xs">
+              {aerodynamicResults.map((result) => <option key={result.id} value={result.id}>{result.caseSnapshot?.name ?? result.caseId}</option>)}
+            </select>
+            {aerodynamicRows.length ? <select aria-label="空力運用点" value={selectedAerodynamicAlpha ?? ""} onChange={(event) => setSelectedAerodynamicAlpha(Number(event.target.value))} className="h-8 rounded border bg-white px-2 text-xs">
+              {aerodynamicRows.map((row) => <option key={row.alpha} value={row.alpha}>α {row.alpha.toFixed(1)}° / CL {row.cl.toFixed(3)}</option>)}
+            </select> : null}
+            <Button size="sm" onClick={() => onSaveDesign({ ...design, loadCases: [...design.loadCases, createLoadCaseFromAerodynamicResult({ result: selectedAerodynamicResult, aircraft, alphaDegrees: selectedAerodynamicAlpha ?? undefined })] })}><Plus size={15} />空力結果から作成</Button>
+          </> : null}
         </div>
       </CardHeader>
       <CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm">
@@ -123,4 +142,8 @@ function sourceLabel(source: StructuralLoadCase["source"]) {
 
 function statusLabel(status: StructuralLoadCase["status"]) {
   return status === "completed" ? "完了" : status === "needs-review" ? "要確認" : "未実行";
+}
+
+function preferredAerodynamicAlpha(result: AnalysisResult | undefined) {
+  return [...(result?.rows ?? [])].filter((row) => row.spanwise).sort((left, right) => right.cl - left.cl)[0]?.alpha ?? null;
 }

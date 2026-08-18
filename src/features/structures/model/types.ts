@@ -52,6 +52,7 @@ export interface StructuralLoadCase {
   name: string;
   source: StructuralLoadSource;
   aerodynamicResultId?: string;
+  aerodynamicAlphaDegrees?: number;
   loadFactor: number;
   safetyFactor: number;
   distributedLoads: DistributedStructuralLoad[];
@@ -72,7 +73,11 @@ export interface StructuralResultPoint {
   distributedLoad: number;
   shearForce: number;
   bendingMoment: number;
+  bendingMomentCapacity?: number;
+  bendingReserveFactor?: number;
   torque: number;
+  torqueCapacity?: number;
+  torsionReserveFactor?: number;
   deflection: number;
   rotation: number;
   twist: number;

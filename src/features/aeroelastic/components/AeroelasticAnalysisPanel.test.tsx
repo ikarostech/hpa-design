@@ -36,6 +36,8 @@ describe("AeroelasticAnalysisPanel", () => {
     expect(save).toHaveBeenCalledOnce();
     expect(screen.getAllByText("収束").length).toBeGreaterThan(0);
     expect(screen.getByRole("img", { name: "変形前後の主翼形状" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: "翼幅方向の空力・曲げ分布" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "翼幅方向のねじり分布" })).toBeNull();
     expect(screen.getByRole("heading", { name: "反復履歴" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "連成結果をCSV出力" })).toBeTruthy();
   });

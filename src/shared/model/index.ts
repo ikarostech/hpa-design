@@ -12,3 +12,9 @@ export type {
   ValidationResult,
   ValidationSeverity,
 } from "./transfer";
+export type {
+  DistributionAxis,
+  DistributionSample,
+  DistributionValue,
+  OneDimensionalDistribution,
+} from "./distribution";

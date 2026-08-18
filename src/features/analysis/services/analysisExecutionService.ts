@@ -2,6 +2,7 @@ import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { AirfoilPolar } from "../../airfoils/model/types";
 import type { AnalysisCase, AnalysisResult } from "../model/types";
 import { calculateLltCoefficients } from "./lltSolver";
+import { airDensityAtAltitude, createLltSpanwiseDistribution, createVlmSpanwiseDistribution } from "./spanwiseDistribution";
 import { calculateVlmCoefficients } from "./vlmSolver";
 import { createWingAnalysisMesh, type WingAnalysisMesh } from "./wingAnalysisMesh";
 
@@ -36,14 +37,15 @@ export async function executeAnalysisCase({
   const rows: AnalysisResult["rows"] = [];
   const mesh = createWingAnalysisMesh(aircraft.sections);
   const selectedPolars = selectSectionPolars(aircraft, polars, analysisCase.reynolds);
+  const density = airDensityAtAltitude(analysisCase.altitude);
 
   for (const alpha of angles) {
     throwIfCancelled(signal);
     await yieldToUserInput();
     const coefficients = mesh.strips.length
       ? analysisCase.method === "VLM"
-        ? calculateVlmWingCoefficients(alpha, aircraft, mesh, selectedPolars)
-        : calculateLltWingCoefficients(alpha, aircraft, mesh, selectedPolars)
+        ? calculateVlmWingCoefficients(alpha, aircraft, mesh, selectedPolars, analysisCase.speed, density)
+        : calculateLltWingCoefficients(alpha, aircraft, mesh, selectedPolars, analysisCase.speed, density)
       : calculateFiniteWingCoefficients(alpha + aircraft.incidence, analysisCase.method, aircraft.aspectRatio);
     rows.push({
       caseId: analysisCase.id,
@@ -77,16 +79,25 @@ function calculateLltWingCoefficients(
   aircraft: AircraftGeometry,
   mesh: WingAnalysisMesh,
   polars: Map<string, AirfoilPolar>,
+  speed: number,
+  density: number,
 ) {
   const characteristics = estimateSectionCharacteristics(polars);
   const inviscid = calculateLltCoefficients(aircraft, alpha, characteristics);
-  if (!polars.size) return { cl: round(inviscid.cl, 4), cd: round(inviscid.cdi, 5), cm: 0 };
-
-  const profile = averageProfileCoefficients(alpha, aircraft, mesh, polars, "LLT");
+  const sectionCoefficients = sectionProfileCoefficients(alpha, aircraft, mesh, polars, "LLT");
+  const profile = averageProfileCoefficients(mesh, sectionCoefficients);
+  const cl = round(inviscid.cl, 4);
+  const cd = round(inviscid.cdi + profile.cd, 5);
+  const cm = round(profile.cm, 4);
   return {
-    cl: round(inviscid.cl, 4),
-    cd: round(inviscid.cdi + profile.cd, 5),
-    cm: round(profile.cm, 4),
+    cl,
+    cd,
+    cm,
+    spanwise: createLltSpanwiseDistribution({
+      aircraft, mesh, alphaDegrees: alpha, speed, density, sectionCoefficients,
+      targetCl: cl, targetCdi: Math.min(cd, inviscid.cdi), targetProfileCd: Math.max(0, cd - Math.min(cd, inviscid.cdi)),
+      fourierCoefficients: inviscid.fourierCoefficients,
+    }),
   };
 }
 
@@ -108,24 +119,30 @@ function estimateSectionCharacteristics(polars: Map<string, AirfoilPolar>) {
   };
 }
 
-function averageProfileCoefficients(
+function sectionProfileCoefficients(
   alpha: number,
   aircraft: AircraftGeometry,
   mesh: WingAnalysisMesh,
   polars: Map<string, AirfoilPolar>,
   method: AnalysisCase["method"],
 ) {
-  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
-  let cd = 0;
-  let cm = 0;
-  for (const strip of mesh.strips) {
+  return mesh.strips.map((strip) => {
     const localAlpha = alpha + aircraft.incidence + strip.twist;
     const root = coefficientsAtAlpha(polars.get(strip.airfoilRootId), localAlpha, method);
     const tip = coefficientsAtAlpha(polars.get(strip.airfoilTipId), localAlpha, method);
-    cd += interpolate(root.cd, tip.cd, strip.airfoilInterpolation) * strip.halfArea;
-    cm += interpolate(root.cm, tip.cm, strip.airfoilInterpolation) * strip.halfArea;
-  }
-  return { cd: safeDivide(cd, totalHalfArea), cm: safeDivide(cm, totalHalfArea) };
+    return polars.size ? {
+      cd: interpolate(root.cd, tip.cd, strip.airfoilInterpolation),
+      cm: interpolate(root.cm, tip.cm, strip.airfoilInterpolation),
+    } : { cd: 0, cm: 0 };
+  });
+}
+
+function averageProfileCoefficients(mesh: WingAnalysisMesh, coefficients: readonly { cd: number; cm: number }[]) {
+  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
+  return {
+    cd: safeDivide(mesh.strips.reduce((sum, strip, index) => sum + coefficients[index].cd * strip.halfArea, 0), totalHalfArea),
+    cm: safeDivide(mesh.strips.reduce((sum, strip, index) => sum + coefficients[index].cm * strip.halfArea, 0), totalHalfArea),
+  };
 }
 
 function calculateVlmWingCoefficients(
@@ -133,24 +150,24 @@ function calculateVlmWingCoefficients(
   aircraft: AircraftGeometry,
   mesh: WingAnalysisMesh,
   polars: Map<string, AirfoilPolar>,
+  speed: number,
+  density: number,
 ) {
   const inviscid = calculateVlmCoefficients(aircraft, mesh, alpha);
-  if (!polars.size) return { cl: round(inviscid.cl, 4), cd: round(inviscid.cdi, 5), cm: round(inviscid.cm, 4) };
-
-  const totalHalfArea = mesh.strips.reduce((sum, strip) => sum + strip.halfArea, 0);
-  let profileCd = 0;
-  let sectionCm = 0;
-  for (const strip of mesh.strips) {
-    const localAlpha = alpha + aircraft.incidence + strip.twist;
-    const root = coefficientsAtAlpha(polars.get(strip.airfoilRootId), localAlpha, "VLM");
-    const tip = coefficientsAtAlpha(polars.get(strip.airfoilTipId), localAlpha, "VLM");
-    profileCd += interpolate(root.cd, tip.cd, strip.airfoilInterpolation) * strip.halfArea;
-    sectionCm += interpolate(root.cm, tip.cm, strip.airfoilInterpolation) * strip.halfArea;
-  }
+  const sectionCoefficients = sectionProfileCoefficients(alpha, aircraft, mesh, polars, "VLM");
+  const profile = averageProfileCoefficients(mesh, sectionCoefficients);
+  const cl = round(inviscid.cl, 4);
+  const cd = round(inviscid.cdi + profile.cd, 5);
+  const cm = round(inviscid.cm + profile.cm, 4);
   return {
-    cl: round(inviscid.cl, 4),
-    cd: round(inviscid.cdi + safeDivide(profileCd, totalHalfArea), 5),
-    cm: round(inviscid.cm + safeDivide(sectionCm, totalHalfArea), 4),
+    cl,
+    cd,
+    cm,
+    spanwise: createVlmSpanwiseDistribution({
+      aircraft, mesh, alphaDegrees: alpha, speed, density, sectionCoefficients,
+      targetCl: cl, targetCdi: Math.min(cd, inviscid.cdi), targetProfileCd: Math.max(0, cd - Math.min(cd, inviscid.cdi)),
+      panelLoads: inviscid.panelLoads,
+    }),
   };
 }
 

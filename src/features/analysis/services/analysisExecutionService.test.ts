@@ -73,6 +73,33 @@ describe("executeAnalysisCase", () => {
     expect(vlmResult.rows[2].cl).not.toBe(result.rows[2].cl);
   });
 
+  it.each(["LLT", "VLM"] as const)("stores a conservative semi-span distribution for every %s operating point", async (method) => {
+    const result = await executeAnalysisCase({
+      analysisCase: { ...analysisCase, method, alphaStart: 2, alphaEnd: 2 },
+      aircraft,
+      polars,
+      createId: () => `${method}-spanwise`,
+      onProgress: () => undefined,
+    });
+
+    const row = result.rows[0];
+    const distribution = row.spanwise!;
+    const integrated = (key: "liftPerLength" | "dragPerLength") => distribution.samples.reduce(
+      (sum, sample) => sum + sample.values[key] * sample.values.stationWidth,
+      0,
+    );
+    const density = distribution.reference.density;
+    const dynamicPressureArea = density * analysisCase.speed ** 2 * aircraft.wingArea / 2;
+
+    expect(distribution.axis).toEqual({ key: "semi-span", unit: "m", label: "半翼幅" });
+    expect(distribution.reference).toMatchObject({ side: "right", origin: "centerline", alphaDegrees: 2, speed: analysisCase.speed });
+    expect(distribution.samples).toHaveLength(createWingAnalysisMesh(aircraft.sections).strips.length);
+    expect(integrated("liftPerLength")).toBeCloseTo(dynamicPressureArea * row.cl / 2, 5);
+    expect(integrated("dragPerLength")).toBeCloseTo(dynamicPressureArea * row.cd / 2, 5);
+    expect(distribution.samples.every((sample) => Math.abs(sample.values.inducedDragPerLength + sample.values.profileDragPerLength - sample.values.dragPerLength) < 1e-9)).toBe(true);
+    expect(distribution.samples.every((sample) => Number.isFinite(sample.values.torqueAboutElasticAxisPerLength))).toBe(true);
+  });
+
   it("reflects geometric twist and sweep in the calculated lift", async () => {
     const baseline = await executeAnalysisCase({ analysisCase, aircraft, polars, createId: () => "baseline", onProgress: () => undefined });
     const twisted = await executeAnalysisCase({

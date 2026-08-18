@@ -218,7 +218,14 @@ function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
     aircraftSnapshot: result.aircraftSnapshot ? cloneAircraft(result.aircraftSnapshot) : undefined,
     airfoilIds: result.airfoilIds ? [...result.airfoilIds] : undefined,
     polarIds: result.polarIds ? [...result.polarIds] : undefined,
-    rows: result.rows.map((row) => ({ ...row })),
+    rows: result.rows.map((row) => ({
+      ...row,
+      spanwise: row.spanwise ? {
+        axis: { ...row.spanwise.axis },
+        reference: { ...row.spanwise.reference },
+        samples: row.spanwise.samples.map((sample) => ({ position: sample.position, values: { ...sample.values } })),
+      } : undefined,
+    })),
   };
 }
 

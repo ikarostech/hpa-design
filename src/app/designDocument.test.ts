@@ -158,6 +158,26 @@ describe("createDesignDocumentStore", () => {
     expect(store.getState().isDirty).toBe(true);
   });
 
+  it("deep-clones saved aerodynamic span distributions", () => {
+    const analysisCase = {
+      id: "case-span", name: "Span", method: "VLM" as const,
+      alphaStart: 4, alphaEnd: 4, alphaStep: 1, speed: 20, altitude: 0, reynolds: 300000,
+      geometryId: document.aircraft.id, status: "completed" as const,
+    };
+    const spanwise = {
+      axis: { key: "semi-span" as const, unit: "m" as const, label: "半翼幅" },
+      reference: { side: "right" as const, origin: "centerline" as const, alphaDegrees: 4, speed: 20, density: 1.225, elasticAxisChordFraction: 0.35 },
+      samples: [{ position: 0.5, values: { stationWidth: 1, chord: 1, circulation: 1, localLiftCoefficient: 0.5, liftPerLength: 100, inducedDragPerLength: 2, profileDragPerLength: 1, dragPerLength: 3, pitchingMomentPerLength: -1, torqueAboutElasticAxisPerLength: 4 } }],
+    };
+    const result = { id: "result-span", caseId: analysisCase.id, clMax: 0.5, cdMin: 0.03, maxLD: 16, cm0: -0.04, status: "completed" as const, rows: [{ caseId: analysisCase.id, alpha: 4, cl: 0.5, cd: 0.03, cm: -0.04, ld: 16, status: "completed" as const, spanwise }] };
+    const store = createDesignDocumentStore({ ...document, analysisCases: [analysisCase] });
+
+    store.saveAnalysisResult(result);
+    spanwise.samples[0].values.liftPerLength = 999;
+
+    expect(store.getDocument().analysisResults[0].rows[0].spanwise?.samples[0].values.liftPerLength).toBe(100);
+  });
+
   it("marks an existing result stale after case inputs change and replaces it after a rerun", () => {
     const analysisCase = {
       id: "case-1", name: "Cruise", method: "LLT" as const,

@@ -82,6 +82,29 @@ describe("design document transfer", () => {
     expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
   });
 
+  it("validates aerodynamic span distribution coordinates and values", async () => {
+    const analysisCase = { id: "case-1", name: "Cruise", method: "VLM", alphaStart: 4, alphaEnd: 4, alphaStep: 1, speed: 20, altitude: 0, reynolds: 300000, geometryId: document.aircraft.id, status: "completed" };
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      analysisCases: [analysisCase],
+      analysisResults: [{
+        id: "result-1", caseId: analysisCase.id, clMax: 0.5, cdMin: 0.03, maxLD: 16, cm0: -0.04, status: "completed",
+        rows: [{
+          caseId: analysisCase.id, alpha: 4, cl: 0.5, cd: 0.03, cm: -0.04, ld: 16, status: "completed",
+          spanwise: { axis: { key: "semi-span", unit: "m" }, reference: { side: "right", origin: "centerline", alphaDegrees: 4, speed: 20, density: 1.225, elasticAxisChordFraction: 0.35 }, samples: [{ position: "bad", values: { liftPerLength: 100 } }] },
+        }],
+      }],
+    }));
+
+    const validation = await designDocumentImporter.validate(imported);
+
+    expect(validation).toMatchObject({ valid: false });
+    if (!validation.valid) expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: ["analysisResults", "0", "rows", "0", "spanwise", "samples", "0", "position"] }),
+      expect.objectContaining({ path: ["analysisResults", "0", "rows", "0", "spanwise", "samples", "0", "values", "dragPerLength"] }),
+    ]));
+  });
+
   it("migrates version 3 interpolation stations to constant-length tube sections", async () => {
     const imported = await designDocumentImporter.parse(JSON.stringify({
       ...document,

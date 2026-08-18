@@ -1,3 +1,6 @@
+import type { AircraftGeometry } from "../../aircraft/model/types";
+import type { AerodynamicSpanDistribution } from "./spanwiseDistribution";
+
 export type AnalysisMethod = "LLT" | "VLM";
 export type AnalysisCaseStatus = "completed" | "not-run" | "needs-review";
 
@@ -27,6 +30,16 @@ export interface AnalysisResult {
   aircraftSnapshot?: AircraftGeometry;
   airfoilIds?: readonly string[];
   polarIds?: readonly string[];
-  rows: Array<{ caseId: string; alpha: number; cl: number; cd: number; cm: number; ld: number; status: AnalysisCaseStatus }>;
+  rows: AnalysisResultRow[];
 }
-import type { AircraftGeometry } from "../../aircraft/model/types";
+
+export interface AnalysisResultRow {
+  caseId: string;
+  alpha: number;
+  cl: number;
+  cd: number;
+  cm: number;
+  ld: number;
+  status: AnalysisCaseStatus;
+  spanwise?: AerodynamicSpanDistribution;
+}

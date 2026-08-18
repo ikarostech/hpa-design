@@ -47,8 +47,8 @@ function AircraftRoute() {
 }
 
 function AnalysisRoute() {
-  const { document, analysisCaseRepository, saveAnalysisResult, saveAeroelasticResult } = useDesignDocument();
-  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} materials={document.carbonMaterials} structuralDesigns={document.structuralDesigns} aeroelasticResults={document.aeroelasticResults ?? []} saveAeroelasticResult={saveAeroelasticResult} />;
+  const { document, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
+  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} structuralResults={document.structuralResults} />;
 }
 
 function StructuresRoute() {

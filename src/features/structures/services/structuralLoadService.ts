@@ -8,16 +8,40 @@ export function createLoadCaseFromAerodynamicResult({
   density = 1.225,
   pointCount = 41,
   safetyFactor = 1.5,
+  alphaDegrees,
 }: {
   result: AnalysisResult;
   aircraft: AircraftGeometry;
   density?: number;
   pointCount?: number;
   safetyFactor?: number;
+  alphaDegrees?: number;
 }): StructuralLoadCase {
   const semiSpan = aircraft.span / 2;
   const speed = result.caseSnapshot?.speed ?? 0;
   if (semiSpan <= 0 || speed <= 0 || aircraft.wingArea <= 0) throw new Error("空力荷重の生成には翼幅、翼面積、解析速度が必要です。");
+  const selectedRow = alphaDegrees === undefined
+    ? [...result.rows].sort((left, right) => right.cl - left.cl).find((row) => row.spanwise)
+    : result.rows.find((row) => Math.abs(row.alpha - alphaDegrees) < 1e-9 && row.spanwise);
+  if (selectedRow?.spanwise) {
+    return {
+      id: `structural-load-${result.id}-${selectedRow.alpha}`,
+      name: `${result.caseSnapshot?.name ?? result.caseId} α=${selectedRow.alpha}°`,
+      source: "aerodynamic",
+      aerodynamicResultId: result.id,
+      aerodynamicAlphaDegrees: selectedRow.alpha,
+      loadFactor: 1,
+      safetyFactor,
+      distributedLoads: selectedRow.spanwise.samples.map((sample) => ({
+        yPosition: sample.position,
+        liftPerLength: sample.values.liftPerLength,
+        torquePerLength: sample.values.torqueAboutElasticAxisPerLength,
+      })),
+      pointLoads: [],
+      status: "not-run",
+    };
+  }
+
   const count = Math.max(3, Math.round(pointCount));
   const targetHalfLift = 0.5 * density * speed ** 2 * aircraft.wingArea * result.clMax / 2;
   const raw = Array.from({ length: count }, (_, index) => {
@@ -40,9 +64,10 @@ export function createLoadCaseFromAerodynamicResult({
 }
 
 export function createStructuralResultCsv(result: StructuralAnalysisResult) {
-  const header = "y_m,load_N_per_m,shear_N,bending_Nm,torque_Nm,deflection_m,rotation_rad,twist_rad,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
+  const header = "y_m,load_N_per_m,shear_N,bending_Nm,bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor,deflection_m,rotation_rad,twist_rad,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
   const rows = result.points.map((point) => [
-    point.yPosition, point.distributedLoad, point.shearForce, point.bendingMoment, point.torque,
+    point.yPosition, point.distributedLoad, point.shearForce, point.bendingMoment, point.bendingMomentCapacity ?? "", point.bendingReserveFactor ?? "",
+    point.torque, point.torqueCapacity ?? "", point.torsionReserveFactor ?? "",
     point.deflection, point.rotation, point.twist, point.outerDiameter, point.thickness,
     point.ei, point.gj, point.linearMass, point.axialStress, point.shearStress,
     point.minReserveFactor, point.criticalPlyId, point.criticalMode,

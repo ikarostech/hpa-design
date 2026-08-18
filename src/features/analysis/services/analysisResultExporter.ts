@@ -25,7 +25,17 @@ export const analysisResultExporter: Exporter<AnalysisResultExportInput, Analysi
   export: async (input) => ({
     fileName: `${fileStem(input.designName)}-analysis-results.csv`,
     mimeType: "text/csv;charset=utf-8",
-    content: `\uFEFFcase_id,result_id,status,alpha_deg,cl,cd,cm,ld\r\n${selectResults(input).flatMap((result) => result.rows.map((row) => [
+    content: createAnalysisCsv(selectResults(input)),
+  }),
+  exportJson: async (input) => ({
+    fileName: `${fileStem(input.designName)}-analysis-results.json`,
+    mimeType: "application/json;charset=utf-8",
+    content: JSON.stringify(selectResults(input), null, 2),
+  }),
+};
+
+function createAnalysisCsv(results: readonly AnalysisResult[]) {
+  const polarRows = results.flatMap((result) => result.rows.map((row) => [
       row.caseId,
       result.id,
       row.status,
@@ -34,14 +44,17 @@ export const analysisResultExporter: Exporter<AnalysisResultExportInput, Analysi
       formatAnalysisNumber(row.cd, 6),
       formatAnalysisNumber(row.cm, 4),
       formatAnalysisNumber(row.ld, 2),
-    ].map(escapeCsv).join(","))).join("\r\n")}${selectResults(input).some((result) => result.rows.length > 0) ? "\r\n" : ""}`,
-  }),
-  exportJson: async (input) => ({
-    fileName: `${fileStem(input.designName)}-analysis-results.json`,
-    mimeType: "application/json;charset=utf-8",
-    content: JSON.stringify(selectResults(input), null, 2),
-  }),
-};
+    ].map(escapeCsv).join(",")));
+  const spanRows = results.flatMap((result) => result.rows.flatMap((row) => row.spanwise?.samples.map((sample) => [
+    result.id, row.caseId, formatAnalysisNumber(row.alpha, 1), sample.position,
+    sample.values.stationWidth, sample.values.chord, sample.values.circulation, sample.values.localLiftCoefficient,
+    sample.values.liftPerLength, sample.values.inducedDragPerLength, sample.values.profileDragPerLength, sample.values.dragPerLength,
+    sample.values.pitchingMomentPerLength, sample.values.torqueAboutElasticAxisPerLength,
+  ].map(String).map(escapeCsv).join(",")) ?? []));
+  const polarSection = `\uFEFFcase_id,result_id,status,alpha_deg,cl,cd,cm,ld\r\n${polarRows.join("\r\n")}${polarRows.length ? "\r\n" : ""}`;
+  if (!spanRows.length) return polarSection;
+  return `${polarSection}\r\n[spanwise]\r\nresult_id,case_id,alpha_deg,y_m,width_m,chord_m,circulation_m2_per_s,local_cl,lift_N_per_m,induced_drag_N_per_m,profile_drag_N_per_m,drag_N_per_m,pitching_moment_Nm_per_m,elastic_axis_torque_Nm_per_m\r\n${spanRows.join("\r\n")}\r\n`;
+}
 
 export function createDesignSummary({ name, analysisCases, analysisResults }: DesignSummaryInput) {
   const caseLines = analysisCases.map((analysisCase) => {

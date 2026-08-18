@@ -83,9 +83,12 @@ describe("executeStructuralAnalysis", () => {
     const innerDiameter = 0.1 - 2 * 0.004;
     const secondMoment = Math.PI * (0.1 ** 4 - innerDiameter ** 4) / 64;
     const expectedDeflection = 100 / (3 * isotropic.e1 * secondMoment);
+    const expectedBendingCapacity = Math.min(isotropic.tensileStrength1, isotropic.compressiveStrength1) * secondMoment / 0.05;
 
     expect(root.shearForce).toBeCloseTo(100, 6);
     expect(root.bendingMoment).toBeCloseTo(100, 4);
+    expect(root.bendingMomentCapacity!).toBeCloseTo(expectedBendingCapacity, 4);
+    expect(root.bendingReserveFactor!).toBeCloseTo(expectedBendingCapacity / root.bendingMoment, 4);
     expect(tip.deflection).toBeCloseTo(expectedDeflection, 3);
     expect(result.summary.reactionForce).toBeCloseTo(-100, 6);
     expect(result.summary.forceBalanceError).toBeLessThan(1e-8);
@@ -107,8 +110,11 @@ describe("executeStructuralAnalysis", () => {
     const innerDiameter = 0.1 - 2 * 0.004;
     const polarMoment = Math.PI * (0.1 ** 4 - innerDiameter ** 4) / 32;
     const expectedTwist = 50 * 1.5 / (isotropic.g12 * polarMoment);
+    const expectedTorqueCapacity = isotropic.shearStrength12 * polarMoment / 0.05;
 
     expect(result.summary.maxTwist).toBeCloseTo(expectedTwist, 3);
+    expect(result.points[0].torqueCapacity!).toBeCloseTo(expectedTorqueCapacity, 4);
+    expect(result.points[0].torsionReserveFactor!).toBeCloseTo(expectedTorqueCapacity / 75, 4);
     expect(result.summary.minReserveFactor).toBeGreaterThan(0);
     expect(result.summary.governingMode).toBe("せん断");
     expect(result.summary.governingLoadCase).toBe(loadCase.name);
