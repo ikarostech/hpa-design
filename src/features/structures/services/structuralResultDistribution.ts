@@ -10,6 +10,11 @@ export interface StructuralSpanValues {
   torque: number;
   torqueCapacity: number | null;
   torsionReserveFactor: number | null;
+  bendingStiffness: number;
+  torsionalStiffness: number;
+  outerDiameter: number;
+  wallThickness: number;
+  linearMass: number;
   deflection: number;
   rotation: number;
   twist: number;
@@ -32,6 +37,11 @@ export function toStructuralSpanDistribution(result: StructuralAnalysisResult): 
         torque: point.torque,
         torqueCapacity: finiteOrNull(point.torqueCapacity),
         torsionReserveFactor: finiteOrNull(point.torsionReserveFactor),
+        bendingStiffness: point.ei,
+        torsionalStiffness: point.gj,
+        outerDiameter: point.outerDiameter,
+        wallThickness: point.thickness,
+        linearMass: point.linearMass,
         deflection: point.deflection,
         rotation: point.rotation,
         twist: point.twist,

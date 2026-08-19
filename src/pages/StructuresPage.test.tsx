@@ -149,7 +149,8 @@ describe("StructuresPage", () => {
     await user.click(screen.getByRole("tab", { name: "結果" }));
 
     expect(screen.getByText("最小RF")).toBeTruthy();
-    expect(screen.getByText("翼幅方向結果")).toBeTruthy();
+    expect(screen.getByText("パイプ固有特性")).toBeTruthy();
+    expect(screen.getByText("荷重ケース応答")).toBeTruthy();
     expect(screen.getByRole("button", { name: "構造結果CSVを保存" })).toBeTruthy();
   });
 });

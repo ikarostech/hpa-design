@@ -4,10 +4,10 @@ import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/ty
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
 import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
-import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult, carbonMaterials, structuralDesigns } from "../mocks/mockData";
 import type { EntityRepository } from "../shared/model";
 import { createDesignDocumentStore, type DesignDocument, type DesignDocumentStore } from "./designDocument";
 import { createDesignDocumentRecoveryRepository, readDesignDocumentRecoveryState, type DesignDocumentRecoveryRepository } from "./designDocumentRecoveryRepository";
+import { createDefaultDesignDocument } from "./defaultDesignDocument";
 
 interface DesignDocumentContextValue {
   getDocument: () => DesignDocument;
@@ -33,20 +33,6 @@ interface DesignDocumentContextValue {
 
 const DesignDocumentContext = createContext<DesignDocumentContextValue | null>(null);
 
-const initialAnalysisRuns: AirfoilAnalysisRun[] = [{
-  id: "run-initial-polars",
-  name: "初期 Polar 解析",
-  airfoilIds: Array.from(new Set(airfoilPolars.map((polar) => polar.airfoilId))),
-  polarIds: airfoilPolars.map((polar) => polar.id),
-  createdAt: "2026-06-21T00:00:00.000Z",
-  reynolds: 300000,
-  mach: 0.04,
-  alphaStart: -6,
-  alphaEnd: 18,
-  alphaStep: 2,
-  status: "complete",
-}];
-
 export function DesignDocumentProvider({ children }: { children: ReactNode }) {
   const storeRef = useRef<DesignDocumentStore | null>(null);
   const recoveryRepositoryRef = useRef<DesignDocumentRecoveryRepository | null>(null);
@@ -54,19 +40,10 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
   if (!storeRef.current) {
     const storage = getBrowserStorage();
     const recoveredDocument = storage ? readDesignDocumentRecoveryState(storage) : null;
-    storeRef.current = createDesignDocumentStore(recoveredDocument?.document ?? {
-      schemaVersion: 4,
-      name: "LongRange UAV",
-      airfoils,
-      polars: airfoilPolars,
-      airfoilAnalysisRuns: initialAnalysisRuns,
-      aircraft: aircraftGeometry,
-      analysisCases,
-      analysisResults: [analysisResult],
-      carbonMaterials,
-      structuralDesigns,
-      structuralResults: [],
-    }, { saved: !recoveredDocument?.isDirty });
+    storeRef.current = createDesignDocumentStore(
+      recoveredDocument?.document ?? createDefaultDesignDocument(),
+      { saved: !recoveredDocument?.isDirty },
+    );
     recoveryRepositoryRef.current = storage ? createDesignDocumentRecoveryRepository(storage) : null;
   }
 
