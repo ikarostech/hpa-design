@@ -9,6 +9,7 @@ import { designDocumentExporter, designDocumentImporter, formatValidationIssues 
 const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
 const AnalysisPage = lazy(async () => ({ default: (await import("../pages/AnalysisPage")).AnalysisPage }));
+const ResultsPage = lazy(async () => ({ default: (await import("../pages/ResultsPage")).ResultsPage }));
 const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
 const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
 const StructuresPage = lazy(async () => ({ default: (await import("../pages/StructuresPage")).StructuresPage }));
@@ -19,6 +20,7 @@ export default function App() {
     <Route path="/airfoils" element={<AirfoilRoute />} />
     <Route path="/aircraft" element={<AircraftRoute />} />
     <Route path="/analysis" element={<AnalysisRoute />} />
+    <Route path="/results" element={<ResultsRoute />} />
     <Route path="/structures" element={<StructuresRoute />} />
     <Route path="/export" element={<ExportRoute />} />
     <Route path="/projects/*" element={<Navigate to="/" replace />} />
@@ -48,7 +50,12 @@ function AircraftRoute() {
 
 function AnalysisRoute() {
   const { document, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
-  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} structuralResults={document.structuralResults} />;
+  return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
+}
+
+function ResultsRoute() {
+  const { document } = useDesignDocument();
+  return <ResultsPage cases={document.analysisCases} results={document.analysisResults} structuralResults={document.structuralResults} />;
 }
 
 function StructuresRoute() {

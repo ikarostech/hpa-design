@@ -14,10 +14,10 @@ describe("ApplicationRouter", () => {
   });
 
   it("restores an application route from the URL hash", () => {
-    window.location.hash = "#/analysis?tab=results";
+    window.location.hash = "#/results";
 
     render(<ApplicationRouter><LocationProbe /></ApplicationRouter>);
 
-    expect(screen.getByText("/analysis?tab=results")).toBeTruthy();
+    expect(screen.getByText("/results")).toBeTruthy();
   });
 });

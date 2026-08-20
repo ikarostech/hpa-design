@@ -1,22 +1,17 @@
 import { Copy, Play, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import { createAnalysisCase, createAnalysisCaseDraft, type AnalysisCaseDraft, updateAnalysisCase, validateAnalysisCaseDraft } from "../features/analysis/model/analysisCaseDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../features/analysis/services/analysisExecutionService";
-import { formatAnalysisNumber } from "../features/analysis/services/analysisResultExporter";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import type { AirfoilPolar } from "../features/airfoils/model/types";
-import type { StructuralAnalysisResult } from "../features/structures/model/types";
-import { IntegratedSpanwiseCharts } from "./components/IntegratedSpanwiseCharts";
 import { useJobs } from "../shared/jobs/JobProvider";
 import type { EntityRepository, Job, ResultViewController, SingleSelection } from "../shared/model";
 import { Badge } from "../shared/ui/Badge";
 import { Button } from "../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../shared/ui/Card";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
-import { MetricCard } from "../shared/ui/MetricCard";
 import { InspectorDrawer } from "../shared/ui/inspector/InspectorDrawer";
 import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 import { RowActions } from "../shared/ui/table/RowActions";
@@ -29,14 +24,12 @@ interface AnalysisPageProps {
   polars: readonly AirfoilPolar[];
   analysisCaseRepository: EntityRepository<AnalysisCase, string>;
   saveAnalysisResult: (result: AnalysisResult) => void;
-  structuralResults?: readonly StructuralAnalysisResult[];
 }
 
 type AnalysisJob = Job<string, AnalysisResult, { caseId: string }>;
 type EditorMode = "create" | "edit" | null;
 
-export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult, structuralResults = [] }: AnalysisPageProps) {
-  const [params, setParams] = useSearchParams();
+export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
   const jobs = useJobs();
   const controllers = useRef(new Map<string, AbortController>());
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id ?? null);
@@ -46,8 +39,6 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
   const [errors, setErrors] = useState<Partial<Record<keyof AnalysisCaseDraft, string>>>({});
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [displayedResultIds, setDisplayedResultIds] = useState<string[]>(() => results[0] ? [results[0].id] : []);
-  const [selectedStructuralResultId, setSelectedStructuralResultId] = useState<string | null>(structuralResults[0]?.id ?? null);
-  const [selectedAerodynamicAlpha, setSelectedAerodynamicAlpha] = useState<number | null>(() => preferredAerodynamicRow(results[0])?.alpha ?? null);
 
   useEffect(() => {
     if (!selectedCaseId || !cases.some((item) => item.id === selectedCaseId)) setSelectedCaseId(cases[0]?.id ?? null);
@@ -71,29 +62,10 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
   };
   const displayedResults = results.filter((result) => resultView.state.displayedResultIds.includes(result.id));
   const resultForView = selectedResult ?? displayedResults[0] ?? results[0];
-  const aerodynamicRows = resultForView?.rows.filter((row) => row.spanwise) ?? [];
-  const selectedAerodynamicRow = aerodynamicRows.find((row) => row.alpha === selectedAerodynamicAlpha) ?? preferredAerodynamicRow(resultForView);
-  const selectedStructuralResult = structuralResults.find((result) => result.id === selectedStructuralResultId) ?? structuralResults[0];
   const selectedJob = jobs.jobs.find((job) => job.kind === "aircraft-analysis" && job.status === "running" && hasCaseId(job, selected?.id));
   const hasRun = Boolean(selectedResult && selectedResult.status === "completed");
   const chartData = useMemo(() => resultForView?.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) ?? [], [resultForView]);
   const chartSeries = useMemo(() => displayedResults.map((result, index) => ({ id: result.id, name: cases.find((analysisCase) => analysisCase.id === result.caseId)?.name ?? result.caseId, color: ["#2563eb", "#0f766e", "#dc2626", "#7c3aed"][index % 4], data: result.rows.map(({ alpha, cl, cd, cm }) => ({ alpha, cl, cd, cm })) })), [cases, displayedResults]);
-  const activeTab = params.get("tab") === "results" ? "結果" : "解析";
-
-  useEffect(() => {
-    setSelectedAerodynamicAlpha((current) => resultForView?.rows.some((row) => row.spanwise && row.alpha === current)
-      ? current
-      : preferredAerodynamicRow(resultForView)?.alpha ?? null);
-  }, [resultForView]);
-
-  useEffect(() => {
-    setSelectedStructuralResultId((current) => {
-      const linked = structuralResults.find((result) => result.loadCaseSnapshot.aerodynamicResultId === resultForView?.id
-        && (result.loadCaseSnapshot.aerodynamicAlphaDegrees === undefined || result.loadCaseSnapshot.aerodynamicAlphaDegrees === selectedAerodynamicRow?.alpha));
-      if (linked) return linked.id;
-      return structuralResults.some((result) => result.id === current) ? current : structuralResults[0]?.id ?? null;
-    });
-  }, [resultForView?.id, selectedAerodynamicRow?.alpha, structuralResults]);
 
   const openCreate = () => {
     setDraft(createNewDraft(aircraft.id));
@@ -155,7 +127,6 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
       });
       saveAnalysisResult(result);
       jobs.completeJob<AnalysisJob>(jobId, { result, progress: { completed: result.rows.length, total: result.rows.length } });
-      setParams({ tab: "results" });
     } catch (error) {
       if (error instanceof AnalysisExecutionCancelledError) {
         jobs.cancelJob(jobId);
@@ -171,14 +142,9 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
     <PageTemplate
       title="空力解析"
       description="LLT / VLM の解析ケースを管理し、翼の空力特性を比較します。"
-      tabs={<div role="tablist" className="flex gap-2 border-b border-slate-200">
-        {(["解析", "結果"] as const).map((tab) => (
-          <button role="tab" aria-selected={activeTab === tab} key={tab} onClick={() => setParams(tab === "結果" ? { tab: "results" } : {})} className={`px-3 py-2 text-sm font-medium ${activeTab === tab ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500"}`}>{tab}</button>
-        ))}
-      </div>}
     >
 
-      {activeTab === "解析" ? <div className="space-y-5">
+      <div className="space-y-5">
         <Card><CardHeader className="flex items-center justify-between gap-3"><div><h2 className="font-semibold text-slate-950">選択ケースの解析結果</h2><p className="mt-1 text-sm text-slate-500">解析ケース表の「表示」で選んだ結果を同じグラフ上で比較します。</p></div><Badge tone={displayedResults.length ? "green" : "slate"}>{displayedResults.length}件表示</Badge></CardHeader><CardBody>{displayedResults.length ? <PolarCharts data={chartData} series={chartSeries} mode="analysis" /> : <p className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">解析済みケースの「表示」を選ぶと、結果グラフがここに表示されます。</p>}</CardBody></Card>
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-3">
@@ -200,35 +166,7 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
             </table></div> : <div className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center"><p className="text-sm text-slate-500">解析ケースはまだありません。</p><Button className="mt-4" onClick={openCreate}><Plus size={15} />最初の解析ケースを作成</Button></div>}
           </CardBody>
         </Card>
-      </div> : <div className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-5">
-            <MetricCard label="CLmax" value={resultForView ? formatAnalysisNumber(resultForView.clMax, 3) : "-"} />
-            <MetricCard label="CDmin" value={resultForView ? formatAnalysisNumber(resultForView.cdMin, 6) : "-"} />
-            <MetricCard label="最大 L/D" value={resultForView ? formatAnalysisNumber(resultForView.maxLD, 2) : "-"} />
-            <MetricCard label="Cm0" value={resultForView ? formatAnalysisNumber(resultForView.cm0, 4) : "-"} />
-            <MetricCard label="実行状態" value={selectedJob ? "実行中" : analysisStatusLabel(selected?.status ?? "not-run")} />
-          </div>
-          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果グラフ</h2></CardHeader><CardBody><PolarCharts data={chartData} series={chartSeries} mode="analysis" /></CardBody></Card>
-          <Card>
-            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="font-semibold text-slate-950">空力・構造 統合結果</h2><p className="mt-1 text-sm text-slate-500">空力解析と、その荷重を使用した構造解析の結果をまとめて確認します。</p></div>
-              <div className="flex flex-wrap gap-2">
-                {aerodynamicRows.length ? <select aria-label="空力運用点" value={selectedAerodynamicRow?.alpha ?? ""} onChange={(event) => setSelectedAerodynamicAlpha(Number(event.target.value))} className="h-9 rounded border bg-white px-3 text-sm">
-                  {aerodynamicRows.map((row) => <option key={row.alpha} value={row.alpha}>α {row.alpha.toFixed(1)}° / CL {row.cl.toFixed(3)} / CD {row.cd.toFixed(5)}</option>)}
-                </select> : null}
-                {structuralResults.length ? <select aria-label="構造解析結果" value={selectedStructuralResult?.id ?? ""} onChange={(event) => setSelectedStructuralResultId(event.target.value)} className="h-9 rounded border bg-white px-3 text-sm">
-                  {structuralResults.map((result) => <option key={result.id} value={result.id}>{result.designSnapshot.name} / {result.loadCaseSnapshot.name} / {new Date(result.createdAt).toLocaleString("ja-JP")}</option>)}
-                </select> : null}
-              </div>
-            </CardHeader>
-            <CardBody>{selectedStructuralResult ? <div className="space-y-4">
-              <IntegratedResultSummary aerodynamicResult={resultForView} alphaDegrees={selectedAerodynamicRow?.alpha} structuralResult={selectedStructuralResult} />
-              <IntegratedSpanwiseCharts aerodynamicResult={resultForView} alphaDegrees={selectedAerodynamicRow?.alpha} structuralResult={selectedStructuralResult} />
-            </div> : <p className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">構造解析結果はまだありません。構造設計ページで荷重ケースを解析してください。</p>}</CardBody>
-          </Card>
-          <Card><CardHeader><h2 className="font-semibold text-slate-950">結果一覧</h2></CardHeader><CardBody><ResultTable result={resultForView} /></CardBody></Card>
-          <AnalysisResultComparison results={results} cases={cases} resultView={resultView} />
-      </div>}
+      </div>
 
       {editorMode ? <CaseEditor draft={draft} errors={errors} title={editorMode === "create" ? "解析ケースを新規作成" : "解析ケースを編集"} onChange={setDraft} onSave={() => void saveCase()} onClose={() => setEditorMode(null)} /> : null}
       <InspectorDrawer open={Boolean(detailCaseId && selected)} title="解析ケース詳細" subtitle={selected?.name} closeLabel="解析ケース詳細を閉じる" width="wide" onClose={() => setDetailCaseId(null)} footer={selected ? <div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => openEdit(selected)}>編集</Button>{selectedJob ? <Button variant="destructive" onClick={() => controllers.current.get(selectedJob.id)?.abort()}><X size={16} />解析をキャンセル</Button> : <Button aria-label={`${selected.name}を解析`} onClick={() => void runAnalysis(selected)}><Play size={16} />{hasRun ? "再解析" : "解析を実行"}</Button>}</div> : null}>
@@ -256,32 +194,6 @@ function CaseEditor({ draft, errors, title, onChange, onSave, onClose }: { draft
   </div></InspectorDrawer>;
 }
 
-function AnalysisResultComparison({ results, cases, resultView }: { results: readonly AnalysisResult[]; cases: readonly AnalysisCase[]; resultView: ResultViewController<string> }) {
-  const displayed = new Set(resultView.state.displayedResultIds);
-  return <Card><CardHeader><h2 className="font-semibold text-slate-950">比較する結果</h2><p className="mt-1 text-sm text-slate-500">表示を複数選ぶとグラフを比較できます。指標と表は選択中の解析ケースに従います。</p></CardHeader><CardBody className="space-y-2">{results.length ? results.map((result) => <div key={result.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm"><input type="checkbox" checked={displayed.has(result.id)} aria-label={`${result.id}を比較に表示`} onChange={() => displayed.has(result.id) ? resultView.hide(result.id) : resultView.show(result.id)} /><span>{cases.find((analysisCase) => analysisCase.id === result.caseId)?.name ?? result.caseId}</span><span>CLmax {formatAnalysisNumber(result.clMax, 3)} / L/D {formatAnalysisNumber(result.maxLD, 2)}</span></div>) : <p className="text-sm text-slate-500">比較できる解析結果はまだありません。</p>}</CardBody></Card>;
-}
-
-function IntegratedResultSummary({ aerodynamicResult, alphaDegrees, structuralResult }: { aerodynamicResult: AnalysisResult | undefined; alphaDegrees?: number; structuralResult: StructuralAnalysisResult }) {
-  const resultLinked = Boolean(aerodynamicResult && structuralResult.loadCaseSnapshot.aerodynamicResultId === aerodynamicResult.id);
-  const operatingPointLinked = resultLinked && structuralResult.loadCaseSnapshot.aerodynamicAlphaDegrees !== undefined && structuralResult.loadCaseSnapshot.aerodynamicAlphaDegrees === alphaDegrees;
-  return <div className="space-y-3">
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      <Badge tone={operatingPointLinked ? "green" : resultLinked ? "blue" : "amber"}>{operatingPointLinked ? "空力運用点と関連付け済み" : resultLinked ? "空力結果と関連付け済み" : "個別選択"}</Badge>
-      <span className="text-slate-500">構造荷重: {structuralResult.loadCaseSnapshot.name}</span>
-    </div>
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <MetricCard label="空力結果" value={aerodynamicResult?.caseSnapshot?.name ?? aerodynamicResult?.caseId ?? "-"} detail={aerodynamicResult ? `CLmax ${formatAnalysisNumber(aerodynamicResult.clMax, 3)} / CDmin ${formatAnalysisNumber(aerodynamicResult.cdMin, 5)}` : "未選択"} />
-      <MetricCard label="構造設計" value={structuralResult.designSnapshot.name} detail={structuralResult.loadCaseSnapshot.name} />
-      <MetricCard label="最小安全率" value={formatAnalysisNumber(structuralResult.summary.minReserveFactor, 2)} detail={`${structuralResult.summary.governingPosition.toFixed(2)} m / ${structuralResult.summary.governingMode}`} />
-      <MetricCard label="最大変形" value={`${(structuralResult.summary.maxDeflection * 1000).toFixed(1)} mm`} detail={`ねじれ ${(structuralResult.summary.maxTwist * 180 / Math.PI).toFixed(2)}°`} />
-    </div>
-  </div>;
-}
-
-function ResultTable({ result }: { result: AnalysisResult | undefined }) {
-  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["α", "CL", "CD", "Cm", "L/D", "状態"].map((header) => <th key={header} className="px-2 py-2">{header}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{(result?.rows ?? []).map((row) => <tr key={`${row.caseId}-${row.alpha}`}><td className="px-2 py-3">{formatAnalysisNumber(row.alpha, 1)}°</td><td className="px-2 py-3">{formatAnalysisNumber(row.cl, 4)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.cd, 6)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.cm, 4)}</td><td className="px-2 py-3">{formatAnalysisNumber(row.ld, 2)}</td><td className="px-2 py-3"><Badge tone={row.status === "completed" ? "green" : "amber"}>{analysisStatusLabel(row.status)}</Badge></td></tr>)}</tbody></table>{!result ? <p className="px-2 py-5 text-sm text-slate-500">実行結果はまだありません。</p> : null}</div>;
-}
-
 function Setting({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-slate-200 px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-sm font-medium text-slate-900">{value}</p></div>; }
 function createNewDraft(geometryId: string): AnalysisCaseDraft { return { name: "", method: "LLT", alphaStart: -4, alphaEnd: 12, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId }; }
 function createId(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
@@ -289,4 +201,3 @@ function countSweepPoints(analysisCase: AnalysisCase) { return Math.floor((analy
 function formatAlphaRange(start: number, end: number, step: number) { return `${start}° to ${end}° (${step}°刻み)`; }
 function analysisStatusLabel(status: "completed" | "not-run" | "needs-review") { return status === "completed" ? "完了" : status === "not-run" ? "未実行" : "要確認"; }
 function hasCaseId(job: Job<string, unknown, unknown>, caseId: string | undefined) { return Boolean(caseId && typeof job.settings === "object" && job.settings !== null && "caseId" in job.settings && job.settings.caseId === caseId); }
-function preferredAerodynamicRow(result: AnalysisResult | undefined) { return [...(result?.rows ?? [])].filter((row) => row.spanwise).sort((left, right) => right.cl - left.cl)[0]; }

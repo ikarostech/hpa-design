@@ -16,10 +16,12 @@ describe("Sidebar", () => {
     expect(sidebar.className).toContain("overflow-y-auto");
   });
 
-  it("marks only the result link active when the analysis result query is selected", () => {
-    render(<MemoryRouter initialEntries={["/analysis?tab=results"]}><Sidebar /></MemoryRouter>);
+  it("links results to a dedicated page and marks only that page active", () => {
+    render(<MemoryRouter initialEntries={["/results"]}><Sidebar /></MemoryRouter>);
 
-    expect(screen.getByRole("link", { name: "結果" }).className).toContain("bg-blue-50");
+    const resultLink = screen.getByRole("link", { name: "結果" });
+    expect(resultLink.getAttribute("href")).toBe("/results");
+    expect(resultLink.className).toContain("bg-blue-50");
     expect(screen.getByRole("link", { name: "空力解析" }).className).not.toContain("bg-blue-50");
   });
 });

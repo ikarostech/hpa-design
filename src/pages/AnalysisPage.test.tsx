@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnalysisPage } from "./AnalysisPage";
+import { ResultsPage } from "./ResultsPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
 import type { StructuralAnalysisResult } from "../features/structures/model/types";
 
@@ -91,8 +92,8 @@ describe("AnalysisPage", () => {
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
     expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
-    expect(screen.getByRole("tab", { name: "解析" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "結果" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "解析" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "結果" })).toBeNull();
   });
 
   it("shows the selected case result charts instead of the wing layout", async () => {
@@ -116,9 +117,11 @@ describe("AnalysisPage", () => {
     expect(screen.queryByRole("img", { name: "主翼形状プレビュー" })).toBeNull();
   });
 
-  it("combines a linked aerodynamic result and structural result on the results tab", () => {
-    render(<MemoryRouter initialEntries={["/analysis?tab=results"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={results} structuralResults={structuralResults} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+  it("combines a linked aerodynamic result and structural result on the dedicated results page", () => {
+    render(<ResultsPage cases={cases} results={results} structuralResults={structuralResults} />);
 
+    expect(screen.getByRole("heading", { name: "結果" })).toBeTruthy();
+    expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getByRole("heading", { name: "空力・構造 統合結果" })).toBeTruthy();
     expect((screen.getByRole("combobox", { name: "空力運用点" }) as HTMLSelectElement).value).toBe("4");
     expect(screen.getByText("空力運用点と関連付け済み")).toBeTruthy();
