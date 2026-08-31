@@ -24,4 +24,15 @@ describe("Sidebar", () => {
     expect(resultLink.className).toContain("bg-blue-50");
     expect(screen.getByRole("link", { name: "空力解析" }).className).not.toContain("bg-blue-50");
   });
+
+  it("places conceptual design between the dashboard and airfoils", () => {
+    render(<MemoryRouter><Sidebar /></MemoryRouter>);
+
+    const links = screen.getAllByRole("link");
+    expect(links.slice(0, 3).map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["設計概要", "/"],
+      ["概要設計", "/conceptual-design"],
+      ["翼型", "/airfoils"],
+    ]);
+  });
 });

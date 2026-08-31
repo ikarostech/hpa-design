@@ -55,14 +55,17 @@ describe("structural load integration", () => {
       designSnapshot: { id: "design-1", name: "Main spar", sections: [], loadCases: [] },
       loadCaseSnapshot: { id: "load-1", name: "Cruise", source: "manual" as const, loadFactor: 1, safetyFactor: 1.5, distributedLoads: [], pointLoads: [], status: "completed" as const },
       materialIds: ["mat-1"],
-      points: [{ yPosition: 0, distributedLoad: 100, shearForce: 200, bendingMoment: 150, bendingMomentCapacity: 450, bendingReserveFactor: 3, torque: 5, torqueCapacity: 20, torsionReserveFactor: 4, deflection: 0, rotation: 0, twist: 0, outerDiameter: 0.08, thickness: 0.001, ei: 1000, gj: 500, linearMass: 0.2, axialStress: 10e6, shearStress: 2e6, minReserveFactor: 2.5, criticalPlyId: "ply-1", criticalMode: "繊維引張" }],
-      summary: { mass: 0.5, maxDeflection: 0.02, maxTwist: 0.01, minReserveFactor: 2.5, governingLoadCase: "Cruise", governingPosition: 0, governingPlyId: "ply-1", governingMode: "繊維引張", reactionForce: -200, reactionMoment: -150, forceBalanceError: 0 },
+      points: [{ yPosition: 0, distributedLoad: 100, shearForce: 200, bendingMoment: 150, bendingMomentCapacity: 450, bendingReserveFactor: 3, localBucklingReserveFactor: 2.8, brazierReserveFactor: 3.2, torque: 5, torqueCapacity: 20, torsionReserveFactor: 4, deflection: 0, rotation: 0, twist: 0, outerDiameter: 0.08, thickness: 0.001, ei: 1000, gj: 500, linearMass: 0.2, axialStress: 10e6, shearStress: 2e6, minReserveFactor: 2.5, criticalPlyId: "ply-1", criticalMode: "繊維引張" }],
+      summary: { mass: 0.5, maxDeflection: 0.02, maxTwist: 0.01, minReserveFactor: 2.5, governingLoadCase: "Cruise", governingPosition: 0, governingPlyId: "ply-1", governingMode: "繊維引張", reactionForce: -200, reactionMoment: -150, forceBalanceError: 0, analysisWarnings: ["局部座屈は弾性スクリーニングです。"] },
     };
 
     expect(createStructuralResultCsv(structuralResult)).toContain("y_m,load_N_per_m,shear_N,bending_Nm");
     expect(createStructuralResultCsv(structuralResult)).toContain("bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor");
+    expect(createStructuralResultCsv(structuralResult)).toContain("local_buckling_reserve_factor,brazier_reserve_factor");
     expect(createStructuralResultCsv(structuralResult)).toContain("2.5,ply-1");
     expect(createStructuralSummary(structuralResult)).toContain("最小リザーブファクター: 2.500");
-    expect(createStructuralSummary(structuralResult)).toContain("Euler–Bernoulli梁");
+    expect(createStructuralSummary(structuralResult)).toContain("Timoshenko梁");
+    expect(createStructuralSummary(structuralResult)).toContain("Hashin初期層破壊");
+    expect(createStructuralSummary(structuralResult)).toContain("局部座屈は弾性スクリーニングです。");
   });
 });

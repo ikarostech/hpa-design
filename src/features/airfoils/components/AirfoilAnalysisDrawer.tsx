@@ -9,15 +9,19 @@ import { Button } from "../../../shared/ui/Button";
 import { InspectorDrawer } from "../../../shared/ui/inspector/InspectorDrawer";
 import { AirfoilTargetTable } from "./AirfoilTargetTable";
 
-const defaultAnalysisSettings: XfoilAnalysisSettings = {
-  reynolds: 300000,
-  mach: 0.04,
-  alphaStart: -6,
-  alphaEnd: 18,
-  alphaStep: 2,
-  ncrit: 9,
-  iterations: 100,
-};
+const fallbackReynolds = 300000;
+
+function createDefaultAnalysisSettings(reynolds = fallbackReynolds): XfoilAnalysisSettings {
+  return {
+    reynolds,
+    mach: 0.04,
+    alphaStart: -6,
+    alphaEnd: 18,
+    alphaStep: 2,
+    ncrit: 9,
+    iterations: 100,
+  };
+}
 
 interface AirfoilAnalysisDrawerProps {
   open: boolean;
@@ -26,6 +30,7 @@ interface AirfoilAnalysisDrawerProps {
   analysisTargets: MultiSelection<string>;
   targetNames: string[];
   jobController: AirfoilAnalysisJobController;
+  defaultReynolds?: number;
   initialSettings?: XfoilAnalysisSettings;
   onClose: () => void;
 }
@@ -37,11 +42,15 @@ export function AirfoilAnalysisDrawer({
   analysisTargets,
   targetNames,
   jobController,
+  defaultReynolds = fallbackReynolds,
   initialSettings,
   onClose,
 }: AirfoilAnalysisDrawerProps) {
-  const [settings, setSettings] = useState<XfoilAnalysisSettings>(defaultAnalysisSettings);
-  useEffect(() => { if (open && initialSettings) setSettings(initialSettings); }, [initialSettings, open]);
+  const defaultAnalysisSettings = createDefaultAnalysisSettings(defaultReynolds);
+  const [settings, setSettings] = useState<XfoilAnalysisSettings>(() => createDefaultAnalysisSettings(defaultReynolds));
+  useEffect(() => {
+    if (open) setSettings(initialSettings ?? createDefaultAnalysisSettings(defaultReynolds));
+  }, [defaultReynolds, initialSettings, open]);
 
   const currentJob = jobController.currentJob;
   const isRunning = currentJob?.status === "running";

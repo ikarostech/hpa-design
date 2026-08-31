@@ -5,6 +5,7 @@ import { AppLayout } from "../shared/layout/AppLayout";
 import { DesignDocumentProvider, useDesignDocument } from "./DesignDocumentProvider";
 import { listAirfoilReferences } from "./designDocument";
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
+import { createDefaultConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 
 const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
@@ -13,10 +14,12 @@ const ResultsPage = lazy(async () => ({ default: (await import("../pages/Results
 const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
 const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
 const StructuresPage = lazy(async () => ({ default: (await import("../pages/StructuresPage")).StructuresPage }));
+const ConceptualDesignPage = lazy(async () => ({ default: (await import("../pages/ConceptualDesignPage")).ConceptualDesignPage }));
 
 export default function App() {
   return <DesignDocumentProvider><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
     <Route path="/" element={<DashboardRoute />} />
+    <Route path="/conceptual-design" element={<ConceptualDesignRoute />} />
     <Route path="/airfoils" element={<AirfoilRoute />} />
     <Route path="/aircraft" element={<AircraftRoute />} />
     <Route path="/analysis" element={<AnalysisRoute />} />
@@ -26,6 +29,11 @@ export default function App() {
     <Route path="/projects/*" element={<Navigate to="/" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></AppLayout></JobProvider></DesignDocumentProvider>;
+}
+
+function ConceptualDesignRoute() {
+  const { document, updateConceptualDesign } = useDesignDocument();
+  return <ConceptualDesignPage conceptualDesign={document.conceptualDesign ?? createDefaultConceptualDesign()} aircraft={document.aircraft} onSave={updateConceptualDesign} />;
 }
 
 function DashboardRoute() {
@@ -40,7 +48,9 @@ function DashboardRoute() {
 
 function AirfoilRoute() {
   const { document, airfoilRepository, saveAirfoilAnalysis, updateAirfoilAnalysisRun, removeAirfoilAnalysisRun } = useDesignDocument();
-  return <AirfoilPage data={{ designName: document.name, airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, getAirfoilReferences: (airfoilId) => listAirfoilReferences(document, airfoilId), saveAnalysis: saveAirfoilAnalysis, updateAnalysisRun: updateAirfoilAnalysisRun, removeAnalysisRun: removeAirfoilAnalysisRun }} />;
+  const matchingCases = document.analysisCases.filter((analysisCase) => analysisCase.geometryId === document.aircraft?.id);
+  const defaultReynolds = matchingCases.find((analysisCase) => analysisCase.status !== "completed")?.reynolds ?? matchingCases[0]?.reynolds;
+  return <AirfoilPage data={{ designName: document.name, defaultReynolds, airfoils: document.airfoils, polars: document.polars, analysisRuns: document.airfoilAnalysisRuns, airfoilRepository, getAirfoilReferences: (airfoilId) => listAirfoilReferences(document, airfoilId), saveAnalysis: saveAirfoilAnalysis, updateAnalysisRun: updateAirfoilAnalysisRun, removeAnalysisRun: removeAirfoilAnalysisRun }} />;
 }
 
 function AircraftRoute() {

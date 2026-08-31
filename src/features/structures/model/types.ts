@@ -25,6 +25,10 @@ export interface LaminatePly {
   materialId: string;
   angle: PlyAngle;
   count: number;
+  /** Excelの「上下部分積層角度」。90°で全周、45°で上下合計が半周。 */
+  partialAngle?: number;
+  /** 上側または下側それぞれの積層幅 [m]。 */
+  partialWidth?: number;
 }
 
 export interface StructuralTubeSection {
@@ -75,6 +79,10 @@ export interface StructuralResultPoint {
   bendingMoment: number;
   bendingMomentCapacity?: number;
   bendingReserveFactor?: number;
+  /** Perfect-shell elastic screening; manufacturing-imperfection knockdown is not included. */
+  localBucklingReserveFactor?: number;
+  /** Perfect-shell elastic Brazier ovalization screening. */
+  brazierReserveFactor?: number;
   torque: number;
   torqueCapacity?: number;
   torsionReserveFactor?: number;
@@ -118,5 +126,6 @@ export interface StructuralAnalysisResult {
     forceBalanceError: number;
     momentBalanceError?: number;
     supportReactions?: Array<{ supportId: string; yPosition: number; force: number }>;
+    analysisWarnings?: string[];
   };
 }

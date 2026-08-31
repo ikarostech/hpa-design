@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { CarbonMaterial, StructuralDesign } from "../features/structures/model/types";
+import { executeStructuralAnalysis } from "../features/structures/services/structuralAnalysis";
 import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult } from "../mocks/mockData";
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 
@@ -23,6 +25,31 @@ describe("design document transfer", () => {
 
     expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
     expect(imported).toMatchObject({ name: "Imported Glider", aircraft: { id: "geo-1" } });
+  });
+
+  it("round-trips saved structural results including infinite reserve factors", async () => {
+    const material: CarbonMaterial = {
+      id: "carbon-1", name: "Carbon", e1: 120e9, e2: 8e9, g12: 4e9, nu12: 0.3,
+      tensileStrength1: 1200e6, compressiveStrength1: 700e6, tensileStrength2: 40e6,
+      compressiveStrength2: 120e6, shearStrength12: 60e6, density: 1550,
+      plyThickness: 0.000125, reductionFactor: 0.8,
+    };
+    const loadCase = {
+      id: "load-1", name: "No load", source: "manual" as const, loadFactor: 1, safetyFactor: 1,
+      distributedLoads: [], pointLoads: [], status: "completed" as const,
+    };
+    const design: StructuralDesign = {
+      id: "spar-1", name: "Main spar",
+      sections: [{ id: "root", length: 1, outerDiameter: 0.1, plies: [{ id: "axial", materialId: material.id, angle: 0, count: 4 }] }],
+      loadCases: [loadCase],
+    };
+    const result = executeStructuralAnalysis({ design, loadCase, materials: [material], resultId: "result-1", sampleCount: 3 });
+    const text = await designDocumentExporter.export({ ...document, carbonMaterials: [material], structuralDesigns: [design], structuralResults: [result] });
+    const imported = await designDocumentImporter.parse(text);
+
+    expect(imported.structuralResults[0].summary.minReserveFactor).toBe(Number.POSITIVE_INFINITY);
+    expect(imported.structuralResults[0].points[0].bendingReserveFactor).toBe(Number.POSITIVE_INFINITY);
+    expect(await designDocumentImporter.validate(imported)).toEqual({ valid: true });
   });
 
   it("migrates version 1 wing sections to the XFLR5-style schema", async () => {
@@ -158,6 +185,40 @@ describe("design document transfer", () => {
         expect.objectContaining({ path: ["aircraft", "span"], severity: "error" }),
       ]),
     });
+  });
+
+  it("validates optional conceptual design requirements when present", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      conceptualDesign: { grossMass: 100, cruiseSpeed: 0, maximumWingspan: 30, groundHeight: 1, sustainablePower: 250 },
+    }));
+
+    const validation = await designDocumentImporter.validate(imported);
+
+    expect(validation).toMatchObject({ valid: false });
+    if (!validation.valid) expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: ["conceptualDesign", "cruiseSpeed"] }),
+    ]));
+  });
+
+  it("rejects invalid partial-ply angle and upper/lower width", async () => {
+    const material = { id: "carbon", name: "Carbon", e1: 120e9, e2: 8e9, g12: 4e9, nu12: 0.3, tensileStrength1: 1200e6, compressiveStrength1: 700e6, tensileStrength2: 40e6, compressiveStrength2: 120e6, shearStrength12: 60e6, density: 1550, plyThickness: 0.000125, reductionFactor: 0.8 };
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      carbonMaterials: [material],
+      structuralDesigns: [{
+        id: "spar", name: "Main spar", loadCases: [],
+        sections: [{ id: "root", length: 1, outerDiameter: 0.1, plies: [{ id: "cap", materialId: material.id, angle: 0, count: 1, partialAngle: 120, partialWidth: -0.01 }] }],
+      }],
+    }));
+
+    const validation = await designDocumentImporter.validate(imported);
+
+    expect(validation).toMatchObject({ valid: false });
+    if (!validation.valid) expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: ["structuralDesigns", "0", "sections", "0", "plies", "0", "partialAngle"] }),
+      expect.objectContaining({ path: ["structuralDesigns", "0", "sections", "0", "plies", "0", "partialWidth"] }),
+    ]));
   });
 
   it("distinguishes invalid JSON from schema validation errors", async () => {

@@ -33,7 +33,7 @@ export function createAeroelasticResultSummary(result: StaticAeroelasticResult) 
 - 総揚力: ${result.totalLift} N
 - 最大たわみ: ${result.structuralResult.summary.maxDeflection} m
 - 最大ねじれ: ${result.structuralResult.summary.maxTwist} rad
-- 最小リザーブファクター: ${result.structuralResult.summary.minReserveFactor}
+- 最小安全率: ${result.structuralResult.summary.minReserveFactor}
 - 反復回数: ${result.iterations.length} / ${result.settings.maxIterations}
 
 ## 警告

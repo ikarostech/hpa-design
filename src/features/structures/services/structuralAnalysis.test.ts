@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CarbonMaterial, StructuralDesign, StructuralLoadCase } from "../model/types";
-import { calculateLaminate, executeStructuralAnalysis } from "./structuralAnalysis";
+import { calculateLaminate, calculateTubeLinearMass, executeStructuralAnalysis } from "./structuralAnalysis";
 
 const isotropic: CarbonMaterial = {
   id: "material-1",
@@ -40,9 +40,225 @@ describe("calculateLaminate", () => {
     expect(Math.max(...laminate.b.flat().map(Math.abs))).toBeLessThan(1e-5);
     expect(laminate.thickness).toBeCloseTo(0.004, 10);
   });
+
+  it("treats a supplied ply stack as the local laminate without smearing partial coverage", () => {
+    const full = calculateLaminate([
+      { id: "full", materialId: isotropic.id, angle: 0, count: 1, partialAngle: 90, partialWidth: 0.15 },
+    ], new Map([[isotropic.id, isotropic]]));
+    const halfWidth = calculateLaminate([
+      { id: "partial", materialId: isotropic.id, angle: 0, count: 1, partialAngle: 45, partialWidth: 0.075 },
+    ], new Map([[isotropic.id, isotropic]]));
+
+    expect(halfWidth.thickness).toBe(full.thickness);
+    expect(halfWidth.arealMass).toBeCloseTo(full.arealMass, 10);
+    expect(halfWidth.a[0][0]).toBeCloseTo(full.a[0][0], 5);
+  });
+});
+
+describe("calculateTubeLinearMass", () => {
+  it("uses the two recorded cap widths for a partial ply", () => {
+    const section = {
+      id: "partial-cap", length: 1, outerDiameter: 0.1,
+      plies: [{ id: "cap", materialId: isotropic.id, angle: 0 as const, count: 1, partialAngle: 30, partialWidth: 0.02 }],
+    };
+
+    expect(calculateTubeLinearMass(section, new Map([[isotropic.id, isotropic]]))).toBeCloseTo(isotropic.density * isotropic.plyThickness * 0.04, 10);
+  });
 });
 
 describe("executeStructuralAnalysis", () => {
+  it("integrates upper and lower partial caps at their actual circumferential positions", () => {
+    const thinMaterial = { ...isotropic, id: "thin-isotropic", plyThickness: 0.0001 };
+    const partialDesign: StructuralDesign = {
+      ...design,
+      sections: [{
+        id: "partial-section",
+        length: 1,
+        outerDiameter: 0.1,
+        plies: [
+          { id: "base", materialId: thinMaterial.id, angle: 0, count: 1, partialAngle: 90 },
+          { id: "cap", materialId: thinMaterial.id, angle: 0, count: 1, partialAngle: 45 },
+        ],
+      }],
+    };
+    const loadCase: StructuralLoadCase = { id: "zero", name: "断面特性", source: "manual", loadFactor: 1, safetyFactor: 1, distributedLoads: [], pointLoads: [], status: "not-run" };
+
+    const point = executeStructuralAnalysis({ design: partialDesign, loadCase, materials: [thinMaterial], resultId: "partial-result", sampleCount: 3 }).points[0];
+    const innerRadius = 0.05 - 2 * thinMaterial.plyThickness;
+    const baseOuterRadius = innerRadius + thinMaterial.plyThickness;
+    const capOuterRadius = baseOuterRadius + thinMaterial.plyThickness;
+    const alpha = Math.PI / 4;
+    const baseSecondMoment = Math.PI * (baseOuterRadius ** 4 - innerRadius ** 4) / 4;
+    const capSecondMoment = (2 * alpha + Math.sin(2 * alpha)) * (capOuterRadius ** 4 - baseOuterRadius ** 4) / 4;
+
+    expect(point.ei).toBeCloseTo(thinMaterial.e1 * (baseSecondMoment + capSecondMoment), 3);
+  });
+
+  it("uses the exact cap-edge geometry for partial-ply bending capacity", () => {
+    const capMaterial = { ...isotropic, id: "cap-strength", plyThickness: 0.0001, tensileStrength1: 20e6, compressiveStrength1: 10e6 };
+    const partialDesign: StructuralDesign = {
+      ...design,
+      sections: [{
+        id: "partial-strength-section",
+        length: 1,
+        outerDiameter: 0.1,
+        plies: [
+          { id: "base", materialId: capMaterial.id, angle: 0, count: 1, partialAngle: 90 },
+          { id: "cap", materialId: capMaterial.id, angle: 0, count: 1, partialAngle: 45 },
+        ],
+      }],
+    };
+    const loadCase: StructuralLoadCase = { id: "tip", name: "部分積層強度", source: "manual", loadFactor: 1, safetyFactor: 1, distributedLoads: [], pointLoads: [{ id: "tip", yPosition: 1, force: 1, torque: 0 }], status: "not-run" };
+
+    const point = executeStructuralAnalysis({ design: partialDesign, loadCase, materials: [capMaterial], resultId: "partial-strength", sampleCount: 3 }).points[0];
+    const expectedCapacity = capMaterial.compressiveStrength1 * point.ei / capMaterial.e1 / 0.05;
+
+    expect(point.bendingMomentCapacity).toBeCloseTo(expectedCapacity, 2);
+    expect(point.localBucklingReserveFactor).toBeUndefined();
+    expect(point.brazierReserveFactor).toBeUndefined();
+  });
+
+  it("uses the weaker compression-side strength for CFRP tube bending", () => {
+    const compressionCritical = {
+      ...isotropic,
+      id: "compression-critical",
+      tensileStrength1: 900e6,
+      compressiveStrength1: 90e6,
+    };
+    const compressionDesign: StructuralDesign = {
+      ...design,
+      sections: [{
+        ...design.sections[0],
+        plies: [{ id: "compression-ply", materialId: compressionCritical.id, angle: 0, count: 4 }],
+      }],
+    };
+    const loadCase: StructuralLoadCase = {
+      id: "compression-load", name: "圧縮側支配", source: "manual", loadFactor: 1, safetyFactor: 1,
+      distributedLoads: [], pointLoads: [{ id: "tip", yPosition: 1, force: 100, torque: 0 }], status: "not-run",
+    };
+
+    const result = executeStructuralAnalysis({ design: compressionDesign, loadCase, materials: [compressionCritical], resultId: "compression-result", sampleCount: 5 });
+
+    expect(result.summary.governingPlyId).toBe("compression-ply");
+    expect(result.summary.governingMode).toBe("繊維圧縮");
+    const innerDiameter = 0.1 - 2 * compressionCritical.plyThickness * 4;
+    const secondMoment = Math.PI * (0.1 ** 4 - innerDiameter ** 4) / 64;
+    expect(result.points[0].bendingMomentCapacity).toBeCloseTo(compressionCritical.compressiveStrength1 * secondMoment / 0.05, 6);
+  });
+
+  it("combines bending and torsion in one ply failure reserve factor", () => {
+    const combinedDesign: StructuralDesign = {
+      ...design,
+      sections: [{
+        ...design.sections[0],
+        plies: [
+          { id: "axial-ply", materialId: isotropic.id, angle: 0, count: 2 },
+          { id: "angle-ply", materialId: isotropic.id, angle: 45, count: 2 },
+        ],
+      }],
+    };
+    const analyze = (force: number, torque: number) => executeStructuralAnalysis({
+      design: combinedDesign,
+      loadCase: {
+        id: `load-${force}-${torque}`, name: "複合荷重", source: "manual", loadFactor: 1, safetyFactor: 1,
+        distributedLoads: [], pointLoads: [{ id: "tip", yPosition: 1, force, torque }], status: "not-run",
+      },
+      materials: [isotropic], resultId: `result-${force}-${torque}`, sampleCount: 5,
+    }).points[0].minReserveFactor;
+
+    const bendingOnly = analyze(100, 0);
+    const torsionOnly = analyze(0, 100);
+    const combined = analyze(100, 100);
+
+    expect(combined).toBeLessThan(bendingOnly);
+    expect(combined).toBeLessThan(torsionOnly);
+  });
+
+  it("recovers ply stresses from laminate strain compatibility", () => {
+    const stiffStrong = { ...isotropic, id: "stiff-strong", e1: 140e9, tensileStrength1: 1000e6, compressiveStrength1: 1000e6 };
+    const compliantWeak = { ...isotropic, id: "compliant-weak", e1: 7e9, tensileStrength1: 100e6, compressiveStrength1: 100e6 };
+    const mixedDesign: StructuralDesign = {
+      ...design,
+      sections: [{
+        ...design.sections[0],
+        plies: [
+          { id: "stiff-ply", materialId: stiffStrong.id, angle: 0, count: 2 },
+          { id: "compliant-ply", materialId: compliantWeak.id, angle: 0, count: 2 },
+        ],
+      }],
+    };
+    const loadCase: StructuralLoadCase = {
+      id: "strain-compatible-load", name: "ひずみ適合", source: "manual", loadFactor: 1, safetyFactor: 1,
+      distributedLoads: [], pointLoads: [{ id: "tip", yPosition: 1, force: 100, torque: 0 }], status: "not-run",
+    };
+
+    const result = executeStructuralAnalysis({ design: mixedDesign, loadCase, materials: [stiffStrong, compliantWeak], resultId: "strain-compatible", sampleCount: 5 });
+
+    expect(result.summary.governingPlyId).toBe("stiff-ply");
+  });
+
+  it("screens thin tubes for local shell buckling and Brazier ovalization", () => {
+    const veryStrong = {
+      ...isotropic,
+      id: "very-strong",
+      tensileStrength1: 1e15,
+      compressiveStrength1: 1e15,
+      tensileStrength2: 1e15,
+      compressiveStrength2: 1e15,
+      shearStrength12: 1e15,
+      plyThickness: 0.0001,
+    };
+    const thinDesign: StructuralDesign = {
+      ...design,
+      sections: [{ ...design.sections[0], plies: [{ id: "thin-ply", materialId: veryStrong.id, angle: 0, count: 1 }] }],
+    };
+    const loadCase: StructuralLoadCase = {
+      id: "shell-load", name: "薄肉シェル", source: "manual", loadFactor: 1, safetyFactor: 1,
+      distributedLoads: [], pointLoads: [{ id: "tip", yPosition: 1, force: 100, torque: 0 }], status: "not-run",
+    };
+
+    const root = executeStructuralAnalysis({ design: thinDesign, loadCase, materials: [veryStrong], resultId: "shell-result", sampleCount: 5 }).points[0];
+
+    expect(root.localBucklingReserveFactor).toBeGreaterThan(0);
+    expect(root.brazierReserveFactor).toBeGreaterThan(0);
+    expect(root.minReserveFactor).toBe(Math.min(root.localBucklingReserveFactor!, root.brazierReserveFactor!));
+  });
+
+  it("lets a weak transverse ply govern the laminate bending capacity", () => {
+    const weakHoop = { ...isotropic, id: "weak-hoop", tensileStrength2: 1e6, compressiveStrength2: 1e6 };
+    const excelDesign = {
+      id: "excel-design",
+      name: "Excel準拠桁",
+      sections: [{
+        id: "excel-section",
+        length: 1,
+        outerDiameter: 0.1,
+        plies: [
+          { id: "hoop", materialId: weakHoop.id, angle: 90, count: 1 },
+          { id: "axial", materialId: isotropic.id, angle: 0, count: 2 },
+        ],
+      }],
+      loadCases: [],
+    } satisfies StructuralDesign;
+    const loadCase: StructuralLoadCase = {
+      id: "excel-load",
+      name: "Excel曲げ耐力確認",
+      source: "manual",
+      loadFactor: 1,
+      safetyFactor: 1,
+      distributedLoads: [],
+      pointLoads: [{ id: "tip-load", yPosition: 1, force: 100, torque: 0 }],
+      status: "not-run",
+    };
+
+    const result = executeStructuralAnalysis({ design: excelDesign, loadCase, materials: [isotropic, weakHoop], resultId: "excel-result", sampleCount: 5 });
+    const root = result.points[0];
+    expect(root.bendingMomentCapacity).toBeLessThan(30);
+    expect(root.minReserveFactor).toBeCloseTo(root.bendingMomentCapacity! / 100, 6);
+    expect(result.summary.governingMode).toMatch(/^母材/);
+    expect(result.summary.governingPlyId).toBe("hoop");
+  });
+
   it("keeps each CFRP tube section constant and switches properties only at its length boundary", () => {
     const sectionDesign = {
       id: "section-design",
@@ -83,18 +299,20 @@ describe("executeStructuralAnalysis", () => {
     const innerDiameter = 0.1 - 2 * 0.004;
     const secondMoment = Math.PI * (0.1 ** 4 - innerDiameter ** 4) / 64;
     const expectedDeflection = 100 / (3 * isotropic.e1 * secondMoment);
-    const expectedBendingCapacity = Math.min(isotropic.tensileStrength1, isotropic.compressiveStrength1) * secondMoment / 0.05;
+    const area = Math.PI * (0.1 ** 2 - innerDiameter ** 2) / 4;
+    const expectedShearDeflection = 100 / (0.5 * isotropic.g12 * area);
+    const expectedBendingCapacity = isotropic.compressiveStrength1 * secondMoment / 0.05;
 
     expect(root.shearForce).toBeCloseTo(100, 6);
     expect(root.bendingMoment).toBeCloseTo(100, 4);
     expect(root.bendingMomentCapacity!).toBeCloseTo(expectedBendingCapacity, 4);
     expect(root.bendingReserveFactor!).toBeCloseTo(expectedBendingCapacity / root.bendingMoment, 4);
-    expect(tip.deflection).toBeCloseTo(expectedDeflection, 3);
+    expect(tip.deflection - expectedDeflection).toBeCloseTo(expectedShearDeflection, 8);
     expect(result.summary.reactionForce).toBeCloseTo(-100, 6);
     expect(result.summary.forceBalanceError).toBeLessThan(1e-8);
   });
 
-  it("matches uniform-shaft twist and identifies the governing reserve factor", () => {
+  it("matches uniform-shaft twist and evaluates its ply failure reserve factor", () => {
     const loadCase: StructuralLoadCase = {
       id: "load-torque",
       name: "先端トルク",
@@ -115,8 +333,8 @@ describe("executeStructuralAnalysis", () => {
     expect(result.summary.maxTwist).toBeCloseTo(expectedTwist, 3);
     expect(result.points[0].torqueCapacity!).toBeCloseTo(expectedTorqueCapacity, 4);
     expect(result.points[0].torsionReserveFactor!).toBeCloseTo(expectedTorqueCapacity / 75, 4);
-    expect(result.summary.minReserveFactor).toBeGreaterThan(0);
-    expect(result.summary.governingMode).toBe("せん断");
+    expect(result.summary.minReserveFactor).toBeCloseTo(expectedTorqueCapacity / 75, 4);
+    expect(result.summary.governingPlyId).toBe("ply-main");
     expect(result.summary.governingLoadCase).toBe(loadCase.name);
   });
 

@@ -44,16 +44,18 @@ export function TubeSectionDetailDrawer({ section, start, end, materials, inspec
               <h3 className="text-sm font-semibold text-slate-950">このパイプの積層構成</h3>
               <p className="mt-1 text-xs text-slate-500">内側から外側への積層順です。変更は設計へ即時保存されます。</p>
             </div>
-            <Button size="sm" onClick={() => onChange({ ...section, plies: [...section.plies, { id: createPlyId(), materialId: materials[0]?.id ?? "", angle: 0, count: 1 }] })} disabled={!materials.length}><Plus size={15} />積層を追加</Button>
+            <Button size="sm" onClick={() => onChange({ ...section, plies: [...section.plies, { id: createPlyId(), materialId: materials[0]?.id ?? "", angle: 0, count: 1, partialAngle: 90, partialWidth: Math.PI * section.outerDiameter / 2 }] })} disabled={!materials.length}><Plus size={15} />積層を追加</Button>
           </div>
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-3 py-2">順序</th><th>材料</th><th>角度</th><th>層数</th><th className="text-right">操作</th></tr></thead>
+              <thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="px-3 py-2">順序</th><th>材料</th><th>繊維角</th><th>層数</th><th>部分角度</th><th>上下幅</th><th className="text-right">操作</th></tr></thead>
               <tbody>{section.plies.map((ply, index) => <tr key={ply.id} className="border-t">
                 <td className="px-3 py-2">{index + 1}</td>
                 <td><select aria-label={`${ply.id}の詳細材料`} value={ply.materialId} onChange={(event) => updatePly(ply.id, { materialId: event.target.value })} className="h-8 max-w-44 rounded border bg-white px-2">{materials.map((material) => <option key={material.id} value={material.id}>{material.name}</option>)}</select></td>
                 <td><select aria-label={`${ply.id}の詳細角度`} value={ply.angle} onChange={(event) => updatePly(ply.id, { angle: Number(event.target.value) as LaminatePly["angle"] })} className="h-8 rounded border bg-white px-2">{[0, 45, -45, 90].map((angle) => <option key={angle} value={angle}>{angle}°</option>)}</select></td>
                 <td><input aria-label={`${ply.id}の詳細層数`} type="number" min={1} value={ply.count} onChange={(event) => updatePly(ply.id, { count: Math.max(1, Number(event.target.value)) })} className="h-8 w-16 rounded border px-2" /></td>
+                <td><input aria-label={`${ply.id}の上下部分積層角度`} type="number" min={0.1} max={90} step="any" value={ply.partialAngle ?? 90} onChange={(event) => updatePly(ply.id, { partialAngle: Math.min(90, Math.max(0.1, Number(event.target.value))) })} className="h-8 w-20 rounded border px-2" /></td>
+                <td><span className="flex items-center gap-1"><input aria-label={`${ply.id}の上下幅`} type="number" min={0.1} step="any" value={((ply.partialWidth ?? Math.PI * section.outerDiameter / 2) * 1000).toFixed(1)} onChange={(event) => updatePly(ply.id, { partialWidth: Math.max(0.0001, Number(event.target.value) / 1000) })} className="h-8 w-20 rounded border px-2" /><span className="text-xs text-slate-500">mm</span></span></td>
                 <td className="text-right"><Button variant="destructive" size="icon" aria-label={`${ply.id}の詳細積層を削除`} title={`${ply.id}の積層を削除`} disabled={section.plies.length <= 1} onClick={() => onChange({ ...section, plies: section.plies.filter((item) => item.id !== ply.id) })}><Trash2 size={15} /></Button></td>
               </tr>)}</tbody>
             </table>

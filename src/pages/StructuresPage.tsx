@@ -71,7 +71,7 @@ export function StructuresPage(props: StructuresPageProps) {
   return <>
     <PageTemplate
       title="主翼カーボンパイプ構造設計"
-      description="円形積層管の剛性、重量、たわみ、ねじれ、最大応力リザーブファクターを評価します。"
+      description="円形積層管の剛性、重量、たわみ、ねじれ、曲げ安全率を評価します。"
       actions={<>
         <select aria-label="構造設計" value={design?.id ?? ""} onChange={(event) => setSelectedDesignId(event.target.value)} className="h-9 rounded-md border bg-white px-3 text-sm">{designs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
         <Button variant="secondary" onClick={createDesign}><Plus size={16} />構造案</Button>

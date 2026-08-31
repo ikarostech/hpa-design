@@ -37,16 +37,22 @@ export function StructuralResultsTab({ results, result, onSelectResult }: {
       </div>
     </div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      <MetricCard label="最小RF" value={formatStructuralNumber(result.summary.minReserveFactor, 2)} detail={`${result.summary.governingPosition.toFixed(2)} m / ${result.summary.governingMode}`} />
+      <MetricCard label="最小安全率" value={formatStructuralNumber(result.summary.minReserveFactor, 2)} detail={`${result.summary.governingPosition.toFixed(2)} m / ${displayFailureMode(result.summary.governingMode)}`} />
       <MetricCard label="最大たわみ" value={`${(result.summary.maxDeflection * 1000).toFixed(1)} mm`} />
       <MetricCard label="最大ねじれ" value={`${(result.summary.maxTwist * 180 / Math.PI).toFixed(2)}°`} />
       <MetricCard label="パイプ重量" value={`${result.summary.mass.toFixed(3)} kg`} detail="片翼" />
       <MetricCard label="支配ケース" value={result.summary.governingLoadCase} detail={statusLabel(result.status)} />
     </div>
+    <section className="rounded-md border border-amber-200 bg-amber-50 p-3" aria-label="解析の適用範囲">
+      <p className="text-sm font-medium text-amber-900">解析の適用範囲</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">
+        {(result.summary.analysisWarnings ?? ["線形積層理論によるHashin初期層破壊評価です。"]).map((warning) => <li key={warning}>{warning}</li>)}
+      </ul>
+    </section>
     <Card>
       <CardHeader>
         <h2 className="font-semibold">パイプ固有特性</h2>
-        <p className="mt-1 text-xs text-slate-500">荷重ケースによらず、各位置のパイプ径・積層構成・材料から決まる強度と剛性です。</p>
+        <p className="mt-1 text-xs text-slate-500">積層の剛性分担、引張・圧縮、曲げ・ねじりを組み合わせたHashin初期層破壊と、薄肉円管の弾性安定性を評価します。</p>
       </CardHeader>
       <CardBody><StructuralPropertiesCharts result={result} /></CardBody>
     </Card>
@@ -61,16 +67,16 @@ export function StructuralResultsTab({ results, result, onSelectResult }: {
       <CardHeader className="flex items-center justify-between">
         <h2 className="font-semibold">荷重ケース応答</h2>
         <select aria-label="表示量" value={quantity} onChange={(event) => setQuantity(event.target.value as ResultQuantity)} className="h-8 rounded border bg-white px-2 text-sm">
-          <option value="shearForce">せん断力</option><option value="bendingMoment">曲げモーメント</option><option value="torque">ねじりモーメント</option><option value="deflection">たわみ</option><option value="twist">ねじれ</option><option value="minReserveFactor">リザーブファクター</option>
+          <option value="shearForce">せん断力</option><option value="bendingMoment">曲げモーメント</option><option value="torque">ねじりモーメント</option><option value="deflection">たわみ</option><option value="twist">ねじれ</option><option value="minReserveFactor">安全率</option>
         </select>
       </CardHeader>
       <CardBody><StructuralResultChart points={chart} label={quantity} /></CardBody>
     </Card>
     <Card>
       <CardHeader><h2 className="font-semibold">荷重応答一覧</h2></CardHeader>
-      <CardBody><div className="max-h-96 overflow-auto"><table className="w-full text-left text-sm">
-        <thead className="sticky top-0 bg-white text-xs text-slate-500"><tr><th className="px-2 py-2">Y</th><th>荷重</th><th>せん断力</th><th>曲げ</th><th>たわみ</th><th>ねじれ</th><th>軸応力</th><th>せん断応力</th><th>RF</th><th>支配層</th></tr></thead>
-        <tbody>{sampledPoints.map((point) => <tr key={point.yPosition} className="border-t"><td className="px-2 py-2">{point.yPosition.toFixed(3)}</td><td>{point.distributedLoad.toFixed(1)}</td><td>{point.shearForce.toFixed(1)}</td><td>{point.bendingMoment.toFixed(1)}</td><td>{(point.deflection * 1000).toFixed(2)} mm</td><td>{(point.twist * 180 / Math.PI).toFixed(3)}°</td><td>{(point.axialStress / 1e6).toFixed(1)} MPa</td><td>{(point.shearStress / 1e6).toFixed(1)} MPa</td><td>{formatStructuralNumber(point.minReserveFactor, 2)}</td><td>{point.criticalPlyId}</td></tr>)}</tbody>
+      <CardBody><div className="max-h-96 overflow-auto"><table className="w-full min-w-[1100px] text-left text-sm">
+        <thead className="sticky top-0 bg-white text-xs text-slate-500"><tr><th className="px-2 py-2">Y</th><th>荷重</th><th>せん断力</th><th>曲げ</th><th>たわみ</th><th>ねじれ</th><th>軸応力</th><th>せん断応力</th><th>安全率</th><th>局部座屈安全率</th><th>Brazier安全率</th><th>判定</th></tr></thead>
+        <tbody>{sampledPoints.map((point) => <tr key={point.yPosition} className="border-t"><td className="px-2 py-2">{point.yPosition.toFixed(3)}</td><td>{point.distributedLoad.toFixed(1)}</td><td>{point.shearForce.toFixed(1)}</td><td>{point.bendingMoment.toFixed(1)}</td><td>{(point.deflection * 1000).toFixed(2)} mm</td><td>{(point.twist * 180 / Math.PI).toFixed(3)}°</td><td>{(point.axialStress / 1e6).toFixed(1)} MPa</td><td>{(point.shearStress / 1e6).toFixed(1)} MPa</td><td>{formatStructuralNumber(point.minReserveFactor, 2)}</td><td>{formatOptionalNumber(point.localBucklingReserveFactor)}</td><td>{formatOptionalNumber(point.brazierReserveFactor)}</td><td>{displayFailureMode(point.criticalMode)}</td></tr>)}</tbody>
       </table></div></CardBody>
     </Card>
   </div>;
@@ -80,8 +86,16 @@ function formatOptional(value: number | undefined, unit: string) {
   return Number.isFinite(value) ? `${value!.toFixed(1)} ${unit}` : "-";
 }
 
+function formatOptionalNumber(value: number | undefined) {
+  return value === undefined ? "-" : formatStructuralNumber(value, 2);
+}
+
 function statusLabel(status: "not-run" | "completed" | "needs-review") {
   return status === "completed" ? "完了" : status === "needs-review" ? "要確認" : "未実行";
+}
+
+function displayFailureMode(mode: string) {
+  return mode === "Excel準拠曲げ" ? "曲げ" : mode;
 }
 
 function download(fileName: string, mimeType: string, content: string) {

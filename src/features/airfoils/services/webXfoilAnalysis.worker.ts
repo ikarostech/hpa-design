@@ -3,6 +3,8 @@ import xfoilModuleUrl from "webxfoil-wasm/dist/xfoil.js?url";
 import xfoilWasmUrl from "webxfoil-wasm/dist/xfoil.wasm?url";
 import type { XfoilAnalysisSettings } from "../model/analysis";
 import { validateXfoilAnalysisSettings } from "../model/analysisValidation";
+import { buildXfoilAirfoilInput } from "../model/xfoilAirfoilInput";
+import { createXfoilAlphaSequences } from "../model/xfoilSweep";
 import type { Airfoil, AirfoilPolar } from "../model/types";
 
 interface RunRequest {
@@ -42,13 +44,14 @@ async function runXfoil({ airfoil, settings, polarId }: RunRequest): Promise<Air
   if (!validation.valid) {
     throw new Error(Object.values(validation.errors).join(" "));
   }
-  const alphas = makeAlphaSweep(settings.alphaStart, settings.alphaEnd, settings.alphaStep);
+  const alphaSequences = createXfoilAlphaSequences(settings.alphaStart, settings.alphaEnd, settings.alphaStep);
+  const requestedPoints = alphaSequences.flat().length;
   const xfoil = await WebXFOIL.load({ moduleUrl: xfoilModuleUrl, wasmUrl: xfoilWasmUrl });
   const polarPath = "/work/polar.dat";
 
   try {
     const input = WebXFOIL.input();
-    const airfoilInput = buildAirfoilInput(airfoil);
+    const airfoilInput = buildXfoilAirfoilInput(airfoil);
     if (airfoilInput.kind === "naca") {
       input.naca(airfoilInput.code);
     } else {
@@ -66,10 +69,16 @@ async function runXfoil({ airfoil, settings, polarId }: RunRequest): Promise<Air
       .blank()
       .add("PACC")
       .add(polarPath)
-      .blank()
-      .add(`ASEQ ${settings.alphaStart} ${settings.alphaEnd} ${Math.abs(settings.alphaStep) || 1}`)
-      .add("PACC")
-      .add("QUIT");
+      .blank();
+    alphaSequences.forEach((sequence, index) => {
+      if (index > 0) input.add("INIT");
+      if (sequence.length === 1) {
+        input.add(`ALFA ${sequence[0]}`);
+      } else {
+        input.add(`ASEQ ${sequence[0]} ${sequence[sequence.length - 1]} ${sequence[1] - sequence[0]}`);
+      }
+    });
+    input.add("PACC").add("QUIT");
 
     const result = xfoil.run(input.toString(), { workDir: "/work", files: input.files });
     if (result.output.hasFortranError || result.raw.exitCode !== 0) {
@@ -93,23 +102,13 @@ async function runXfoil({ airfoil, settings, polarId }: RunRequest): Promise<Air
       alphaStep: settings.alphaStep,
       ncrit: settings.ncrit,
       convergedPoints: convergedCount,
-      requestedPoints: alphas.length,
-      status: convergedCount === alphas.length ? "complete" : "needs-review",
+      requestedPoints,
+      status: convergedCount === requestedPoints ? "complete" : "needs-review",
       points,
     };
   } finally {
     xfoil.destroy();
   }
-}
-
-function makeAlphaSweep(start: number, end: number, step: number) {
-  const safeStep = Math.abs(step) > 0 ? Math.abs(step) : 1;
-  const direction = start <= end ? 1 : -1;
-  const values: number[] = [];
-  for (let alpha = start; direction > 0 ? alpha <= end + 1e-9 : alpha >= end - 1e-9; alpha += safeStep * direction) {
-    values.push(Number(alpha.toFixed(6)));
-  }
-  return values;
 }
 
 function readPolarPoints(polarText: string): PolarPoint[] {
@@ -118,20 +117,9 @@ function readPolarPoints(polarText: string): PolarPoint[] {
     cl: roundFinite(row.cl, 4),
     cd: roundFinite(row.cd, 5),
     cm: roundFinite(row.cm, 4),
-  }));
+  })).sort((left, right) => left.alpha - right.alpha);
 }
 
 function roundFinite(value: number | undefined, digits: number) {
   return typeof value === "number" && Number.isFinite(value) ? Number(value.toFixed(digits)) : Number.NaN;
-}
-
-function buildAirfoilInput(airfoil: Airfoil): { kind: "naca"; code: string } | { kind: "file"; text: string } {
-  const nacaMatch = /^NACA\s*([0-9]{4})$/i.exec(airfoil.name.trim());
-  if (nacaMatch) {
-    return { kind: "naca", code: nacaMatch[1] };
-  }
-
-  const upper = [...airfoil.coordinates].reverse().map((point) => `${point.x.toFixed(6)} ${point.upper.toFixed(6)}`);
-  const lower = airfoil.coordinates.slice(1).map((point) => `${point.x.toFixed(6)} ${point.lower.toFixed(6)}`);
-  return { kind: "file", text: [airfoil.name, ...upper, ...lower].join("\n") };
 }

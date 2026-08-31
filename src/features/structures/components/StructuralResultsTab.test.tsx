@@ -17,6 +17,7 @@ const result = {
     maxTwist: 0.002,
     mass: 0.8,
     governingLoadCase: "Cruise",
+    analysisWarnings: ["局部座屈とBrazier扁平化は完全円筒の弾性スクリーニングです。"],
   },
   points: [{
     yPosition: 0,
@@ -24,6 +25,8 @@ const result = {
     shearForce: 80,
     bendingMoment: 40,
     bendingMomentCapacity: 180,
+    localBucklingReserveFactor: 3.1,
+    brazierReserveFactor: 4.2,
     torque: 6,
     torqueCapacity: 32,
     deflection: 0,
@@ -38,6 +41,7 @@ const result = {
     shearStress: 3e6,
     minReserveFactor: 2.5,
     criticalPlyId: "ply-0",
+    criticalMode: "Excel準拠曲げ",
   }],
 } as StructuralAnalysisResult;
 
@@ -51,5 +55,24 @@ describe("StructuralResultsTab", () => {
     expect(screen.getByRole("img", { name: "翼幅方向の曲げ強度・剛性分布" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "翼幅方向のねじり強度・剛性分布" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "荷重ケース応答" })).toBeTruthy();
+  });
+
+  it("labels the governing value as the safety factor without exposing the spreadsheet implementation", () => {
+    render(<StructuralResultsTab results={[result]} result={result} onSelectResult={vi.fn()} />);
+
+    expect(screen.getByText("最小安全率")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "安全率" })).toBeTruthy();
+    expect(screen.queryByText(/Excel/)).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "判定" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "支配層" })).toBeNull();
+  });
+
+  it("shows the analysis scope and shell-screening limitation", () => {
+    render(<StructuralResultsTab results={[result]} result={result} onSelectResult={vi.fn()} />);
+
+    expect(screen.getByText(/Hashin初期層破壊/)).toBeTruthy();
+    expect(screen.getByText(/完全円筒の弾性スクリーニング/)).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "局部座屈安全率" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Brazier安全率" })).toBeTruthy();
   });
 });

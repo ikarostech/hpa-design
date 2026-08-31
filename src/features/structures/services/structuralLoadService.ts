@@ -64,10 +64,11 @@ export function createLoadCaseFromAerodynamicResult({
 }
 
 export function createStructuralResultCsv(result: StructuralAnalysisResult) {
-  const header = "y_m,load_N_per_m,shear_N,bending_Nm,bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor,deflection_m,rotation_rad,twist_rad,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
+  const header = "y_m,load_N_per_m,shear_N,bending_Nm,bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor,local_buckling_reserve_factor,brazier_reserve_factor,deflection_m,rotation_rad,twist_rad,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
   const rows = result.points.map((point) => [
     point.yPosition, point.distributedLoad, point.shearForce, point.bendingMoment, point.bendingMomentCapacity ?? "", point.bendingReserveFactor ?? "",
     point.torque, point.torqueCapacity ?? "", point.torsionReserveFactor ?? "",
+    point.localBucklingReserveFactor ?? "", point.brazierReserveFactor ?? "",
     point.deflection, point.rotation, point.twist, point.outerDiameter, point.thickness,
     point.ei, point.gj, point.linearMass, point.axialStress, point.shearStress,
     point.minReserveFactor, point.criticalPlyId, point.criticalMode,
@@ -85,6 +86,7 @@ export function createStructuralResultCsv(result: StructuralAnalysisResult) {
 }
 
 export function createStructuralSummary(result: StructuralAnalysisResult) {
+  const warnings = (result.summary.analysisWarnings ?? []).map((warning) => `- ${warning}`).join("\n") || "- 追加の注意事項は記録されていません。";
   return `# 構造解析サマリー
 
 - 構造設計: ${result.designSnapshot.name}
@@ -95,8 +97,7 @@ export function createStructuralSummary(result: StructuralAnalysisResult) {
 - 最大ねじれ: ${result.summary.maxTwist.toFixed(6)} rad
 - 最小リザーブファクター: ${result.summary.minReserveFactor.toFixed(3)}
 - 支配位置: ${result.summary.governingPosition.toFixed(3)} m
-- 支配層: ${result.summary.governingPlyId}
-- 支配モード: ${result.summary.governingMode}
+- 判定方式: ${result.summary.governingMode}
 - 力の釣り合い誤差: ${result.summary.forceBalanceError.toExponential(3)} N
 - モーメントの釣り合い誤差: ${(result.summary.momentBalanceError ?? 0).toExponential(3)} Nm
 - 材料スナップショット: ${(result.materialSnapshots ?? []).map((material) => material.name).join("、") || "IDのみ"}
@@ -104,14 +105,15 @@ export function createStructuralSummary(result: StructuralAnalysisResult) {
 ## 解析条件
 
 - SI単位系
-- 線形Euler–Bernoulli梁
-- 古典積層理論に基づく積層等価剛性
-- 最大応力基準
+- 線形Timoshenko梁
+- 積層A行列による層別応力回復
+- 曲げ・ねじり複合荷重に対するHashin初期層破壊
+- 局部座屈・Brazier扁平化の完全円筒弾性スクリーニング
 - 円形薄肉カーボンパイプ
 
-## 適用範囲
+## 適用範囲と注意事項
 
-本結果は一次元線形梁による初期設計値です。局部座屈、断面扁平化、接合部、大たわみ、材料ばらつきは別途確認してください。
+${warnings}
 `;
 }
 

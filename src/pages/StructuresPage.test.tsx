@@ -148,7 +148,7 @@ describe("StructuresPage", () => {
     rerender(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[result]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={saveResult} /></MemoryRouter>);
     await user.click(screen.getByRole("tab", { name: "結果" }));
 
-    expect(screen.getByText("最小RF")).toBeTruthy();
+    expect(screen.getByText("最小安全率")).toBeTruthy();
     expect(screen.getByText("パイプ固有特性")).toBeTruthy();
     expect(screen.getByText("荷重ケース応答")).toBeTruthy();
     expect(screen.getByRole("button", { name: "構造結果CSVを保存" })).toBeTruthy();

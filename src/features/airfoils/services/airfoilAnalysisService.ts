@@ -96,7 +96,7 @@ function createExecution(
       alphaStep: settings.alphaStep,
       ncrit: settings.ncrit,
       iterations: settings.iterations,
-      status: failures.length ? "needs-review" : "complete",
+      status: failures.length || polars.some((polar) => polar.status === "needs-review") ? "needs-review" : "complete",
       failures: failures.length ? [...failures] : undefined,
     },
   };

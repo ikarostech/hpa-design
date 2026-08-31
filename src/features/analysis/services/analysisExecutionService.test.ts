@@ -88,6 +88,10 @@ describe("executeAnalysisCase", () => {
       (sum, sample) => sum + sample.values[key] * sample.values.stationWidth,
       0,
     );
+    const integratedProfileDrag = distribution.samples.reduce(
+      (sum, sample) => sum + sample.values.profileDragPerLength * sample.values.stationWidth,
+      0,
+    );
     const density = distribution.reference.density;
     const dynamicPressureArea = density * analysisCase.speed ** 2 * aircraft.wingArea / 2;
 
@@ -96,6 +100,7 @@ describe("executeAnalysisCase", () => {
     expect(distribution.samples).toHaveLength(createWingAnalysisMesh(aircraft.sections).strips.length);
     expect(integrated("liftPerLength")).toBeCloseTo(dynamicPressureArea * row.cl / 2, 5);
     expect(integrated("dragPerLength")).toBeCloseTo(dynamicPressureArea * row.cd / 2, 5);
+    expect(integratedProfileDrag).toBeGreaterThan(0);
     expect(distribution.samples.every((sample) => Math.abs(sample.values.inducedDragPerLength + sample.values.profileDragPerLength - sample.values.dragPerLength) < 1e-9)).toBe(true);
     expect(distribution.samples.every((sample) => Number.isFinite(sample.values.torqueAboutElasticAxisPerLength))).toBe(true);
   });
@@ -182,5 +187,25 @@ describe("executeAnalysisCase", () => {
 
     expect(result.rows[0].cl).toBeCloseTo(expected.cl, 4);
     expect(result.rows[0].cd).toBeCloseTo(expected.cdi, 5);
+  });
+
+  it("uses the converged points from a partially converged XFoil polar", async () => {
+    const partialPolar = { ...polars[0], status: "needs-review" as const };
+    const singleAirfoilAircraft = {
+      ...aircraft,
+      sections: aircraft.sections.map((section) => ({ ...section, airfoilId: partialPolar.airfoilId })),
+    };
+    const inviscid = calculateLltCoefficients(singleAirfoilAircraft, 2);
+
+    const result = await executeAnalysisCase({
+      analysisCase: { ...analysisCase, alphaStart: 2, alphaEnd: 2 },
+      aircraft: singleAirfoilAircraft,
+      polars: [partialPolar],
+      createId: () => "partial-polar-result",
+      onProgress: () => undefined,
+    });
+
+    expect(result.polarIds).toEqual([partialPolar.id]);
+    expect(result.rows[0].cd).toBeGreaterThan(inviscid.cdi);
   });
 });

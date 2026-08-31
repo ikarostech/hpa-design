@@ -38,11 +38,24 @@ describe("IntegratedSpanwiseCharts", () => {
   it("plots the independent structural result without requiring a coupled result", () => {
     render(<IntegratedSpanwiseCharts structuralResult={structuralResult} aerodynamicResult={aerodynamicResult} alphaDegrees={4} />);
 
-    expect(screen.getByRole("img", { name: "翼幅方向の荷重・曲げ分布" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: "翼幅方向のねじり分布" })).toBeTruthy();
+    for (const name of ["翼幅方向の揚力・構造荷重分布", "翼幅方向の抗力分布", "翼幅方向の曲げモーメント", "翼幅方向の曲げ耐荷重", "翼幅方向の安全率", "翼幅方向の空力ねじり荷重", "翼幅方向のねじりモーメント", "翼幅方向のねじり耐荷重"]) {
+      expect(screen.getByRole("img", { name })).toBeTruthy();
+    }
+    expect(screen.queryByRole("img", { name: "翼幅方向の荷重・曲げ分布" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "翼幅方向の曲げモーメント・耐荷重" })).toBeNull();
     for (const label of ["空力揚力分布", "空力抗力分布", "構造解析適用荷重", "曲げモーメント", "曲げ耐荷重", "安全率", "空力ねじり荷重", "ねじりモーメント", "ねじり耐荷重"]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+    expect(screen.queryByText(/Excel曲げ安全率/)).toBeNull();
     expect(buildIntegratedChartData(structuralResult, aerodynamicResult.rows[0].spanwise)[0]).toMatchObject({ aerodynamicLift: 110, aerodynamicDrag: 7, structuralLift: 120, bendingMoment: 45, bendingCapacity: 180, aerodynamicTorque: 5, torque: 8, torqueCapacity: 32 });
+  });
+
+  it("caps only the plotted safety factor so large tip values do not hide the threshold region", () => {
+    const highReserveResult = {
+      ...structuralResult,
+      points: [{ ...structuralResult.points[0], minReserveFactor: 80_000 }],
+    } as StructuralAnalysisResult;
+
+    expect(buildIntegratedChartData(highReserveResult)[0].reserveFactor).toBe(10);
   });
 });

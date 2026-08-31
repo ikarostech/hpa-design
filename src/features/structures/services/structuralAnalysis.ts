@@ -16,6 +16,8 @@ export interface LaminateProperties {
   b: Matrix3;
   d: Matrix3;
   effectiveEx: number;
+  effectiveEy: number;
+  effectiveNuXY: number;
   effectiveGxy: number;
   arealMass: number;
 }
@@ -47,9 +49,18 @@ export function calculateLaminate(plies: readonly LaminatePly[], materials: Read
     b,
     d,
     effectiveEx: 1 / (compliance[0][0] * thickness),
+    effectiveEy: 1 / (compliance[1][1] * thickness),
+    effectiveNuXY: -compliance[0][1] / compliance[0][0],
     effectiveGxy: 1 / (compliance[2][2] * thickness),
     arealMass,
   };
+}
+
+export function calculateTubeLinearMass(section: StructuralTubeSection, materials: ReadonlyMap<string, CarbonMaterial>) {
+  return buildCircumferenceCells(section, materials).reduce((sum, cell) => sum + cell.plies.reduce(
+    (cellSum, ply) => cellSum + ply.material.density * sectorArea(ply.innerRadius, ply.outerRadius, cell.dTheta),
+    0,
+  ), 0);
 }
 
 export function executeStructuralAnalysis({
@@ -78,7 +89,8 @@ export function executeStructuralAnalysis({
   const distributedMoment = new Array<number>(count).fill(0);
   const distributedTorqueResult = new Array<number>(count).fill(0);
   const pointLoads = loadCase.pointLoads.map((load) => ({ ...load, force: load.force * factor, torque: load.torque * factor }));
-  const sections = y.map((position) => sectionAt(tubeSections, position, materialMap));
+  const sectionProperties = tubeSections.map((section) => tubeSectionProperties(section, materialMap));
+  const sections = y.map((position) => sectionAt(tubeSections, sectionProperties, position));
 
   for (let index = count - 2; index >= 0; index -= 1) {
     const dx = y[index + 1] - y[index];
@@ -86,18 +98,21 @@ export function executeStructuralAnalysis({
     distributedTorqueResult[index] = distributedTorqueResult[index + 1] + (distributedTorque[index] + distributedTorque[index + 1]) * dx / 2;
     distributedMoment[index] = distributedMoment[index + 1] + (distributedShear[index] + distributedShear[index + 1]) * dx / 2;
   }
+  const baseShear = y.map((position, index) => distributedShear[index] + pointLoads.filter((load) => load.yPosition >= position - 1e-10).reduce((sum, load) => sum + load.force, 0));
   const baseMoment = momentFromPoints(y, distributedMoment, pointLoads);
-  const baseDeflection = deflectionFromMoment(y, baseMoment, sections);
+  const baseTorque = y.map((position, index) => distributedTorqueResult[index] + pointLoads.filter((load) => load.yPosition >= position - 1e-10).reduce((sum, load) => sum + load.torque, 0));
+  const baseDeflection = deflectionFromForces(y, baseMoment, baseShear, baseTorque, sections);
   const supports = design.supports ?? [];
   const supportReactions = supports.length ? solveSupportReactions(supports, y, sections, baseDeflection) : [];
   const effectivePointLoads = [...pointLoads, ...supportReactions.map((reaction) => ({ id: reaction.supportId, yPosition: reaction.yPosition, force: reaction.force, torque: 0 }))];
   const shear = y.map((position, index) => distributedShear[index] + effectivePointLoads.filter((load) => load.yPosition >= position - 1e-10).reduce((sum, load) => sum + load.force, 0));
   const moment = momentFromPoints(y, distributedMoment, effectivePointLoads);
   const torque = y.map((position, index) => distributedTorqueResult[index] + effectivePointLoads.filter((load) => load.yPosition >= position - 1e-10).reduce((sum, load) => sum + load.torque, 0));
-  const curvature = sections.map((section, index) => moment[index] / section.ei);
-  const twistRate = sections.map((section, index) => torque[index] / section.gj);
+  const generalizedStrains = sections.map((section, index) => sectionGeneralizedStrain(section, moment[index], torque[index]));
+  const curvature = generalizedStrains.map((strain) => strain[1]);
+  const twistRate = generalizedStrains.map((strain) => strain[2]);
   const rotation = integrateForward(y, curvature);
-  const deflection = integrateForward(y, rotation);
+  const deflection = integrateForward(y, rotation.map((value, index) => value + shear[index] / sections[index].shearStiffness));
   const twist = integrateForward(y, twistRate);
   const points: StructuralResultPoint[] = y.map((position, index) => createResultPoint({
     yPosition: position,
@@ -108,9 +123,9 @@ export function executeStructuralAnalysis({
     deflection: deflection[index],
     rotation: rotation[index],
     twist: twist[index],
-  }, sections[index], materialMap));
+  }, sections[index]));
   const governing = points.reduce((current, point) => point.minReserveFactor < current.minReserveFactor ? point : current, points[0]);
-  const mass = tubeSections.reduce((sum, section) => sum + tubeSectionProperties(section, materialMap).linearMass * section.length, 0);
+  const mass = tubeSections.reduce((sum, section, index) => sum + sectionProperties[index].linearMass * section.length, 0);
   const externalForce = trapezoid(y, q) + effectivePointLoads.reduce((sum, load) => sum + load.force, 0);
   const externalMoment = trapezoid(y, q.map((load, index) => load * y[index])) + effectivePointLoads.reduce((sum, load) => sum + load.force * load.yPosition, 0);
 
@@ -139,8 +154,37 @@ export function executeStructuralAnalysis({
       forceBalanceError: Math.abs(externalForce - shear[0]),
       momentBalanceError: Math.abs(externalMoment - moment[0]),
       supportReactions,
+      analysisWarnings: createAnalysisWarnings(design, materialMap, Math.max(...deflection.map(Math.abs)), span),
     },
   };
+}
+
+function createAnalysisWarnings(design: StructuralDesign, materials: ReadonlyMap<string, CarbonMaterial>, maxDeflection: number, span: number) {
+  const warnings = [
+    "層内強度は線形積層理論による膜内応力とHashin初期層破壊で評価しています。層間剥離と破壊進展は含みません。",
+    "たわみはTimoshenko梁近似です。全周積層では積層の面内せん断弾性率と有効せん断面積A/2、部分積層では断面ねじり剛性からの薄肉円管換算を使用しています。",
+    "局部座屈とBrazier扁平化は、全周積層区間に限り、純曲げを受ける完全円筒の弾性スクリーニングで評価します。初期不整・製造ばらつきのノックダウンと、せん断・ねじり相互作用は含みません。",
+    "支持部、継手、接着端、穴、積層終了部の局所応力と層間破壊は別途詳細解析・試験が必要です。",
+  ];
+  if (design.sections.some((section) => section.plies.some((ply) => (ply.partialAngle ?? 90) < 90))) warnings.push("部分積層は上下対称キャップの実配置を周方向に積分し、存在する位置の局所積層で応力を評価しています。段付き肉厚のシェル座屈・Brazier扁平化、キャップ端部のピール応力と剥離は評価していません。");
+  if (design.sections.some((section) => Math.max(...calculateLaminate(section.plies, materials).b.flat().map(Math.abs)) > 1e-6)) warnings.push("非対称積層のB行列は算出していますが、管壁曲率との完全な伸び―曲げ連成はこの1次元断面モデルに含みません。");
+  if (span > 0 && maxDeflection / span > 0.1) warnings.push("最大たわみがスパンの10%を超えています。幾何学的非線形解析が必要です。");
+  return warnings;
+}
+
+interface CircumferentialPly {
+  ply: LaminatePly;
+  material: CarbonMaterial;
+  q: Matrix3;
+  innerRadius: number;
+  outerRadius: number;
+  meanRadius: number;
+}
+
+interface CircumferentialCell {
+  theta: number;
+  dTheta: number;
+  plies: CircumferentialPly[];
 }
 
 interface SectionProperties {
@@ -149,57 +193,96 @@ interface SectionProperties {
   ei: number;
   ea: number;
   gj: number;
+  shearStiffness: number;
   linearMass: number;
   secondMoment: number;
   polarMoment: number;
+  localBucklingMomentCapacity?: number;
+  brazierMomentCapacity?: number;
+  bendingMomentCapacity: number;
+  torqueCapacity: number;
+  compliance: Matrix3;
+  cells: CircumferentialCell[];
   section: StructuralTubeSection;
 }
 
-function sectionAt(sections: readonly StructuralTubeSection[], y: number, materials: ReadonlyMap<string, CarbonMaterial>): SectionProperties {
+function sectionAt(sections: readonly StructuralTubeSection[], properties: readonly SectionProperties[], y: number): SectionProperties {
   let endPosition = 0;
   for (let index = 0; index < sections.length; index += 1) {
     endPosition += sections[index].length;
-    if (y < endPosition - 1e-10 || index === sections.length - 1) return tubeSectionProperties(sections[index], materials);
+    if (y < endPosition - 1e-10 || index === sections.length - 1) return properties[index];
   }
-  return tubeSectionProperties(sections.at(-1)!, materials);
+  return properties.at(-1)!;
 }
 
 function tubeSectionProperties(section: StructuralTubeSection, materials: ReadonlyMap<string, CarbonMaterial>): SectionProperties {
-  const laminate = calculateLaminate(section.plies, materials);
-  const innerDiameter = section.outerDiameter - 2 * laminate.thickness;
-  if (innerDiameter <= 0) throw new Error(`パイプセクション ${section.id} の積層厚さが外径を超えています。`);
-  const secondMoment = Math.PI * (section.outerDiameter ** 4 - innerDiameter ** 4) / 64;
-  const area = Math.PI * (section.outerDiameter ** 2 - innerDiameter ** 2) / 4;
-  const polarMoment = secondMoment * 2;
-  const meanCircumference = Math.PI * (section.outerDiameter - laminate.thickness);
-  return {
+  const cells = buildCircumferenceCells(section, materials);
+  if (cells.some((cell) => !cell.plies.length)) throw new Error(`パイプセクション ${section.id} は全周を覆う基礎積層が必要です。`);
+  const stiffness = sectionStiffness(cells);
+  const compliance = invert3(stiffness);
+  const ei = 1 / compliance[1][1];
+  const ea = 1 / compliance[0][0];
+  const gj = 1 / compliance[2][2];
+  const maxThickness = section.plies.reduce((sum, ply) => sum + requireMaterial(materials, ply.materialId).plyThickness * ply.count, 0);
+  const innerRadius = section.outerDiameter / 2 - maxThickness;
+  if (innerRadius <= 0) throw new Error(`パイプセクション ${section.id} の積層厚さが外径を超えています。`);
+  const geometry = cells.reduce((total, cell) => {
+    for (const ply of cell.plies) {
+      const area = sectorArea(ply.innerRadius, ply.outerRadius, cell.dTheta);
+      total.area += area;
+      total.mass += ply.material.density * area;
+      total.secondMoment += Math.sin(cell.theta) ** 2 * (ply.outerRadius ** 4 - ply.innerRadius ** 4) * cell.dTheta / 4;
+      total.polarMoment += (ply.outerRadius ** 4 - ply.innerRadius ** 4) * cell.dTheta / 4;
+    }
+    return total;
+  }, { area: 0, mass: 0, secondMoment: 0, polarMoment: 0 });
+  const hasPartialPlies = section.plies.some((ply) => (ply.partialAngle ?? 90) < 90);
+  let localBucklingMomentCapacity: number | undefined;
+  let brazierMomentCapacity: number | undefined;
+  let shearStiffness = gj / (2 * (section.outerDiameter / 2 - maxThickness / 2) ** 2);
+  if (!hasPartialPlies) {
+    const laminate = calculateLaminate(section.plies, materials);
+    shearStiffness = 0.5 * laminate.effectiveGxy * geometry.area;
+    const meanRadius = section.outerDiameter / 2 - maxThickness / 2;
+    const nuYX = laminate.effectiveNuXY * laminate.effectiveEy / laminate.effectiveEx;
+    const orthotropicDenominator = Math.sqrt(Math.max(1e-9, 1 - laminate.effectiveNuXY * nuYX));
+    const coupledModulus = Math.sqrt(laminate.effectiveEx * laminate.effectiveEy);
+    const elasticBucklingStress = coupledModulus * maxThickness / (Math.sqrt(3) * orthotropicDenominator * meanRadius);
+    localBucklingMomentCapacity = elasticBucklingStress * geometry.secondMoment / (section.outerDiameter / 2);
+    brazierMomentCapacity = 2 * Math.sqrt(2) * Math.PI / 9 * coupledModulus * meanRadius * maxThickness ** 2 / orthotropicDenominator;
+  }
+  const properties = {
     outerDiameter: section.outerDiameter,
-    thickness: laminate.thickness,
-    ei: laminate.effectiveEx * secondMoment,
-    ea: laminate.effectiveEx * area,
-    gj: laminate.effectiveGxy * polarMoment,
-    linearMass: laminate.arealMass * meanCircumference,
-    secondMoment,
-    polarMoment,
+    thickness: maxThickness,
+    ei,
+    ea,
+    gj,
+    shearStiffness,
+    linearMass: geometry.mass,
+    secondMoment: geometry.secondMoment,
+    polarMoment: geometry.polarMoment,
+    localBucklingMomentCapacity,
+    brazierMomentCapacity,
+    bendingMomentCapacity: 0,
+    torqueCapacity: 0,
+    compliance,
+    cells,
     section,
-  };
+  } satisfies SectionProperties;
+  properties.bendingMomentCapacity = evaluateSectionFailure(properties, 1, 0).reserveFactor;
+  properties.torqueCapacity = evaluateSectionFailure(properties, 0, 1).reserveFactor;
+  return properties;
 }
 
-function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "thickness" | "ei" | "gj" | "linearMass" | "axialStress" | "shearStress" | "bendingMomentCapacity" | "bendingReserveFactor" | "torqueCapacity" | "torsionReserveFactor" | "minReserveFactor" | "criticalPlyId" | "criticalMode">, section: SectionProperties, materials: ReadonlyMap<string, CarbonMaterial>): StructuralResultPoint {
-  const radius = section.outerDiameter / 2;
-  const axialStress = base.bendingMoment * radius / section.secondMoment;
-  const shearStress = base.torque * radius / section.polarMoment;
-  const critical = evaluateFailure(axialStress, shearStress, section, materials);
-  const axialStressCapacity = Math.min(
-    evaluateFailure(1, 0, section, materials).reserveFactor,
-    evaluateFailure(-1, 0, section, materials).reserveFactor,
-  );
-  const shearStressCapacity = Math.min(
-    evaluateFailure(0, 1, section, materials).reserveFactor,
-    evaluateFailure(0, -1, section, materials).reserveFactor,
-  );
-  const bendingMomentCapacity = axialStressCapacity * section.secondMoment / radius;
-  const torqueCapacity = shearStressCapacity * section.polarMoment / radius;
+function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "thickness" | "ei" | "gj" | "linearMass" | "axialStress" | "shearStress" | "bendingMomentCapacity" | "bendingReserveFactor" | "torqueCapacity" | "torsionReserveFactor" | "minReserveFactor" | "criticalPlyId" | "criticalMode">, section: SectionProperties): StructuralResultPoint {
+  const plyFailure = evaluateSectionFailure(section, base.bendingMoment, base.torque);
+  const bendingReserveFactor = reserveFactor(section.bendingMomentCapacity, base.bendingMoment);
+  const torsionReserveFactor = reserveFactor(section.torqueCapacity, base.torque);
+  const localBucklingReserveFactor = section.localBucklingMomentCapacity === undefined ? undefined : reserveFactor(section.localBucklingMomentCapacity, base.bendingMoment);
+  const brazierReserveFactor = section.brazierMomentCapacity === undefined ? undefined : reserveFactor(section.brazierMomentCapacity, base.bendingMoment);
+  let critical = { reserveFactor: plyFailure.reserveFactor, plyId: plyFailure.plyId, mode: plyFailure.mode };
+  if (localBucklingReserveFactor !== undefined && localBucklingReserveFactor < critical.reserveFactor) critical = { reserveFactor: localBucklingReserveFactor, plyId: "-", mode: "局部座屈（弾性スクリーニング）" };
+  if (brazierReserveFactor !== undefined && brazierReserveFactor < critical.reserveFactor) critical = { reserveFactor: brazierReserveFactor, plyId: "-", mode: "Brazier扁平化（弾性スクリーニング）" };
 
   return {
     ...base,
@@ -208,41 +291,202 @@ function createResultPoint(base: Omit<StructuralResultPoint, "outerDiameter" | "
     ei: section.ei,
     gj: section.gj,
     linearMass: section.linearMass,
-    axialStress,
-    shearStress,
-    bendingMomentCapacity,
-    bendingReserveFactor: reserveFactor(bendingMomentCapacity, base.bendingMoment),
-    torqueCapacity,
-    torsionReserveFactor: reserveFactor(torqueCapacity, base.torque),
+    axialStress: plyFailure.axialStress,
+    shearStress: plyFailure.shearStress,
+    bendingMomentCapacity: section.bendingMomentCapacity,
+    bendingReserveFactor,
+    localBucklingReserveFactor,
+    brazierReserveFactor,
+    torqueCapacity: section.torqueCapacity,
+    torsionReserveFactor,
     minReserveFactor: critical.reserveFactor,
     criticalPlyId: critical.plyId,
     criticalMode: critical.mode,
   };
 }
 
-function evaluateFailure(axialStress: number, shearStress: number, section: SectionProperties, materials: ReadonlyMap<string, CarbonMaterial>) {
-  let critical = { reserveFactor: Number.POSITIVE_INFINITY, plyId: "-", mode: "なし" };
+function buildCircumferenceCells(section: StructuralTubeSection, materials: ReadonlyMap<string, CarbonMaterial>): CircumferentialCell[] {
+  const expanded = section.plies.flatMap((ply) => Array.from({ length: ply.count }, () => ({ ply, material: requireMaterial(materials, ply.materialId) })));
+  const maxThickness = expanded.reduce((sum, item) => sum + item.material.plyThickness, 0);
+  const innerRadius = section.outerDiameter / 2 - maxThickness;
+  if (innerRadius <= 0) throw new Error(`パイプセクション ${section.id} の積層厚さが外径を超えています。`);
+  let nominalRadius = innerRadius;
+  const instances = expanded.map(({ ply, material }) => {
+    const meanRadius = nominalRadius + material.plyThickness / 2;
+    nominalRadius += material.plyThickness;
+    const halfAngle = (ply.partialAngle ?? 90) >= 90
+      ? Math.PI / 2
+      : Math.min(Math.PI / 2, ply.partialWidth !== undefined ? ply.partialWidth / (2 * meanRadius) : ply.partialAngle! * Math.PI / 180);
+    return { ply, material, q: transformedReducedStiffness(material, ply.angle), halfAngle };
+  });
+  // Regular sub-intervals keep the trigonometric section integrals at near
+  // machine precision; cap edges are inserted as additional exact boundaries.
+  const boundaries = Array.from({ length: 5 }, (_, index) => Math.PI * index / 2);
+  for (const instance of instances) {
+    if (instance.halfAngle >= Math.PI / 2 - 1e-12) continue;
+    boundaries.push(
+      Math.PI / 2 - instance.halfAngle,
+      Math.PI / 2 + instance.halfAngle,
+      3 * Math.PI / 2 - instance.halfAngle,
+      3 * Math.PI / 2 + instance.halfAngle,
+    );
+  }
+  const sortedBoundaries = [...new Set(boundaries.map((value) => value.toFixed(14)))].map(Number).sort((a, b) => a - b);
+  const gaussNodes = [-0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526];
+  const gaussWeights = [0.3478548451374538, 0.6521451548625461, 0.6521451548625461, 0.3478548451374538];
+  const integrationPoints = sortedBoundaries.slice(1).flatMap((upper, intervalIndex) => {
+    const lower = sortedBoundaries[intervalIndex];
+    const midpoint = (lower + upper) / 2;
+    const halfWidth = (upper - lower) / 2;
+    return gaussNodes.map((node, index) => ({ theta: midpoint + halfWidth * node, dTheta: halfWidth * gaussWeights[index] }));
+  });
+  // Zero-weight points do not affect stiffness or mass, but ensure that failure is
+  // checked at the top/bottom fibres and exactly at every cap termination.
+  const evaluationPoints = [...sortedBoundaries, Math.PI / 2, 3 * Math.PI / 2].map((theta) => ({ theta, dTheta: 0 }));
+  return [...integrationPoints, ...evaluationPoints].map(({ theta, dTheta }) => {
+    let radius = innerRadius;
+    const plies: CircumferentialPly[] = [];
+    for (const instance of instances) {
+      if (!isCoveredByUpperLowerCaps(theta, instance.halfAngle)) continue;
+      const outerRadius = radius + instance.material.plyThickness;
+      plies.push({ ply: instance.ply, material: instance.material, q: instance.q, innerRadius: radius, outerRadius, meanRadius: (radius + outerRadius) / 2 });
+      radius = outerRadius;
+    }
+    return { theta, dTheta, plies };
+  });
+}
 
-  for (const ply of section.section.plies) {
-    const material = requireMaterial(materials, ply.materialId);
-    const angle = ply.angle * Math.PI / 180;
-    const m = Math.cos(angle);
-    const n = Math.sin(angle);
-    const sigma1 = m * m * axialStress + 2 * m * n * shearStress;
-    const sigma2 = n * n * axialStress - 2 * m * n * shearStress;
-    const tau12 = -m * n * axialStress + (m * m - n * n) * shearStress;
-    const candidates = [
-      { value: sigma1, allowed: (sigma1 >= 0 ? material.tensileStrength1 : material.compressiveStrength1) * material.reductionFactor, mode: sigma1 >= 0 ? "繊維引張" : "繊維圧縮" },
-      { value: sigma2, allowed: (sigma2 >= 0 ? material.tensileStrength2 : material.compressiveStrength2) * material.reductionFactor, mode: sigma2 >= 0 ? "横方向引張" : "横方向圧縮" },
-      { value: tau12, allowed: material.shearStrength12 * material.reductionFactor, mode: "せん断" },
-    ];
-    for (const candidate of candidates) {
-      const reserveFactor = Math.abs(candidate.value) < 1e-12 ? Number.POSITIVE_INFINITY : candidate.allowed / Math.abs(candidate.value);
-      if (reserveFactor < critical.reserveFactor) critical = { reserveFactor, plyId: ply.id, mode: candidate.mode };
+function isCoveredByUpperLowerCaps(theta: number, halfAngle: number) {
+  if (halfAngle >= Math.PI / 2 - 1e-12) return true;
+  return Math.abs(Math.sin(theta)) >= Math.cos(halfAngle);
+}
+
+function sectorArea(innerRadius: number, outerRadius: number, dTheta: number) {
+  return (outerRadius ** 2 - innerRadius ** 2) * dTheta / 2;
+}
+
+function sectionStiffness(cells: readonly CircumferentialCell[]): Matrix3 {
+  const stiffness = zeroMatrix();
+  for (let column = 0; column < 3; column += 1) {
+    const generalized = [0, 0, 0] as [number, number, number];
+    generalized[column] = 1;
+    const force = integrateSectionForces(cells, generalized);
+    for (let row = 0; row < 3; row += 1) stiffness[row][column] = force[row];
+  }
+  for (let row = 0; row < 3; row += 1) for (let column = row + 1; column < 3; column += 1) {
+    const symmetric = (stiffness[row][column] + stiffness[column][row]) / 2;
+    stiffness[row][column] = symmetric;
+    stiffness[column][row] = symmetric;
+  }
+  return stiffness;
+}
+
+function integrateSectionForces(cells: readonly CircumferentialCell[], generalized: readonly [number, number, number]): [number, number, number] {
+  const result: [number, number, number] = [0, 0, 0];
+  const radialNodes = [-0.8611363115940526, -0.3399810435848563, 0.3399810435848563, 0.8611363115940526];
+  const radialWeights = [0.3478548451374538, 0.6521451548625461, 0.6521451548625461, 0.3478548451374538];
+  for (const cell of cells) {
+    for (const ply of cell.plies) {
+      const midpoint = (ply.innerRadius + ply.outerRadius) / 2;
+      const halfThickness = (ply.outerRadius - ply.innerRadius) / 2;
+      for (let index = 0; index < radialNodes.length; index += 1) {
+        const radius = midpoint + halfThickness * radialNodes[index];
+        const epsilonY = localHoopStrainAtRadius(cell, radius, generalized);
+        const state = localPlyStateAtRadius(cell, ply, radius, epsilonY, generalized);
+        const area = radius * halfThickness * radialWeights[index] * cell.dTheta;
+        const vertical = radius * Math.sin(cell.theta);
+        result[0] += state.sigmaX * area;
+        result[1] += state.sigmaX * vertical * area;
+        result[2] += state.tauXY * radius * area;
+      }
     }
   }
+  return result;
+}
 
-  return critical;
+function localHoopStrainAtRadius(cell: CircumferentialCell, radius: number, generalized: readonly [number, number, number]) {
+  const [axialStrain, curvature, twistRate] = generalized;
+  const epsilonX = axialStrain + curvature * radius * Math.sin(cell.theta);
+  const gammaXY = twistRate * radius;
+  let hoopNumerator = 0;
+  let hoopDenominator = 0;
+  for (const ply of cell.plies) {
+    const thickness = ply.outerRadius - ply.innerRadius;
+    hoopNumerator += thickness * (ply.q[1][0] * epsilonX + ply.q[1][2] * gammaXY);
+    hoopDenominator += thickness * ply.q[1][1];
+  }
+  return -hoopNumerator / hoopDenominator;
+}
+
+function localPlyStateAtRadius(cell: CircumferentialCell, ply: CircumferentialPly, radius: number, epsilonY: number, generalized: readonly [number, number, number]) {
+  const [axialStrain, curvature, twistRate] = generalized;
+  const vertical = radius * Math.sin(cell.theta);
+  const strain: [number, number, number] = [axialStrain + curvature * vertical, epsilonY, twistRate * radius];
+  const [sigmaX, sigmaY, tauXY] = multiplyMatrixVector(ply.q, strain);
+  return { ply, sigmaX, sigmaY, tauXY };
+}
+
+function sectionGeneralizedStrain(section: SectionProperties, bendingMoment: number, torque: number) {
+  return multiplyMatrixVector(section.compliance, [0, bendingMoment, torque]);
+}
+
+function evaluateSectionFailure(section: SectionProperties, bendingMoment: number, torque: number) {
+  const generalized = sectionGeneralizedStrain(section, bendingMoment, torque);
+  let critical = { reserveFactor: Number.POSITIVE_INFINITY, plyId: "-", mode: "なし" };
+  let axialStress = 0;
+  let shearStress = 0;
+  for (const cell of section.cells) {
+    for (const ply of cell.plies) for (const radius of [ply.innerRadius, ply.outerRadius]) {
+      const epsilonY = localHoopStrainAtRadius(cell, radius, generalized);
+      const state = localPlyStateAtRadius(cell, ply, radius, epsilonY, generalized);
+      if (Math.abs(state.sigmaX) > Math.abs(axialStress)) axialStress = state.sigmaX;
+      if (Math.abs(state.tauXY) > Math.abs(shearStress)) shearStress = state.tauXY;
+      const materialCritical = evaluateHashin(state.sigmaX, state.sigmaY, state.tauXY, state.ply);
+      if (materialCritical.reserveFactor < critical.reserveFactor) critical = materialCritical;
+    }
+  }
+  return { ...critical, axialStress, shearStress };
+}
+
+function evaluateHashin(sigmaX: number, sigmaY: number, tauXY: number, ply: CircumferentialPly) {
+  const angle = ply.ply.angle * Math.PI / 180;
+  const m = Math.cos(angle);
+  const n = Math.sin(angle);
+  const sigma1 = m * m * sigmaX + n * n * sigmaY + 2 * m * n * tauXY;
+  const sigma2 = n * n * sigmaX + m * m * sigmaY - 2 * m * n * tauXY;
+  const tau12 = -m * n * sigmaX + m * n * sigmaY + (m * m - n * n) * tauXY;
+  const material = ply.material;
+  const xt = material.tensileStrength1 * material.reductionFactor;
+  const xc = material.compressiveStrength1 * material.reductionFactor;
+  const yt = material.tensileStrength2 * material.reductionFactor;
+  const yc = material.compressiveStrength2 * material.reductionFactor;
+  const s = material.shearStrength12 * material.reductionFactor;
+  const fiber = {
+    reserveFactor: homogeneousReserveFactor(sigma1 >= 0 ? (sigma1 / xt) ** 2 + (tau12 / s) ** 2 : (sigma1 / xc) ** 2),
+    plyId: ply.ply.id,
+    mode: sigma1 >= 0 ? "繊維引張" : "繊維圧縮",
+  };
+  const matrix = {
+    reserveFactor: sigma2 >= 0
+      ? homogeneousReserveFactor((sigma2 / yt) ** 2 + (tau12 / s) ** 2)
+      : quadraticReserveFactor((sigma2 / (2 * s)) ** 2 + (tau12 / s) ** 2, ((yc / (2 * s)) ** 2 - 1) * sigma2 / yc),
+    plyId: ply.ply.id,
+    mode: sigma2 >= 0 ? "母材引張" : "母材圧縮",
+  };
+  return fiber.reserveFactor < matrix.reserveFactor ? fiber : matrix;
+}
+
+function homogeneousReserveFactor(failureIndex: number) {
+  return failureIndex < 1e-24 ? Number.POSITIVE_INFINITY : 1 / Math.sqrt(failureIndex);
+}
+
+function quadraticReserveFactor(quadratic: number, linear: number) {
+  if (quadratic < 1e-24) return linear > 1e-24 ? 1 / linear : Number.POSITIVE_INFINITY;
+  return (-linear + Math.sqrt(linear * linear + 4 * quadratic)) / (2 * quadratic);
+}
+
+function multiplyMatrixVector(matrix: Matrix3, vector: readonly [number, number, number]): [number, number, number] {
+  return matrix.map((row) => row[0] * vector[0] + row[1] * vector[1] + row[2] * vector[2]) as [number, number, number];
 }
 
 function reserveFactor(capacity: number, demand: number) {
@@ -278,7 +522,7 @@ function validateInputs(design: StructuralDesign, loadCase: StructuralLoadCase, 
   const materialIds = new Set(materials.map((material) => material.id));
   const positiveFields: Array<keyof CarbonMaterial> = ["e1", "e2", "g12", "tensileStrength1", "compressiveStrength1", "tensileStrength2", "compressiveStrength2", "shearStrength12", "density", "plyThickness", "reductionFactor"];
   if (materials.some((material) => positiveFields.some((field) => typeof material[field] !== "number" || !Number.isFinite(material[field] as number) || (material[field] as number) <= 0) || material.nu12 < 0 || material.nu12 >= 0.5 || material.reductionFactor > 1)) throw new Error("材料プロパティは正の有限値、ν12は0以上0.5未満、低減係数は1以下で指定してください。");
-  if (design.sections.some((section) => section.length <= 0 || section.outerDiameter <= 0 || !section.plies.length || section.plies.some((ply) => ply.count < 1 || !materialIds.has(ply.materialId)))) throw new Error("パイプセクションの長さ、外径、積層、材料参照を確認してください。");
+  if (design.sections.some((section) => section.length <= 0 || section.outerDiameter <= 0 || !section.plies.length || section.plies.some((ply) => ply.count < 1 || !materialIds.has(ply.materialId) || ply.partialAngle !== undefined && (!Number.isFinite(ply.partialAngle) || ply.partialAngle <= 0 || ply.partialAngle > 90) || ply.partialWidth !== undefined && (!Number.isFinite(ply.partialWidth) || ply.partialWidth <= 0)))) throw new Error("パイプセクションの長さ、外径、積層、材料参照を確認してください。");
   if (loadCase.loadFactor <= 0 || loadCase.safetyFactor <= 0) throw new Error("荷重倍数と安全係数は0より大きい必要があります。");
   if ((design.supports ?? []).some((support) => support.yPosition <= 0 || support.yPosition > span || support.kind === "elastic" && (!support.stiffness || support.stiffness <= 0))) throw new Error("支持点は翼内の正の位置に置き、弾性支持には正の剛性を指定してください。");
 }
@@ -303,11 +547,17 @@ function interpolate(start: number, end: number, ratio: number) { return start +
 function interpolateLoad(loadCase: StructuralLoadCase, y: number, field: "liftPerLength" | "torquePerLength") { const loads = [...loadCase.distributedLoads].sort((a, b) => a.yPosition - b.yPosition); if (!loads.length) return 0; if (y <= loads[0].yPosition) return loads[0][field]; if (y >= loads.at(-1)!.yPosition) return loads.at(-1)![field]; const upperIndex = loads.findIndex((load) => load.yPosition >= y); const lower = loads[upperIndex - 1]; const upper = loads[upperIndex]; return interpolate(lower[field], upper[field], (y - lower.yPosition) / (upper.yPosition - lower.yPosition)); }
 function integrateForward(x: readonly number[], values: readonly number[]) { const result = new Array<number>(x.length).fill(0); for (let index = 1; index < x.length; index += 1) result[index] = result[index - 1] + (values[index - 1] + values[index]) * (x[index] - x[index - 1]) / 2; return result; }
 function momentFromPoints(y: readonly number[], distributedMoment: readonly number[], loads: readonly { yPosition: number; force: number }[]) { return y.map((position, index) => distributedMoment[index] + loads.reduce((sum, load) => sum + load.force * Math.max(0, load.yPosition - position), 0)); }
-function deflectionFromMoment(y: readonly number[], moment: readonly number[], sections: readonly SectionProperties[]) { const curvature = sections.map((section, index) => moment[index] / section.ei); return integrateForward(y, integrateForward(y, curvature)); }
+function deflectionFromForces(y: readonly number[], moment: readonly number[], shear: readonly number[], torque: readonly number[], sections: readonly SectionProperties[]) {
+  const curvature = sections.map((section, index) => sectionGeneralizedStrain(section, moment[index], torque[index])[1]);
+  const rotation = integrateForward(y, curvature);
+  return integrateForward(y, rotation.map((value, index) => value + shear[index] / sections[index].shearStiffness));
+}
 function solveSupportReactions(supports: NonNullable<StructuralDesign["supports"]>, y: readonly number[], sections: readonly SectionProperties[], baseDeflection: readonly number[]) {
   const matrix = supports.map((support, row) => supports.map((unitSupport, column) => {
+    const unitShear = y.map((position) => position <= unitSupport.yPosition + 1e-10 ? 1 : 0);
     const unitMoment = y.map((position) => Math.max(0, unitSupport.yPosition - position));
-    const influence = interpolateSeries(y, deflectionFromMoment(y, unitMoment, sections), support.yPosition);
+    const unitTorque = y.map(() => 0);
+    const influence = interpolateSeries(y, deflectionFromForces(y, unitMoment, unitShear, unitTorque, sections), support.yPosition);
     return influence + (row === column && support.kind === "elastic" ? 1 / support.stiffness! : 0);
   }));
   const rhs = supports.map((support) => -interpolateSeries(y, baseDeflection, support.yPosition));

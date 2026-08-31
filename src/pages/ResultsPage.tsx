@@ -113,7 +113,7 @@ function IntegratedResultSummary({ aerodynamicResult, alphaDegrees, structuralRe
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard label="空力結果" value={aerodynamicResult?.caseSnapshot?.name ?? aerodynamicResult?.caseId ?? "-"} detail={aerodynamicResult ? `CLmax ${formatAnalysisNumber(aerodynamicResult.clMax, 3)} / CDmin ${formatAnalysisNumber(aerodynamicResult.cdMin, 5)}` : "未選択"} />
       <MetricCard label="構造設計" value={structuralResult.designSnapshot.name} detail={structuralResult.loadCaseSnapshot.name} />
-      <MetricCard label="最小安全率" value={formatAnalysisNumber(structuralResult.summary.minReserveFactor, 2)} detail={`${structuralResult.summary.governingPosition.toFixed(2)} m / ${structuralResult.summary.governingMode}`} />
+      <MetricCard label="最小安全率" value={formatAnalysisNumber(structuralResult.summary.minReserveFactor, 2)} detail={`${structuralResult.summary.governingPosition.toFixed(2)} m / ${displayFailureMode(structuralResult.summary.governingMode)}`} />
       <MetricCard label="最大変形" value={`${(structuralResult.summary.maxDeflection * 1000).toFixed(1)} mm`} detail={`ねじれ ${(structuralResult.summary.maxTwist * 180 / Math.PI).toFixed(2)}°`} />
     </div>
   </div>;
@@ -125,3 +125,4 @@ function ResultTable({ result }: { result: AnalysisResult | undefined }) {
 
 function analysisStatusLabel(status: "completed" | "not-run" | "needs-review") { return status === "completed" ? "完了" : status === "not-run" ? "未実行" : "要確認"; }
 function preferredAerodynamicRow(result: AnalysisResult | undefined) { return [...(result?.rows ?? [])].filter((row) => row.spanwise).sort((left, right) => right.cl - left.cl)[0]; }
+function displayFailureMode(mode: string) { return mode === "Excel準拠曲げ" ? "曲げ" : mode; }

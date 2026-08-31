@@ -44,6 +44,26 @@ describe("AircraftPreview", () => {
     expect(screen.getAllByTestId("mesh-line").length).toBeGreaterThan(3);
   });
 
+  it("preserves the physical span-to-chord ratio for a high-aspect-ratio wing", () => {
+    const highAspectRatioGeometry: AircraftGeometry = {
+      ...geometry,
+      span: 30,
+      rootChord: 1.1,
+      tipChord: 0.55,
+      sections: [
+        { ...defaults, id: "root", yPosition: 0, chord: 1.1, xOffset: 0, twist: 0, dihedral: 0, airfoilId: "af-1" },
+        { ...defaults, id: "tip", yPosition: 15, chord: 0.55, xOffset: 0.2, twist: 0, dihedral: 0, airfoilId: "af-1" },
+      ],
+    };
+    render(<AircraftPreview geometry={highAspectRatioGeometry} />);
+
+    const [rootPath, tipPath] = screen.getAllByTestId("planform-section").map((element) => parseLine(element.getAttribute("d") ?? ""));
+    const renderedHalfSpan = Math.abs(tipPath.x1 - rootPath.x1);
+    const renderedRootChord = Math.abs(rootPath.y2 - rootPath.y1);
+
+    expect(renderedRootChord / renderedHalfSpan).toBeCloseTo(1.1 / 15, 5);
+  });
+
   it("allows a section to be selected from the preview", () => {
     const onSelectSection = vi.fn();
     render(<AircraftPreview geometry={geometry} selectedSectionId="root" onSelectSection={onSelectSection} />);
@@ -62,3 +82,8 @@ describe("AircraftPreview", () => {
     expect(onSelectSection).toHaveBeenCalledWith("mid");
   });
 });
+
+function parseLine(path: string) {
+  const values = path.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  return { x1: values[0], y1: values[1], x2: values[2], y2: values[3] };
+}

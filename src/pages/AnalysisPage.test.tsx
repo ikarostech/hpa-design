@@ -125,6 +125,8 @@ describe("AnalysisPage", () => {
     expect(screen.getByRole("heading", { name: "空力・構造 統合結果" })).toBeTruthy();
     expect((screen.getByRole("combobox", { name: "空力運用点" }) as HTMLSelectElement).value).toBe("4");
     expect(screen.getByText("空力運用点と関連付け済み")).toBeTruthy();
+    expect(screen.getByText("最小安全率")).toBeTruthy();
+    expect(screen.queryByText(/Excel曲げ/)).toBeNull();
     expect(screen.getByRole("combobox", { name: "構造解析結果" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "空力・構造の翼幅方向グラフ" }).textContent).toBe("result-1/4/structural-result-1");
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDesignDocumentStore } from "./designDocument";
 import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
+import { createDefaultConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 
 const sectionDefaults = { xOffset: 0, chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine" as const, spanwiseDistribution: "uniform" as const };
 const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1" };
@@ -38,6 +39,16 @@ const document = {
 };
 
 describe("createDesignDocumentStore", () => {
+  it("persists conceptual design requirements and marks the document unsaved", () => {
+    const store = createDesignDocumentStore(document);
+    const conceptualDesign = { ...createDefaultConceptualDesign(), cruiseSpeed: 9.5 };
+
+    store.updateConceptualDesign(conceptualDesign);
+
+    expect(store.getDocument().conceptualDesign).toEqual(conceptualDesign);
+    expect(store.getState().isDirty).toBe(true);
+  });
+
   it("marks an edit as unsaved until the document is marked saved", () => {
     const store = createDesignDocumentStore(document);
 

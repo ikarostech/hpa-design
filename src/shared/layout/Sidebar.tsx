@@ -1,9 +1,10 @@
-import { BarChart3, Download, Gauge, Hammer, Home, Library, Plane, Workflow } from "lucide-react";
+import { BarChart3, Download, Gauge, Hammer, Home, Library, Plane, Ruler, Workflow } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 export function Sidebar() {
   const navItems = [
     { label: "設計概要", path: "/", icon: Home },
+    { label: "概要設計", path: "/conceptual-design", icon: Ruler },
     { label: "翼型", path: "/airfoils", icon: Library },
     { label: "機体設計", path: "/aircraft", icon: Plane },
     { label: "空力解析", path: "/analysis", icon: Workflow },

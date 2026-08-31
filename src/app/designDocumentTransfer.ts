@@ -9,7 +9,7 @@ export const designDocumentImporter: Importer<string, DesignDocument> = {
 };
 
 export const designDocumentExporter: Exporter<DesignDocument, string> = {
-  export: async (document) => JSON.stringify(document, null, 2),
+  export: async (document) => JSON.stringify(document, preserveInfiniteNumber, 2),
 };
 
 export function formatValidationIssues(issues: readonly ValidationIssue[]) {
@@ -24,6 +24,7 @@ export function validateDesignDocument(document: unknown): ValidationResult {
 
   validateSchemaVersion(document, issues);
   validateNonEmptyString(document.name, ["name"], issues);
+  validateConceptualDesign(document.conceptualDesign, issues);
   const arrays = validateRequiredArrays(document, issues);
   const aircraft = validateAircraft(document.aircraft, issues);
 
@@ -41,15 +42,43 @@ export function validateDesignDocument(document: unknown): ValidationResult {
   return issues.length ? invalid(issues) : { valid: true };
 }
 
+function validateConceptualDesign(value: unknown, issues: ValidationIssue[]) {
+  if (value === undefined) return;
+  const path = ["conceptualDesign"];
+  if (!isRecord(value)) {
+    addIssue(issues, path, "概要設計はオブジェクトである必要があります。");
+    return;
+  }
+  for (const field of ["grossMass", "cruiseSpeed", "maximumWingspan", "groundHeight", "sustainablePower"]) {
+    const number = validateFiniteNumber(value[field], [...path, field], issues);
+    if (number !== null && number <= 0) addIssue(issues, [...path, field], "0より大きい値が必要です。");
+  }
+}
+
 function parseDesignDocument(input: string): DesignDocument {
   try {
-    return migrateDesignDocument(JSON.parse(input)) as DesignDocument;
+    return migrateDesignDocument(JSON.parse(input, restoreInfiniteNumber)) as DesignDocument;
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`設計ファイルを JSON として読み込めません: ${error.message}`);
     }
     throw error;
   }
+}
+
+const infiniteNumberTag = "$hpaNumber";
+
+function preserveInfiniteNumber(_key: string, value: unknown) {
+  if (value === Number.POSITIVE_INFINITY) return { [infiniteNumberTag]: "Infinity" };
+  if (value === Number.NEGATIVE_INFINITY) return { [infiniteNumberTag]: "-Infinity" };
+  return value;
+}
+
+function restoreInfiniteNumber(_key: string, value: unknown) {
+  if (!isRecord(value) || Object.keys(value).length !== 1) return value;
+  if (value[infiniteNumberTag] === "Infinity") return Number.POSITIVE_INFINITY;
+  if (value[infiniteNumberTag] === "-Infinity") return Number.NEGATIVE_INFINITY;
+  return value;
 }
 
 export function migrateDesignDocument(document: unknown): unknown {
@@ -148,6 +177,14 @@ function validateStructuralDesigns(items: readonly unknown[], materialIds: Reado
         validateReference(ply.materialId, [...plyPath, "materialId"], materialIds, "カーボン材料", issues);
         if (typeof ply.angle !== "number" || ![0, 45, -45, 90].includes(ply.angle)) addIssue(issues, [...plyPath, "angle"], "積層角は0、45、-45、90のいずれかが必要です。");
         if (typeof ply.count !== "number" || !Number.isInteger(ply.count) || ply.count < 1) addIssue(issues, [...plyPath, "count"], "層数は1以上の整数が必要です。");
+        if (ply.partialAngle !== undefined) {
+          const partialAngle = validateFiniteNumber(ply.partialAngle, [...plyPath, "partialAngle"], issues);
+          if (partialAngle !== null && (partialAngle <= 0 || partialAngle > 90)) addIssue(issues, [...plyPath, "partialAngle"], "上下部分積層角度は0より大きく90以下が必要です。");
+        }
+        if (ply.partialWidth !== undefined) {
+          const partialWidth = validateFiniteNumber(ply.partialWidth, [...plyPath, "partialWidth"], issues);
+          if (partialWidth !== null && partialWidth <= 0) addIssue(issues, [...plyPath, "partialWidth"], "上下幅は0より大きい値が必要です。");
+        }
       });
     });
     readArray(item.loadCases, [...path, "loadCases"], issues).forEach((loadCase, loadIndex) => validateStructuralLoadCase(loadCase, [...path, "loadCases", String(loadIndex)], issues));

@@ -80,6 +80,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
         analysisTargets={analysisTargets}
         targetNames={workspace.selectedTargetNames}
         jobController={workspace.analysisJobController}
+        defaultReynolds={data.defaultReynolds}
         initialSettings={workspace.drawerSettings}
         onClose={workspace.closeAnalysisDrawer}
       />

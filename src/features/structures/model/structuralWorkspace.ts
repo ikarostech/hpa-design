@@ -1,6 +1,6 @@
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { CarbonMaterial, StructuralDesign, StructuralTubeSection } from "./types";
-import { calculateLaminate } from "../services/structuralAnalysis";
+import { calculateLaminate, calculateTubeLinearMass } from "../services/structuralAnalysis";
 
 export function createStructuralId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -55,7 +55,7 @@ export function getSectionSummary(section: StructuralTubeSection, materials: rea
     return {
       thickness: laminate.thickness,
       innerDiameter,
-      linearMass: laminate.arealMass * Math.PI * (section.outerDiameter - laminate.thickness),
+      linearMass: calculateTubeLinearMass(section, new Map(materials.map((material) => [material.id, material]))),
     };
   } catch {
     return null;

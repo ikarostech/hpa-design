@@ -175,7 +175,7 @@ function selectSectionPolars(aircraft: AircraftGeometry, polars: readonly Airfoi
   const selected = new Map<string, AirfoilPolar>();
   for (const airfoilId of new Set(aircraft.sections.map((section) => section.airfoilId))) {
     const candidates = polars
-      .filter((polar) => polar.airfoilId === airfoilId && polar.status === "complete" && polar.points.length > 0)
+      .filter((polar) => polar.airfoilId === airfoilId && polar.points.length > 0)
       .sort((left, right) => Math.abs(left.reynolds - reynolds) - Math.abs(right.reynolds - reynolds));
     if (candidates[0]) selected.set(airfoilId, candidates[0]);
   }

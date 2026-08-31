@@ -23,8 +23,10 @@ export function AircraftPreview({ lift = false, geometry, selectedSectionId = nu
   const minX = Math.min(...sorted.map((section) => section.xOffset));
   const maxX = Math.max(...sorted.map((section) => section.xOffset + section.chord));
   const xRange = Math.max(maxX - minX, 0.001);
-  const planX = (yPosition: number, side: -1 | 1 = 1) => 380 + side * yPosition / semiSpan * 320;
-  const planY = (xPosition: number) => 36 + (xPosition - minX) / xRange * 150;
+  const planScale = Math.min(320 / semiSpan, 150 / xRange);
+  const planMidX = (minX + maxX) / 2;
+  const planX = (yPosition: number, side: -1 | 1 = 1) => 380 + side * yPosition * planScale;
+  const planY = (xPosition: number) => 111 + (xPosition - planMidX) * planScale;
   const frontZRange = Math.max(...sorted.map((section) => Math.abs(section.zPosition)), 0.001);
   const frontY = (zPosition: number) => 350 - zPosition / frontZRange * 72;
   const rightPlanform = planformPath(sorted, 1, planX, planY);

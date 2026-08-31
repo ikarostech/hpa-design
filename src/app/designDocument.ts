@@ -4,10 +4,12 @@ import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/ty
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
 import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
+import type { ConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 
 export interface DesignDocument {
   schemaVersion: 4;
   name: string;
+  conceptualDesign?: ConceptualDesign;
   airfoils: readonly Airfoil[];
   polars: readonly AirfoilPolar[];
   airfoilAnalysisRuns: readonly AirfoilAnalysisRun[];
@@ -25,6 +27,7 @@ export interface DesignDocumentStore {
   getState: () => DesignDocumentState;
   markSaved: () => void;
   replaceDocument: (document: DesignDocument) => void;
+  updateConceptualDesign: (conceptualDesign: ConceptualDesign) => void;
   saveAirfoil: (airfoil: Airfoil) => void;
   removeAirfoil: (airfoilId: string) => void;
   saveAnalysisCase: (analysisCase: AnalysisCase) => void;
@@ -78,6 +81,9 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
       update(() => { document = cloneDocument(nextDocument); });
       savedRevision = revision;
     },
+    updateConceptualDesign: (conceptualDesign) => update(() => {
+      document = { ...document, conceptualDesign: { ...conceptualDesign } };
+    }),
     saveAirfoil: (airfoil) => {
       update(() => {
         const previous = document.airfoils.find((item) => item.id === airfoil.id);
@@ -204,7 +210,7 @@ export function createDesignDocumentStore(initialDocument: DesignDocument, { sav
 }
 
 function cloneDocument(document: DesignDocument): DesignDocument {
-  return { ...document, airfoils: document.airfoils.map(cloneAirfoil), polars: document.polars.map(clonePolar), airfoilAnalysisRuns: document.airfoilAnalysisRuns.map(cloneRun), aircraft: cloneAircraft(document.aircraft), analysisCases: document.analysisCases.map((analysisCase) => ({ ...analysisCase })), analysisResults: document.analysisResults.map(cloneAnalysisResult), carbonMaterials: document.carbonMaterials.map((material) => ({ ...material })), structuralDesigns: document.structuralDesigns.map(cloneStructuralDesign), structuralResults: document.structuralResults.map(cloneStructuralResult), aeroelasticResults: document.aeroelasticResults?.map(cloneAeroelasticResult) };
+  return { ...document, conceptualDesign: document.conceptualDesign ? { ...document.conceptualDesign } : undefined, airfoils: document.airfoils.map(cloneAirfoil), polars: document.polars.map(clonePolar), airfoilAnalysisRuns: document.airfoilAnalysisRuns.map(cloneRun), aircraft: cloneAircraft(document.aircraft), analysisCases: document.analysisCases.map((analysisCase) => ({ ...analysisCase })), analysisResults: document.analysisResults.map(cloneAnalysisResult), carbonMaterials: document.carbonMaterials.map((material) => ({ ...material })), structuralDesigns: document.structuralDesigns.map(cloneStructuralDesign), structuralResults: document.structuralResults.map(cloneStructuralResult), aeroelasticResults: document.aeroelasticResults?.map(cloneAeroelasticResult) };
 }
 
 function cloneAirfoil(airfoil: Airfoil): Airfoil { return { ...airfoil, coordinates: airfoil.coordinates.map((point) => ({ ...point })) }; }

@@ -12,6 +12,13 @@ describe("createDefaultDesignDocument", () => {
       && result.loadCaseSnapshot.aerodynamicAlphaDegrees !== undefined,
     );
 
+    expect(document.conceptualDesign).toEqual({
+      grossMass: 100,
+      cruiseSpeed: 8,
+      maximumWingspan: 30,
+      groundHeight: 1,
+      sustainablePower: 250,
+    });
     expect(validateDesignDocument(document)).toEqual({ valid: true });
     expect(aerodynamicResult?.rows.some((row) => row.spanwise?.samples.length)).toBe(true);
     expect(structuralResult?.loadCaseSnapshot.aerodynamicAlphaDegrees).toBe(
@@ -22,6 +29,7 @@ describe("createDefaultDesignDocument", () => {
       && point.torqueCapacity !== undefined
       && point.minReserveFactor > 0,
     )).toBe(true);
+    expect(structuralResult?.summary.governingMode).toBe("Excel準拠曲げ");
   });
 
   it("returns a fresh document so edits cannot mutate the next default project", () => {

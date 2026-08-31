@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AirfoilAnalysisDrawer } from "./AirfoilAnalysisDrawer";
 
 const targets = { selectedIds: ["af-1"], isSelected: () => true, toggle: vi.fn(), replace: vi.fn(), clear: vi.fn() };
@@ -8,6 +8,14 @@ const jobs = { jobs: [], currentJob: null, run: vi.fn(), cancel: vi.fn(), clearC
 const airfoil = { id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1, trailingEdgeThickness: 0, coordinates: [] };
 
 describe("AirfoilAnalysisDrawer", () => {
+  afterEach(cleanup);
+
+  it("uses the project's representative Reynolds number for a new analysis", () => {
+    render(<AirfoilAnalysisDrawer open defaultReynolds={450000} airfoils={[airfoil]} airfoilPolars={[]} analysisTargets={targets} targetNames={[airfoil.name]} jobController={jobs} onClose={vi.fn()} />);
+
+    expect((screen.getByLabelText("Re数") as HTMLInputElement).value).toBe("450000");
+  });
+
   it("shows a field error and blocks execution for a zero alpha step", async () => {
     const user = userEvent.setup();
     render(<AirfoilAnalysisDrawer open airfoils={[airfoil]} airfoilPolars={[]} analysisTargets={targets} targetNames={[airfoil.name]} jobController={jobs} onClose={vi.fn()} />);

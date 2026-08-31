@@ -113,4 +113,23 @@ describe("executeAirfoilAnalysis", () => {
       failures: [{ airfoilId: "af-2", message: "convergence failed" }],
     });
   });
+
+  it("marks the run for review when a polar is only partially converged", async () => {
+    const runner: AirfoilAnalysisRunner = {
+      run: vi.fn(async (airfoil) => airfoil.id === "af-1"
+        ? { ...polar(airfoil.id), status: "needs-review" as const, convergedPoints: 1 }
+        : polar(airfoil.id)),
+    };
+
+    const result = await executeAirfoilAnalysis({
+      targets: airfoils,
+      settings,
+      runner,
+      createId: (prefix) => `${prefix}-1`,
+      now: () => new Date("2026-07-15T12:00:00.000Z"),
+      onProgress: () => undefined,
+    });
+
+    expect(result.run.status).toBe("needs-review");
+  });
 });

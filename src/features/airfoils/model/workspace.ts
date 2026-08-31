@@ -27,6 +27,7 @@ export interface AirfoilWorkspaceSelection {
 
 export interface AirfoilWorkspaceData {
   designName: string;
+  defaultReynolds?: number;
   airfoils: readonly Airfoil[];
   polars: readonly AirfoilPolar[];
   analysisRuns: readonly AirfoilAnalysisRun[];

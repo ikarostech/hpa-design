@@ -4,6 +4,7 @@ import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/ty
 import type { Airfoil, AirfoilAnalysisRun, AirfoilPolar } from "../features/airfoils/model/types";
 import type { CarbonMaterial, StructuralAnalysisResult, StructuralDesign } from "../features/structures/model/types";
 import type { StaticAeroelasticResult } from "../features/aeroelastic/services/staticAeroelasticSolver";
+import type { ConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 import type { EntityRepository } from "../shared/model";
 import { createDesignDocumentStore, type DesignDocument, type DesignDocumentStore } from "./designDocument";
 import { createDesignDocumentRecoveryRepository, readDesignDocumentRecoveryState, type DesignDocumentRecoveryRepository } from "./designDocumentRecoveryRepository";
@@ -14,6 +15,7 @@ interface DesignDocumentContextValue {
   isDirty: boolean;
   markDocumentSaved: () => void;
   replaceDocument: (document: DesignDocument) => void;
+  updateConceptualDesign: (conceptualDesign: ConceptualDesign) => void;
   saveAirfoil: (airfoil: Airfoil) => void;
   removeAirfoil: (airfoilId: string) => void;
   saveAnalysisCase: (analysisCase: AnalysisCase) => void;
@@ -82,6 +84,7 @@ export function DesignDocumentProvider({ children }: { children: ReactNode }) {
     isDirty,
     markDocumentSaved,
     replaceDocument,
+    updateConceptualDesign: (conceptualDesign) => commit((store) => store.updateConceptualDesign(conceptualDesign)),
     saveAirfoil: (airfoil) => commit((store) => store.saveAirfoil(airfoil)),
     removeAirfoil: (airfoilId) => commit((store) => store.removeAirfoil(airfoilId)),
     saveAnalysisCase: (analysisCase) => commit((store) => store.saveAnalysisCase(analysisCase)),
@@ -113,6 +116,7 @@ export function useDesignDocument() {
     isDirty: context.isDirty,
     markDocumentSaved: context.markDocumentSaved,
     replaceDocument: context.replaceDocument,
+    updateConceptualDesign: context.updateConceptualDesign,
     airfoilRepository: createAirfoilRepository(context),
     analysisCaseRepository: createAnalysisCaseRepository(context),
     updateAircraft: context.updateAircraft,
