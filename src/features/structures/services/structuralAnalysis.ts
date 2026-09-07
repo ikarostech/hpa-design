@@ -200,10 +200,62 @@ interface SectionProperties {
   localBucklingMomentCapacity?: number;
   brazierMomentCapacity?: number;
   bendingMomentCapacity: number;
+  bendingFailurePlyId: string;
+  bendingFailureMode: string;
   torqueCapacity: number;
   compliance: Matrix3;
   cells: CircumferentialCell[];
   section: StructuralTubeSection;
+}
+
+export interface StructuralDesignPropertyPoint {
+  yPosition: number;
+  sectionId: string;
+  /** Laminate first-ply bending strength converted to nominal outer-fiber strength [Pa]. */
+  laminateBendingStrength: number;
+  /** Ply that first reaches the Hashin failure criterion under bending. */
+  laminateFailurePlyId: string;
+  /** Hashin mode governing first-ply failure under bending. */
+  laminateFailureMode: string;
+  /** Perfect-shell local-buckling strength converted to nominal outer-fiber strength [Pa]. */
+  localBucklingStrength?: number;
+  /** Perfect-shell Brazier ovalization strength converted to nominal outer-fiber strength [Pa]. */
+  brazierStrength?: number;
+  /** Lowest available bending strength across the evaluated failure modes [Pa]. */
+  governingBendingStrength: number;
+  /** Section bending stiffness EI [N m²]. */
+  bendingStiffness: number;
+}
+
+export function calculateStructuralDesignProperties(
+  design: StructuralDesign,
+  materials: readonly CarbonMaterial[],
+): StructuralDesignPropertyPoint[] {
+  const materialMap = new Map(materials.map((material) => [material.id, material]));
+  let start = 0;
+
+  return design.sections.flatMap((section) => {
+    const properties = tubeSectionProperties(section, materialMap);
+    const toNominalStrength = (momentCapacity: number) => momentCapacity * (section.outerDiameter / 2) / properties.secondMoment;
+    const laminateBendingStrength = toNominalStrength(properties.bendingMomentCapacity);
+    const localBucklingStrength = properties.localBucklingMomentCapacity === undefined ? undefined : toNominalStrength(properties.localBucklingMomentCapacity);
+    const brazierStrength = properties.brazierMomentCapacity === undefined ? undefined : toNominalStrength(properties.brazierMomentCapacity);
+    const governingBendingStrength = Math.min(laminateBendingStrength, localBucklingStrength ?? Number.POSITIVE_INFINITY, brazierStrength ?? Number.POSITIVE_INFINITY);
+    const end = start + section.length;
+    const values = {
+      sectionId: section.id,
+      laminateBendingStrength,
+      laminateFailurePlyId: properties.bendingFailurePlyId,
+      laminateFailureMode: properties.bendingFailureMode,
+      localBucklingStrength,
+      brazierStrength,
+      governingBendingStrength,
+      bendingStiffness: properties.ei,
+    };
+    const points = [{ yPosition: start, ...values }, { yPosition: end, ...values }];
+    start = end;
+    return points;
+  });
 }
 
 function sectionAt(sections: readonly StructuralTubeSection[], properties: readonly SectionProperties[], y: number): SectionProperties {
@@ -264,12 +316,17 @@ function tubeSectionProperties(section: StructuralTubeSection, materials: Readon
     localBucklingMomentCapacity,
     brazierMomentCapacity,
     bendingMomentCapacity: 0,
+    bendingFailurePlyId: "-",
+    bendingFailureMode: "なし",
     torqueCapacity: 0,
     compliance,
     cells,
     section,
   } satisfies SectionProperties;
-  properties.bendingMomentCapacity = evaluateSectionFailure(properties, 1, 0).reserveFactor;
+  const bendingFailure = evaluateSectionFailure(properties, 1, 0);
+  properties.bendingMomentCapacity = bendingFailure.reserveFactor;
+  properties.bendingFailurePlyId = bendingFailure.plyId;
+  properties.bendingFailureMode = bendingFailure.mode;
   properties.torqueCapacity = evaluateSectionFailure(properties, 0, 1).reserveFactor;
   return properties;
 }

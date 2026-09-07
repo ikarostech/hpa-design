@@ -23,7 +23,7 @@ export function StructuralResultsTab({ results, result, onSelectResult }: {
   const sampledPoints = result?.points.filter((_, index) => index % Math.max(1, Math.floor(result.points.length / 30)) === 0) ?? [];
 
   if (!result) {
-    return <Card><CardBody><p className="text-sm text-slate-500">構造解析結果はまだありません。荷重ケースから解析を実行してください。</p></CardBody></Card>;
+    return <Card><CardBody><p className="text-sm text-slate-500">構造解析結果はまだありません。解析済みの結果が保存されると、ここに表示されます。</p></CardBody></Card>;
   }
 
   return <div className="space-y-5">

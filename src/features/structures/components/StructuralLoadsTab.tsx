@@ -5,32 +5,38 @@ import type { AnalysisResult } from "../../analysis/model/types";
 import { Badge } from "../../../shared/ui/Badge";
 import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
+import { InspectorDrawer } from "../../../shared/ui/inspector/InspectorDrawer";
 import { DeleteConfirmationDialog } from "../../../shared/ui/table/DeleteConfirmationDialog";
 import { RowActions } from "../../../shared/ui/table/RowActions";
 import { createStructuralId, structuralSpan } from "../model/structuralWorkspace";
 import type { StructuralDesign, StructuralLoadCase } from "../model/types";
-import { createLoadCaseFromAerodynamicResult } from "../services/structuralLoadService";
-import { StructuralResultChart } from "./StructuralResultChart";
+import { createEllipticalLoadCase, createLoadCaseFromAerodynamicResult } from "../services/structuralLoadService";
+import { StructuralLoadComparisonChart } from "./StructuralLoadComparisonChart";
 
 type DeleteTarget =
   | { kind: "load-case"; id: string; label: string }
-  | { kind: "distributed-load"; index: number; label: string }
-  | { kind: "point-load"; id: string; label: string };
+  | { kind: "distributed-load"; loadCaseId: string; index: number; label: string }
+  | { kind: "point-load"; loadCaseId: string; id: string; label: string };
 
-export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSaveDesign, onRun }: {
+export function StructuralLoadsTab({ design, aircraft, grossMass = 100, aerodynamicResults, onSaveDesign, onRun, runningLoadCaseIds = [], onCancel = () => undefined }: {
   design: StructuralDesign;
   aircraft: AircraftGeometry;
+  grossMass?: number;
   aerodynamicResults: readonly AnalysisResult[];
   onSaveDesign: (design: StructuralDesign) => void;
   onRun: (loadCase: StructuralLoadCase) => void;
+  runningLoadCaseIds?: readonly string[];
+  onCancel?: (loadCaseId: string) => void;
 }) {
-  const [selectedLoadId, setSelectedLoadId] = useState<string | null>(design.loadCases[0]?.id ?? null);
+  const [displayedLoadIds, setDisplayedLoadIds] = useState(() => new Set(design.loadCases.map((loadCase) => loadCase.id)));
+  const [detailLoadId, setDetailLoadId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
   const [selectedAerodynamicResultId, setSelectedAerodynamicResultId] = useState<string | null>(aerodynamicResults[0]?.id ?? null);
   const selectedAerodynamicResult = aerodynamicResults.find((result) => result.id === selectedAerodynamicResultId) ?? aerodynamicResults[0];
   const aerodynamicRows = selectedAerodynamicResult?.rows.filter((row) => row.spanwise) ?? [];
   const [selectedAerodynamicAlpha, setSelectedAerodynamicAlpha] = useState<number | null>(() => preferredAerodynamicAlpha(aerodynamicResults[0]));
-  const selectedLoad = design.loadCases.find((loadCase) => loadCase.id === selectedLoadId) ?? design.loadCases[0];
+  const detailLoad = design.loadCases.find((loadCase) => loadCase.id === detailLoadId);
+  const displayedLoadCases = design.loadCases.filter((loadCase) => displayedLoadIds.has(loadCase.id));
 
   useEffect(() => {
     if (!aerodynamicResults.some((result) => result.id === selectedAerodynamicResultId)) setSelectedAerodynamicResultId(aerodynamicResults[0]?.id ?? null);
@@ -38,6 +44,10 @@ export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSav
   useEffect(() => {
     if (!aerodynamicRows.some((row) => row.alpha === selectedAerodynamicAlpha)) setSelectedAerodynamicAlpha(preferredAerodynamicAlpha(selectedAerodynamicResult));
   }, [aerodynamicRows, selectedAerodynamicAlpha, selectedAerodynamicResult]);
+  useEffect(() => {
+    setDisplayedLoadIds((current) => new Set([...current].filter((id) => design.loadCases.some((loadCase) => loadCase.id === id))));
+    if (detailLoadId && !design.loadCases.some((loadCase) => loadCase.id === detailLoadId)) setDetailLoadId(null);
+  }, [design.loadCases, detailLoadId]);
 
   const update = (id: string, patch: Partial<StructuralLoadCase>) => onSaveDesign({
     ...design,
@@ -61,23 +71,43 @@ export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSav
     }],
   });
 
+  const addElliptical = () => onSaveDesign({
+    ...design,
+    loadCases: [...design.loadCases, createEllipticalLoadCase({
+      aircraft,
+      grossMass,
+      loadCaseId: createStructuralId("load-elliptical"),
+    })],
+  });
+
   const confirmDelete = () => {
     if (!pendingDelete) return;
     if (pendingDelete.kind === "load-case") {
       onSaveDesign({ ...design, loadCases: design.loadCases.filter((item) => item.id !== pendingDelete.id) });
     } else if (pendingDelete.kind === "distributed-load") {
-      if (selectedLoad) update(selectedLoad.id, { distributedLoads: selectedLoad.distributedLoads.filter((_, index) => index !== pendingDelete.index) });
-    } else if (selectedLoad) {
-      update(selectedLoad.id, { pointLoads: selectedLoad.pointLoads.filter((item) => item.id !== pendingDelete.id) });
+      const loadCase = design.loadCases.find((item) => item.id === pendingDelete.loadCaseId);
+      if (loadCase) update(loadCase.id, { distributedLoads: loadCase.distributedLoads.filter((_, index) => index !== pendingDelete.index) });
+    } else {
+      const loadCase = design.loadCases.find((item) => item.id === pendingDelete.loadCaseId);
+      if (loadCase) update(loadCase.id, { pointLoads: loadCase.pointLoads.filter((item) => item.id !== pendingDelete.id) });
     }
     setPendingDelete(null);
   };
 
   return <div className="space-y-5">
-    <Card>
+    <Card aria-label="荷重点グラフ">
+      <CardHeader>
+        <h2 className="font-semibold">荷重点グラフ</h2>
+        <p className="mt-1 text-sm text-slate-500">チェックした荷重ケースの分布荷重を重ねて比較します。</p>
+      </CardHeader>
+      <CardBody><StructuralLoadComparisonChart loadCases={displayedLoadCases} /></CardBody>
+    </Card>
+
+    <Card aria-label="構造荷重ケース">
       <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-        <div><h2 className="font-semibold">構造荷重ケース</h2><p className="mt-1 text-sm text-slate-500">荷重倍数と安全係数は解析荷重へ乗算されます。</p></div>
+        <div><h2 className="font-semibold">構造荷重ケース</h2><p className="mt-1 text-sm text-slate-500">想定重量 {grossMass.toLocaleString()} kg の楕円分布を初期基準にし、空力荷重と比較します。</p></div>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" aria-label="想定重量から楕円分布を作成" onClick={addElliptical}><Plus size={15} />楕円分布</Button>
           <Button size="sm" variant="secondary" onClick={addManual}><Plus size={15} />手入力</Button>
           {selectedAerodynamicResult ? <>
             <select aria-label="空力解析結果" value={selectedAerodynamicResult.id} onChange={(event) => { setSelectedAerodynamicResultId(event.target.value); setSelectedAerodynamicAlpha(preferredAerodynamicAlpha(aerodynamicResults.find((result) => result.id === event.target.value))); }} className="h-8 rounded border bg-white px-2 text-xs">
@@ -91,33 +121,36 @@ export function StructuralLoadsTab({ design, aircraft, aerodynamicResults, onSav
         </div>
       </CardHeader>
       <CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm">
-        <thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">ケース</th><th>荷重源</th><th>荷重倍数</th><th>安全係数</th><th>最大分布荷重</th><th>状態</th><th className="text-right">操作</th></tr></thead>
-        <tbody>{design.loadCases.map((loadCase) => <tr key={loadCase.id} className={`border-t ${loadCase.id === selectedLoad?.id ? "bg-blue-50" : ""}`} onClick={() => setSelectedLoadId(loadCase.id)}>
-          <td className="px-2 py-3 font-medium">{loadCase.name}</td><td>{sourceLabel(loadCase.source)}</td>
+        <thead className="text-xs text-slate-500"><tr><th className="w-16 px-2 py-2 text-center">表示</th><th>ケース</th><th>荷重源</th><th>荷重倍数</th><th>安全係数</th><th>最大分布荷重</th><th>状態</th><th className="text-right">操作</th></tr></thead>
+        <tbody>{design.loadCases.map((loadCase) => {
+          const running = runningLoadCaseIds.includes(loadCase.id);
+          return <tr key={loadCase.id} className="border-t">
+          <td className="px-2 py-3 text-center"><input type="checkbox" aria-label={`${loadCase.name}をグラフに表示`} checked={displayedLoadIds.has(loadCase.id)} onChange={() => setDisplayedLoadIds((current) => { const next = new Set(current); if (next.has(loadCase.id)) next.delete(loadCase.id); else next.add(loadCase.id); return next; })} /></td>
+          <td className="font-medium">{loadCase.name}</td><td>{sourceLabel(loadCase.source)}</td>
           <td><input aria-label={`${loadCase.name}の荷重倍数`} className="h-8 w-20 rounded border px-2" type="number" step="0.1" value={loadCase.loadFactor} onChange={(event) => update(loadCase.id, { loadFactor: Number(event.target.value) })} /></td>
           <td><input aria-label={`${loadCase.name}の安全係数`} className="h-8 w-20 rounded border px-2" type="number" step="0.1" value={loadCase.safetyFactor} onChange={(event) => update(loadCase.id, { safetyFactor: Number(event.target.value) })} /></td>
           <td>{Math.max(0, ...loadCase.distributedLoads.map((load) => load.liftPerLength)).toFixed(1)} N/m</td>
           <td><Badge tone={loadCase.status === "completed" ? "green" : loadCase.status === "needs-review" ? "amber" : "slate"}>{statusLabel(loadCase.status)}</Badge></td>
-          <td className="text-right"><div className="flex justify-end gap-1"><Button size="sm" aria-label={`${loadCase.name}を解析`} onClick={() => onRun(loadCase)}><Play size={15} />解析</Button><RowActions entityLabel={loadCase.name} delete={{ onAction: () => setPendingDelete({ kind: "load-case", id: loadCase.id, label: loadCase.name }) }} /></div></td>
-        </tr>)}</tbody>
+          <td className="text-right"><div className="flex justify-end gap-1">{running ? <Button size="sm" variant="destructive" aria-label={`${loadCase.name}の解析をキャンセル`} onClick={() => onCancel(loadCase.id)}>キャンセル</Button> : <Button size="sm" aria-label={`${loadCase.name}を解析`} onClick={() => onRun(loadCase)}><Play size={15} />解析</Button>}<RowActions entityLabel={loadCase.name} detail={{ active: detailLoadId === loadCase.id, onAction: () => setDetailLoadId(loadCase.id) }} delete={{ onAction: () => setPendingDelete({ kind: "load-case", id: loadCase.id, label: loadCase.name }) }} /></div></td>
+        </tr>;
+        })}</tbody>
       </table>{!design.loadCases.length ? <p className="py-5 text-sm text-slate-500">荷重ケースを作成してください。</p> : null}</div></CardBody>
     </Card>
 
-    {selectedLoad ? <Card>
-      <CardHeader className="flex items-center justify-between">
-        <h2 className="font-semibold">荷重点 — {selectedLoad.name}</h2>
-        <div className="flex gap-2"><Button size="sm" variant="secondary" onClick={() => update(selectedLoad.id, { pointLoads: [...selectedLoad.pointLoads, { id: createStructuralId("point-load"), yPosition: structuralSpan(design) || aircraft.span / 2, force: 0, torque: 0 }] })}><Plus size={15} />集中荷重</Button><Button size="sm" onClick={() => update(selectedLoad.id, { distributedLoads: [...selectedLoad.distributedLoads, { yPosition: structuralSpan(design) || aircraft.span / 2, liftPerLength: 0, torquePerLength: 0 }] })}><Plus size={15} />分布荷重点</Button></div>
-      </CardHeader>
-      <CardBody className="space-y-4">
-        <StructuralResultChart points={selectedLoad.distributedLoads.map((load) => ({ x: load.yPosition, value: load.liftPerLength }))} label="分布荷重 N/m" />
+    <InspectorDrawer open={Boolean(detailLoad)} title="構造荷重ケース詳細" subtitle={detailLoad?.name} closeLabel="構造荷重ケース詳細を閉じる" width="wide" onClose={() => setDetailLoadId(null)}>
+      {detailLoad ? <div className="space-y-5">
+        <div className="flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={() => update(detailLoad.id, { pointLoads: [...detailLoad.pointLoads, { id: createStructuralId("point-load"), yPosition: structuralSpan(design) || aircraft.span / 2, force: 0, torque: 0 }] })}><Plus size={15} />集中荷重</Button><Button size="sm" onClick={() => update(detailLoad.id, { distributedLoads: [...detailLoad.distributedLoads, { yPosition: structuralSpan(design) || aircraft.span / 2, liftPerLength: 0, torquePerLength: 0 }] })}><Plus size={15} />分布荷重点</Button></div>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">分布荷重点</h3>
         <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">Y位置 m</th><th>揚力 N/m</th><th>トルク Nm/m</th><th className="text-right">操作</th></tr></thead><tbody>
-          {selectedLoad.distributedLoads.map((load, index) => <tr key={`${load.yPosition}-${index}`} className="border-t"><td className="px-2 py-2"><input aria-label={`荷重点${index + 1}の位置`} type="number" value={load.yPosition} onChange={(event) => updateDistributedLoadPoint(design, selectedLoad, index, { yPosition: Number(event.target.value) }, onSaveDesign)} className="h-8 w-24 rounded border px-2" /></td><td><input aria-label={`荷重点${index + 1}の揚力`} type="number" value={load.liftPerLength} onChange={(event) => updateDistributedLoadPoint(design, selectedLoad, index, { liftPerLength: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td><input aria-label={`荷重点${index + 1}のトルク`} type="number" value={load.torquePerLength} onChange={(event) => updateDistributedLoadPoint(design, selectedLoad, index, { torquePerLength: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td className="text-right"><RowActions entityLabel={`荷重点${index + 1}`} delete={{ disabled: selectedLoad.distributedLoads.length <= 2, disabledReason: selectedLoad.distributedLoads.length <= 2 ? "最低2点の分布荷重が必要です" : undefined, onAction: () => setPendingDelete({ kind: "distributed-load", index, label: `荷重点${index + 1}` }) }} /></td></tr>)}
+          {detailLoad.distributedLoads.map((load, index) => <tr key={`${load.yPosition}-${index}`} className="border-t"><td className="px-2 py-2"><input aria-label={`荷重点${index + 1}の位置`} type="number" value={load.yPosition} onChange={(event) => updateDistributedLoadPoint(design, detailLoad, index, { yPosition: Number(event.target.value) }, onSaveDesign)} className="h-8 w-24 rounded border px-2" /></td><td><input aria-label={`荷重点${index + 1}の揚力`} type="number" value={load.liftPerLength} onChange={(event) => updateDistributedLoadPoint(design, detailLoad, index, { liftPerLength: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td><input aria-label={`荷重点${index + 1}のトルク`} type="number" value={load.torquePerLength} onChange={(event) => updateDistributedLoadPoint(design, detailLoad, index, { torquePerLength: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td className="text-right"><RowActions entityLabel={`荷重点${index + 1}`} delete={{ disabled: detailLoad.distributedLoads.length <= 2, disabledReason: detailLoad.distributedLoads.length <= 2 ? "最低2点の分布荷重が必要です" : undefined, onAction: () => setPendingDelete({ kind: "distributed-load", loadCaseId: detailLoad.id, index, label: `荷重点${index + 1}` }) }} /></td></tr>)}
         </tbody></table></div>
-        {selectedLoad.pointLoads.length ? <div className="overflow-x-auto"><h3 className="mb-2 text-sm font-semibold">集中荷重</h3><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">Y位置 m</th><th>荷重 N</th><th>トルク Nm</th><th className="text-right">操作</th></tr></thead><tbody>
-          {selectedLoad.pointLoads.map((load, index) => <tr key={load.id} className="border-t"><td className="px-2 py-2"><input aria-label={`集中荷重${index + 1}の位置`} type="number" value={load.yPosition} onChange={(event) => updatePointLoad(design, selectedLoad, load.id, { yPosition: Number(event.target.value) }, onSaveDesign)} className="h-8 w-24 rounded border px-2" /></td><td><input aria-label={`集中荷重${index + 1}の荷重`} type="number" value={load.force} onChange={(event) => updatePointLoad(design, selectedLoad, load.id, { force: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td><input aria-label={`集中荷重${index + 1}のトルク`} type="number" value={load.torque} onChange={(event) => updatePointLoad(design, selectedLoad, load.id, { torque: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td className="text-right"><RowActions entityLabel={`集中荷重${index + 1}`} delete={{ onAction: () => setPendingDelete({ kind: "point-load", id: load.id, label: `集中荷重${index + 1}` }) }} /></td></tr>)}
+        </div>
+        {detailLoad.pointLoads.length ? <div className="overflow-x-auto"><h3 className="mb-2 text-sm font-semibold">集中荷重</h3><table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="px-2 py-2">Y位置 m</th><th>荷重 N</th><th>トルク Nm</th><th className="text-right">操作</th></tr></thead><tbody>
+          {detailLoad.pointLoads.map((load, index) => <tr key={load.id} className="border-t"><td className="px-2 py-2"><input aria-label={`集中荷重${index + 1}の位置`} type="number" value={load.yPosition} onChange={(event) => updatePointLoad(design, detailLoad, load.id, { yPosition: Number(event.target.value) }, onSaveDesign)} className="h-8 w-24 rounded border px-2" /></td><td><input aria-label={`集中荷重${index + 1}の荷重`} type="number" value={load.force} onChange={(event) => updatePointLoad(design, detailLoad, load.id, { force: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td><input aria-label={`集中荷重${index + 1}のトルク`} type="number" value={load.torque} onChange={(event) => updatePointLoad(design, detailLoad, load.id, { torque: Number(event.target.value) }, onSaveDesign)} className="h-8 w-28 rounded border px-2" /></td><td className="text-right"><RowActions entityLabel={`集中荷重${index + 1}`} delete={{ onAction: () => setPendingDelete({ kind: "point-load", loadCaseId: detailLoad.id, id: load.id, label: `集中荷重${index + 1}` }) }} /></td></tr>)}
         </tbody></table></div> : null}
-      </CardBody>
-    </Card> : null}
+      </div> : null}
+    </InspectorDrawer>
 
     <DeleteConfirmationDialog open={Boolean(pendingDelete)} title={deleteTitle(pendingDelete)} description={pendingDelete ? `「${pendingDelete.label}」を削除します。` : ""} onCancel={() => setPendingDelete(null)} onConfirm={confirmDelete} />
   </div>;

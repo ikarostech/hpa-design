@@ -42,6 +42,12 @@ export interface StaticAeroelasticResult {
   warnings: string[];
 }
 
+export interface StaticAeroelasticProgress {
+  completed: number;
+  total: number;
+  message: string;
+}
+
 const defaultSettings: StaticAeroelasticSettings = {
   maxIterations: 50,
   relaxationFactor: 0.3,
@@ -61,6 +67,7 @@ export function executeStaticAeroelasticAnalysis({
   condition,
   polars = [],
   settings: settingOverrides = {},
+  onProgress = () => undefined,
 }: {
   resultId: string;
   aircraft: AircraftGeometry;
@@ -72,6 +79,7 @@ export function executeStaticAeroelasticAnalysis({
   condition: AeroelasticCondition;
   polars?: readonly AirfoilPolar[];
   settings?: Partial<StaticAeroelasticSettings>;
+  onProgress?: (progress: StaticAeroelasticProgress) => void;
 }): StaticAeroelasticResult {
   const settings = { ...defaultSettings, ...settingOverrides };
   validateInputs(aircraft, structuralDesign, density, speed, elasticAxisChordFraction, settings);
@@ -133,6 +141,7 @@ export function executeStaticAeroelasticAnalysis({
       liftResidual,
     };
     iterations.push(history);
+    onProgress({ completed: iteration, total: settings.maxIterations, message: `連成反復 ${iteration}/${settings.maxIterations}` });
 
     if (!finiteIteration(history) || transferred.points.some((point) => !finiteSpanLoad(point))) {
       status = "diverged";

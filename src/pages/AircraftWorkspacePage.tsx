@@ -13,6 +13,7 @@ import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationD
 import { OrderedEntityTable, type OrderedTableColumn } from "../shared/ui/table/OrderedEntityTable";
 import { RowActions } from "../shared/ui/table/RowActions";
 import { PageTemplate } from "../shared/ui/layout/PageTemplate";
+import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 
 interface AircraftWorkspacePageProps {
   aircraft: AircraftGeometry;
@@ -115,13 +116,14 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
 
   return (
     <PageTemplate
-      title="機体ワークスペース"
-      description="XFLR5形式の主翼セクションを編集し、検証後に解析用ジオメトリへ保存します。"
+      title="空力設計"
+      description="主翼形状と翼型配置を編集し、剛体翼解析に使用するジオメトリを定義します。"
       actions={<>
           <Button variant="secondary" disabled={!dirty} onClick={() => formController.reset()}>キャンセル</Button>
           <Button disabled={!dirty || !validation.valid} onClick={() => void formController.submit()}><Save size={16} />保存</Button>
-          <Button onClick={() => navigate("/analysis")}>解析に進む<ChevronRight size={16} /></Button>
+          <Button onClick={() => navigate("/aerodynamics/analysis")}>解析に進む<ChevronRight size={16} /></Button>
       </>}
+      tabs={<AerodynamicDesignTabs />}
       notices={<>
         {!validation.valid && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから保存してください。</div>}
         {!airfoils.length && <div role="status" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">翼型ライブラリが空です。機体に翼型を割り当てるには、先に翼型を追加してください。</div>}
@@ -174,7 +176,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
         <div className="flex items-center gap-3 text-sm text-amber-900"><AlertTriangle size={18} /><span>Polar未作成の翼型があります。解析前に翼型解析を完了してください。</span></div>
-        <Button variant="secondary" onClick={() => navigate("/airfoils")}>Polarへ移動</Button>
+        <Button variant="secondary" onClick={() => navigate("/aerodynamics/airfoils")}>Polarへ移動</Button>
       </div>
 
       <DeleteConfirmationDialog

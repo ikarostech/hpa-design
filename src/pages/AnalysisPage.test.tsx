@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +6,7 @@ import { AnalysisPage } from "./AnalysisPage";
 import { ResultsPage } from "./ResultsPage";
 import { JobProvider } from "../shared/jobs/JobProvider";
 import type { StructuralAnalysisResult } from "../features/structures/model/types";
+import { JobStatusButton } from "../shared/jobs/JobStatusButton";
 
 vi.mock("../features/airfoils/components/PolarCharts", () => ({
   PolarCharts: ({ series = [] }: { series?: Array<{ id: string; name: string }> }) => <div data-testid="polar-charts">{series.map((item) => <span key={item.id}>{item.name}</span>)}</div>,
@@ -67,7 +68,7 @@ describe("AnalysisPage", () => {
     const user = userEvent.setup();
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { name: "空力解析" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "空力設計" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "解析ケース" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "操作" })).toBeTruthy();
 
@@ -88,12 +89,35 @@ describe("AnalysisPage", () => {
     expect(screen.getByRole("button", { name: "解析ケースを保存" })).toBeTruthy();
   });
 
-  it("keeps aerodynamic and structural execution as separate workflows", () => {
-    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+  it("presents rigid-wing analysis as a tab of aerodynamic design", () => {
+    render(<MemoryRouter initialEntries={["/aerodynamics/analysis"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
+    expect(screen.getByRole("heading", { name: "空力設計" })).toBeTruthy();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼形状", "空力解析"]);
+    expect(screen.getByRole("tab", { name: "空力解析" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "解析" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "結果" })).toBeNull();
+  });
+
+  it("keeps an aerodynamic analysis registered while its worker result is pending", async () => {
+    const user = userEvent.setup();
+    const saveResult = vi.fn();
+    let finish!: (result: (typeof results)[number]) => void;
+    let reportProgress!: (progress: { completed: number; total: number; message?: string }) => void;
+    const pending = new Promise<(typeof results)[number]>((resolve) => { finish = resolve; });
+    const analysisRunner = { run: vi.fn((_input, _signal, onProgress) => { reportProgress = onProgress; return pending; }) };
+    render(<MemoryRouter><JobProvider><JobStatusButton /><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisRunner={analysisRunner} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={saveResult} /></JobProvider></MemoryRouter>);
+
+    await user.click(screen.getByRole("button", { name: "Climbを詳細表示" }));
+    await user.click(screen.getByRole("button", { name: "Climbを解析" }));
+
+    expect(screen.getByRole("button", { name: "解析中 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "解析をキャンセル" })).toBeTruthy();
+    reportProgress({ completed: 2, total: 7, message: "VLM: 2°" });
+    await waitFor(() => expect(screen.getByText(/VLM: 2°/)).toBeTruthy());
+    expect(saveResult).not.toHaveBeenCalled();
+
+    finish(results[1]);
+    await waitFor(() => expect(saveResult).toHaveBeenCalledWith(results[1]));
   });
 
   it("shows the selected case result charts instead of the wing layout", async () => {

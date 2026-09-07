@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Job, JobStatus } from "@/shared/model";
 import { transitionJob } from "./jobState";
 
@@ -36,6 +36,7 @@ const JobContext = createContext<JobContextValue | null>(null);
 
 export function JobProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<AppJob[]>([]);
+  const jobsRef = useRef<AppJob[]>([]);
   const [toasts, setToasts] = useState<JobToast[]>([]);
 
   const pushToast = (toast: Omit<JobToast, "id">) => {
@@ -56,15 +57,17 @@ export function JobProvider({ children }: { children: ReactNode }) {
         createdAt: job.createdAt ?? new Date().toISOString(),
       } as AppJob;
 
-      setJobs((current) => [createdJob, ...current]);
+      jobsRef.current = [createdJob, ...jobsRef.current];
+      setJobs(jobsRef.current);
       return createdJob as TJob;
     },
     updateJob: <TJob extends AppJob>(jobId: string, patch: JobPatch<TJob>) => {
-      setJobs((current) => current.map((job) => job.id === jobId ? { ...job, ...patch } : job));
+      jobsRef.current = jobsRef.current.map((job) => job.id === jobId ? { ...job, ...patch } : job);
+      setJobs(jobsRef.current);
     },
     completeJob: <TJob extends AppJob>(jobId: string, patch: JobPatch<TJob> = {}) => {
-      const jobName = jobs.find((job) => job.id === jobId)?.name;
-      setJobs((current) => current.map((job) => {
+      const jobName = jobsRef.current.find((job) => job.id === jobId)?.name;
+      jobsRef.current = jobsRef.current.map((job) => {
         if (job.id !== jobId) {
           return job;
         }
@@ -78,7 +81,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
           status: "completed",
           finishedAt: new Date().toISOString(),
         };
-      }));
+      });
+      setJobs(jobsRef.current);
       if (jobName) {
         pushToast({
           jobId,
@@ -88,8 +92,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
       }
     },
     failJob: (jobId, errorMessage) => {
-      const jobName = jobs.find((job) => job.id === jobId)?.name;
-      setJobs((current) => current.map((job) => {
+      const jobName = jobsRef.current.find((job) => job.id === jobId)?.name;
+      jobsRef.current = jobsRef.current.map((job) => {
         if (job.id !== jobId) {
           return job;
         }
@@ -103,7 +107,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
           finishedAt: new Date().toISOString(),
           errorMessage,
         };
-      }));
+      });
+      setJobs(jobsRef.current);
       if (jobName) {
         pushToast({
           jobId,
@@ -114,19 +119,21 @@ export function JobProvider({ children }: { children: ReactNode }) {
       }
     },
     cancelJob: (jobId) => {
-      setJobs((current) => current.map((job) => {
+      jobsRef.current = jobsRef.current.map((job) => {
         if (job.id !== jobId) {
           return job;
         }
         const transitioned = transitionJob(job, "cancelled");
         return transitioned === job ? job : { ...transitioned, finishedAt: new Date().toISOString() };
-      }));
+      });
+      setJobs(jobsRef.current);
     },
     clearCompleted: (kind) => {
-      setJobs((current) => current.filter((job) => (
+      jobsRef.current = jobsRef.current.filter((job) => (
         job.status !== "completed"
         && job.status !== "cancelled"
-      ) || (kind !== undefined && job.kind !== kind)));
+      ) || (kind !== undefined && job.kind !== kind));
+      setJobs(jobsRef.current);
     },
     dismissToast: (toastId) => {
       setToasts((current) => current.filter((toast) => toast.id !== toastId));

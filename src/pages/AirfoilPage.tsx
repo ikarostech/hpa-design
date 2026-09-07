@@ -13,6 +13,7 @@ import { useAirfoilWorkspace } from "../features/airfoils/hooks/useAirfoilWorksp
 import type { AirfoilWorkspaceData } from "../features/airfoils/model/workspace";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 import { PageTemplate } from "../shared/ui/layout/PageTemplate";
+import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 
 export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const workspace = useAirfoilWorkspace(data);
@@ -26,7 +27,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
   const pendingReferences = pendingAirfoil ? workspace.referencesForAirfoil(pendingAirfoil.id) : [];
 
   return (
-    <PageTemplate title="翼型ライブラリ" description="翼型の比較、Polar設定、解析結果を確認します。">
+    <PageTemplate title="空力設計" description="翼型を管理し、2次元 Polar を作成・比較します。" tabs={<AerodynamicDesignTabs />}>
 
       <AirfoilChartPanel data={workspace.polarPoints} series={workspace.chartSeries} />
 
@@ -55,7 +56,7 @@ export function AirfoilPage({ data }: { data: AirfoilWorkspaceData }) {
           onDeleteRun={(run) => setPendingRunId(run.id)}
           onExportRun={(run, format) => void exportRun(data.designName, run, workspace.polars, format)}
         />
-        <AirfoilNextStepsCard onAssignToWing={() => workspace.selected ? navigate(`/aircraft?airfoilId=${encodeURIComponent(workspace.selected.id)}`) : setNextStepError("翼型を選択してください。")} onAddAnalysisCase={() => workspace.polars.length ? navigate("/analysis") : setNextStepError("先に少なくとも1件のPolar解析を完了してください。")} onCompareAirfoils={workspace.compareAllRuns} />
+        <AirfoilNextStepsCard onAssignToWing={() => workspace.selected ? navigate(`/aerodynamics/geometry?airfoilId=${encodeURIComponent(workspace.selected.id)}`) : setNextStepError("翼型を選択してください。")} onAddAnalysisCase={() => workspace.polars.length ? navigate("/aerodynamics/analysis") : setNextStepError("先に少なくとも1件のPolar解析を完了してください。")} onCompareAirfoils={workspace.compareAllRuns} />
         {nextStepError ? <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{nextStepError}</p> : null}
       </div>
 

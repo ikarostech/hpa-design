@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AircraftGeometry } from "../features/aircraft/model/types";
 import { createAnalysisCase, createAnalysisCaseDraft, type AnalysisCaseDraft, updateAnalysisCase, validateAnalysisCaseDraft } from "../features/analysis/model/analysisCaseDraft";
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
-import { AnalysisExecutionCancelledError, executeAnalysisCase } from "../features/analysis/services/analysisExecutionService";
+import { AnalysisExecutionCancelledError } from "../features/analysis/services/analysisExecutionService";
+import { webAircraftAnalysisRunner, type AircraftAnalysisRunner } from "../features/analysis/services/webAircraftAnalysisRunner";
 import { PolarCharts } from "../features/airfoils/components/PolarCharts";
 import type { AirfoilPolar } from "../features/airfoils/model/types";
 import { useJobs } from "../shared/jobs/JobProvider";
@@ -16,6 +17,7 @@ import { InspectorDrawer } from "../shared/ui/inspector/InspectorDrawer";
 import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 import { RowActions } from "../shared/ui/table/RowActions";
 import { TableActionCell, TableActionHeader } from "../shared/ui/table/TableActionColumn";
+import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 
 interface AnalysisPageProps {
   aircraft: AircraftGeometry;
@@ -24,12 +26,13 @@ interface AnalysisPageProps {
   polars: readonly AirfoilPolar[];
   analysisCaseRepository: EntityRepository<AnalysisCase, string>;
   saveAnalysisResult: (result: AnalysisResult) => void;
+  analysisRunner?: AircraftAnalysisRunner;
 }
 
 type AnalysisJob = Job<string, AnalysisResult, { caseId: string }>;
 type EditorMode = "create" | "edit" | null;
 
-export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult }: AnalysisPageProps) {
+export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRepository, saveAnalysisResult, analysisRunner = webAircraftAnalysisRunner }: AnalysisPageProps) {
   const jobs = useJobs();
   const controllers = useRef(new Map<string, AbortController>());
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(cases[0]?.id ?? null);
@@ -117,14 +120,12 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
       settings: { caseId: analysisCase.id },
     });
     try {
-      const result = await executeAnalysisCase({
+      const result = await analysisRunner.run({
         analysisCase,
         aircraft,
         polars,
-        signal: controller.signal,
-        createId: () => createId("analysis-result"),
-        onProgress: (progress) => jobs.updateJob<AnalysisJob>(jobId, { progress }),
-      });
+        resultId: createId("analysis-result"),
+      }, controller.signal, (progress) => jobs.updateJob<AnalysisJob>(jobId, { progress }));
       saveAnalysisResult(result);
       jobs.completeJob<AnalysisJob>(jobId, { result, progress: { completed: result.rows.length, total: result.rows.length } });
     } catch (error) {
@@ -140,8 +141,9 @@ export function AnalysisPage({ aircraft, cases, results, polars, analysisCaseRep
 
   return (
     <PageTemplate
-      title="空力解析"
-      description="LLT / VLM の解析ケースを管理し、翼の空力特性を比較します。"
+      title="空力設計"
+      description="剛体翼の LLT / VLM 解析ケースを管理し、翼の空力特性を比較します。"
+      tabs={<AerodynamicDesignTabs />}
     >
 
       <div className="space-y-5">

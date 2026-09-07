@@ -16,23 +16,30 @@ describe("Sidebar", () => {
     expect(sidebar.className).toContain("overflow-y-auto");
   });
 
-  it("links results to a dedicated page and marks only that page active", () => {
-    render(<MemoryRouter initialEntries={["/results"]}><Sidebar /></MemoryRouter>);
+  it("presents aerodynamic, structural, and FSI design domains as peer pages", () => {
+    render(<MemoryRouter initialEntries={["/fsi"]}><Sidebar /></MemoryRouter>);
 
-    const resultLink = screen.getByRole("link", { name: "結果" });
-    expect(resultLink.getAttribute("href")).toBe("/results");
-    expect(resultLink.className).toContain("bg-blue-50");
-    expect(screen.getByRole("link", { name: "空力解析" }).className).not.toContain("bg-blue-50");
+    const links = screen.getAllByRole("link");
+    expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["設計概要", "/"],
+      ["概要設計", "/conceptual-design"],
+      ["空力設計", "/aerodynamics/airfoils"],
+      ["構造設計", "/structures"],
+      ["空力・構造連成（FSI）", "/fsi"],
+      ["入出力", "/export"],
+    ]);
+    expect(screen.getByRole("link", { name: "空力・構造連成（FSI）" }).className).toContain("bg-blue-50");
+    expect(screen.getByRole("link", { name: "空力設計" }).className).not.toContain("bg-blue-50");
   });
 
-  it("places conceptual design between the dashboard and airfoils", () => {
+  it("places conceptual design between the dashboard and aerodynamic design", () => {
     render(<MemoryRouter><Sidebar /></MemoryRouter>);
 
     const links = screen.getAllByRole("link");
     expect(links.slice(0, 3).map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
       ["設計概要", "/"],
       ["概要設計", "/conceptual-design"],
-      ["翼型", "/airfoils"],
+      ["空力設計", "/aerodynamics/airfoils"],
     ]);
   });
 });

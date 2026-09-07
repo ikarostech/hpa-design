@@ -35,7 +35,7 @@ export function DashboardPage({ document, isDirty, onImportFile, onExport }: Das
     <PageTemplate
       title="設計概要"
       description="現在開いている設計ファイルを編集します。プロジェクトの切り替えはありません。"
-      actions={<Button onClick={() => navigate("/airfoils")}>翼型を編集 <ArrowRight size={16} /></Button>}
+      actions={<Button onClick={() => navigate("/aerodynamics/airfoils")}>空力設計を開く <ArrowRight size={16} /></Button>}
     >
 
       <Card className="overflow-hidden">
@@ -66,9 +66,9 @@ export function DashboardPage({ document, isDirty, onImportFile, onExport }: Das
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <ActionCard title="1. 翼型と Polar" detail="翼型を追加し、XFOIL 解析で Polar を作成します。" action="翼型へ" onClick={() => navigate("/airfoils")} />
-        <ActionCard title="2. 機体設計" detail="主翼形状と翼型の割り当てを編集します。" action="機体設計へ" onClick={() => navigate("/aircraft")} />
-        <ActionCard title="3. 解析と保存" detail="解析結果を確認し、設計ファイルとして保存します。" action="入出力へ" onClick={() => navigate("/export")} />
+        <ActionCard title="1. 空力設計" detail="翼型、主翼形状、剛体翼の空力解析をまとめて進めます。" action="空力設計へ" onClick={() => navigate("/aerodynamics/airfoils")} />
+        <ActionCard title="2. 構造設計" detail="想定荷重から構造案を作成し、強度と変形を評価します。" action="構造設計へ" onClick={() => navigate("/structures")} />
+        <ActionCard title="3. FSI" detail="空力設計と構造設計を連成し、変形後の性能を確認します。" action="FSIへ" onClick={() => navigate("/fsi")} />
       </div>
     </PageTemplate>
   );

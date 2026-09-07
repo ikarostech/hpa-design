@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatChartNumber, formatChartValue } from "../../../shared/lib/chartNumber";
 import type { StructuralAnalysisResult } from "../model/types";
 import { toStructuralSpanDistribution } from "../services/structuralResultDistribution";
 
@@ -66,10 +67,10 @@ function PropertyChart({ title, description, ariaLabel, data, capacityKey, stiff
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 10, right: 14, bottom: 12, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="y" type="number" domain={["dataMin", "dataMax"]} unit=" m" tick={{ fontSize: 11 }} />
-          <YAxis yAxisId="capacity" unit=" Nm" tick={{ fontSize: 11 }} width={72} />
-          <YAxis yAxisId="stiffness" orientation="right" unit=" Nm²" tick={{ fontSize: 11 }} width={82} />
-          <Tooltip />
+          <XAxis dataKey="y" type="number" domain={["dataMin", "dataMax"]} unit=" m" tickFormatter={formatChartNumber} tick={{ fontSize: 11 }} />
+          <YAxis yAxisId="capacity" unit=" Nm" tickFormatter={formatChartNumber} tick={{ fontSize: 11 }} width={72} />
+          <YAxis yAxisId="stiffness" orientation="right" unit=" Nm²" tickFormatter={formatChartNumber} tick={{ fontSize: 11 }} width={82} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Line yAxisId="capacity" dataKey={capacityKey} name={series[capacityKey].label} stroke={series[capacityKey].color} dot={false} strokeWidth={2} connectNulls />
           <Line yAxisId="stiffness" dataKey={stiffnessKey} name={series[stiffnessKey].label} stroke={series[stiffnessKey].color} dot={false} strokeWidth={2} />
         </LineChart>

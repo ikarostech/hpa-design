@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Airfoil } from "../model/types";
+import { formatChartNumber, formatChartValue } from "../../../shared/lib/chartNumber";
 import { getAirfoilShapeDistribution, getAirfoilShapeMetrics } from "../model/shapeMetrics";
 
 interface AirfoilShapeMetricsPanelProps {
@@ -38,9 +39,9 @@ export function AirfoilShapeMetricsPanel({ airfoil }: AirfoilShapeMetricsPanelPr
         <ResponsiveContainer width="100%" height="84%">
           <LineChart data={distribution}>
             <CartesianGrid stroke="#e2e8f0" />
-            <XAxis dataKey="x" unit="%" type="number" tick={{ fontSize: 12 }} />
-            <YAxis unit="%" tick={{ fontSize: 12 }} />
-            <Tooltip />
+            <XAxis dataKey="x" unit="%" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+            <YAxis unit="%" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+            <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
             <Legend />
             <Line type="monotone" dataKey="thickness" name="厚み" stroke="#2563eb" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="camber" name="キャンバー" stroke="#0f766e" strokeWidth={2} dot={false} />

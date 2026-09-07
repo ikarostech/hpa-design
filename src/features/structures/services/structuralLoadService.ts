@@ -2,6 +2,34 @@ import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { AnalysisResult } from "../../analysis/model/types";
 import type { StructuralAnalysisResult, StructuralLoadCase } from "../model/types";
 
+const gravitationalAcceleration = 9.80665;
+
+export function createEllipticalLoadCase({
+  aircraft,
+  grossMass,
+  pointCount = 41,
+  safetyFactor = 1.5,
+  loadCaseId = "structural-load-elliptical",
+}: {
+  aircraft: AircraftGeometry;
+  grossMass: number;
+  pointCount?: number;
+  safetyFactor?: number;
+  loadCaseId?: string;
+}): StructuralLoadCase {
+  if (!(grossMass > 0)) throw new Error("楕円分布荷重の生成には正の想定重量が必要です。");
+  return {
+    id: loadCaseId,
+    name: `想定重量 ${formatMass(grossMass)} kg（楕円分布）`,
+    source: "elliptical",
+    loadFactor: 1,
+    safetyFactor,
+    distributedLoads: createEllipticalDistribution(aircraft, grossMass * gravitationalAcceleration / 2, pointCount),
+    pointLoads: [],
+    status: "not-run",
+  };
+}
+
 export function createLoadCaseFromAerodynamicResult({
   result,
   aircraft,
@@ -42,14 +70,8 @@ export function createLoadCaseFromAerodynamicResult({
     };
   }
 
-  const count = Math.max(3, Math.round(pointCount));
   const targetHalfLift = 0.5 * density * speed ** 2 * aircraft.wingArea * result.clMax / 2;
-  const raw = Array.from({ length: count }, (_, index) => {
-    const yPosition = semiSpan * index / (count - 1);
-    return { yPosition, shape: Math.sqrt(Math.max(0, 1 - (yPosition / semiSpan) ** 2)) };
-  });
-  const rawArea = integrate(raw.map((point) => point.yPosition), raw.map((point) => point.shape));
-  const scale = targetHalfLift / rawArea;
+  const distributedLoads = createEllipticalDistribution(aircraft, targetHalfLift, pointCount);
   return {
     id: `structural-load-${result.id}`,
     name: `${result.caseSnapshot?.name ?? result.caseId} 最大揚力`,
@@ -57,10 +79,27 @@ export function createLoadCaseFromAerodynamicResult({
     aerodynamicResultId: result.id,
     loadFactor: 1,
     safetyFactor,
-    distributedLoads: raw.map((point) => ({ yPosition: point.yPosition, liftPerLength: point.shape * scale, torquePerLength: 0 })),
+    distributedLoads,
     pointLoads: [],
     status: "not-run",
   };
+}
+
+function createEllipticalDistribution(aircraft: AircraftGeometry, targetHalfLift: number, pointCount: number) {
+  const semiSpan = aircraft.span / 2;
+  if (!(semiSpan > 0)) throw new Error("楕円分布荷重の生成には正の翼幅が必要です。");
+  const count = Math.max(3, Math.round(pointCount));
+  const raw = Array.from({ length: count }, (_, index) => {
+    const yPosition = semiSpan * index / (count - 1);
+    return { yPosition, shape: Math.sqrt(Math.max(0, 1 - (yPosition / semiSpan) ** 2)) };
+  });
+  const rawArea = integrate(raw.map((point) => point.yPosition), raw.map((point) => point.shape));
+  const scale = targetHalfLift / rawArea;
+  return raw.map((point) => ({ yPosition: point.yPosition, liftPerLength: point.shape * scale, torquePerLength: 0 }));
+}
+
+function formatMass(value: number) {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 }
 
 export function createStructuralResultCsv(result: StructuralAnalysisResult) {

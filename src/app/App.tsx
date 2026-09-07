@@ -10,7 +10,7 @@ import { createDefaultConceptualDesign } from "../features/conceptual-design/mod
 const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
 const AnalysisPage = lazy(async () => ({ default: (await import("../pages/AnalysisPage")).AnalysisPage }));
-const ResultsPage = lazy(async () => ({ default: (await import("../pages/ResultsPage")).ResultsPage }));
+const FsiPage = lazy(async () => ({ default: (await import("../pages/FsiPage")).FsiPage }));
 const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
 const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
 const StructuresPage = lazy(async () => ({ default: (await import("../pages/StructuresPage")).StructuresPage }));
@@ -20,12 +20,17 @@ export default function App() {
   return <DesignDocumentProvider><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
     <Route path="/" element={<DashboardRoute />} />
     <Route path="/conceptual-design" element={<ConceptualDesignRoute />} />
-    <Route path="/airfoils" element={<AirfoilRoute />} />
-    <Route path="/aircraft" element={<AircraftRoute />} />
-    <Route path="/analysis" element={<AnalysisRoute />} />
-    <Route path="/results" element={<ResultsRoute />} />
+    <Route path="/aerodynamics" element={<Navigate to="/aerodynamics/airfoils" replace />} />
+    <Route path="/aerodynamics/airfoils" element={<AirfoilRoute />} />
+    <Route path="/aerodynamics/geometry" element={<AircraftRoute />} />
+    <Route path="/aerodynamics/analysis" element={<AnalysisRoute />} />
+    <Route path="/fsi" element={<FsiRoute />} />
     <Route path="/structures" element={<StructuresRoute />} />
     <Route path="/export" element={<ExportRoute />} />
+    <Route path="/airfoils" element={<Navigate to="/aerodynamics/airfoils" replace />} />
+    <Route path="/aircraft" element={<Navigate to="/aerodynamics/geometry" replace />} />
+    <Route path="/analysis" element={<Navigate to="/aerodynamics/analysis" replace />} />
+    <Route path="/results" element={<Navigate to="/fsi" replace />} />
     <Route path="/projects/*" element={<Navigate to="/" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense></AppLayout></JobProvider></DesignDocumentProvider>;
@@ -63,14 +68,14 @@ function AnalysisRoute() {
   return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
 }
 
-function ResultsRoute() {
-  const { document } = useDesignDocument();
-  return <ResultsPage cases={document.analysisCases} results={document.analysisResults} structuralResults={document.structuralResults} />;
+function FsiRoute() {
+  const { document, saveAeroelasticResult } = useDesignDocument();
+  return <FsiPage aircraft={document.aircraft} polars={document.polars} materials={document.carbonMaterials} structuralDesigns={document.structuralDesigns} results={document.aeroelasticResults ?? []} onSaveResult={saveAeroelasticResult} />;
 }
 
 function StructuresRoute() {
   const { document, saveCarbonMaterial, removeCarbonMaterial, saveStructuralDesign, removeStructuralDesign, saveStructuralResult } = useDesignDocument();
-  return <StructuresPage aircraft={document.aircraft} aerodynamicResults={document.analysisResults} materials={document.carbonMaterials} designs={document.structuralDesigns} results={document.structuralResults} onSaveMaterial={saveCarbonMaterial} onRemoveMaterial={removeCarbonMaterial} onSaveDesign={saveStructuralDesign} onRemoveDesign={removeStructuralDesign} onSaveResult={saveStructuralResult} />;
+  return <StructuresPage aircraft={document.aircraft} aerodynamicResults={document.analysisResults} grossMass={document.conceptualDesign?.grossMass} materials={document.carbonMaterials} designs={document.structuralDesigns} results={document.structuralResults} onSaveMaterial={saveCarbonMaterial} onRemoveMaterial={removeCarbonMaterial} onSaveDesign={saveStructuralDesign} onRemoveDesign={removeStructuralDesign} onSaveResult={saveStructuralResult} />;
 }
 
 function ExportRoute() {

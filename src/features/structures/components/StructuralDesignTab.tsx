@@ -17,6 +17,7 @@ import {
 } from "../model/structuralWorkspace";
 import type { CarbonMaterial, LaminatePly, StructuralDesign, StructuralTubeSection } from "../model/types";
 import { MaterialPropertyDrawer } from "./MaterialPropertyDrawer";
+import { StructuralDesignPropertiesChart } from "./StructuralDesignPropertiesChart";
 import { TubeSectionDetailDrawer } from "./TubeSectionDetailDrawer";
 
 export function StructuralDesignTab({ design, designs, materials, selectedSectionId, onSelectSection, onSaveDesign, onSaveMaterial, onRemoveMaterial }: {
@@ -58,6 +59,11 @@ export function StructuralDesignTab({ design, designs, materials, selectedSectio
         {selectedSummary ? <><ReadValue label="積層厚さ / 内径" value={`${(selectedSummary.thickness * 1000).toFixed(3)} / ${(selectedSummary.innerDiameter * 1000).toFixed(2)} mm`} /><ReadValue label="単位長さ重量" value={`${selectedSummary.linearMass.toFixed(3)} kg/m`} /></> : null}
       </> : <p className="text-sm text-slate-500">パイプセクションを選択してください。</p>}</CardBody></Card>
     </div>
+
+    <Card>
+      <CardHeader><h2 className="font-semibold">パイプ設計特性</h2><p className="mt-1 text-sm text-slate-500">パイプ設計の変更を、翼幅方向の曲げ強度・破壊モードと剛性へリアルタイムに反映します。</p></CardHeader>
+      <CardBody><StructuralDesignPropertiesChart design={design} materials={materials} selectedSectionId={selected?.id} /></CardBody>
+    </Card>
 
     <Card>
       <CardHeader className="flex items-center justify-between"><div><h2 className="font-semibold">CFRPパイプセクション</h2><p className="mt-1 text-sm text-slate-500">各セクションは指定長さの全域で同じ外径・積層構成です。線形補間は行いません。</p></div><Button size="sm" onClick={() => { const section = createTubeSection(materials[0]); onSaveDesign({ ...design, sections: [...design.sections, section] }); onSelectSection(section.id); }} disabled={!materials.length}><Plus size={15} />セクション</Button></CardHeader>

@@ -1,9 +1,15 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { aircraftGeometry, carbonMaterials, structuralDesigns } from "../mocks/mockData";
+import { executeStructuralAnalysis } from "../features/structures/services/structuralAnalysis";
 import { StructuresPage } from "./StructuresPage";
+import { JobProvider } from "../shared/jobs/JobProvider";
+import { JobStatusButton } from "../shared/jobs/JobStatusButton";
+import type { ReactNode } from "react";
+
+function render(ui: ReactNode) { return rtlRender(<JobProvider>{ui}</JobProvider>); }
 
 afterEach(cleanup);
 
@@ -64,18 +70,49 @@ describe("StructuresPage", () => {
     expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({ supports: [] }));
   });
 
-  it("confirms before deleting a structural load case", async () => {
+  it("organizes structural concepts, baseline loads, and uncoupled analysis as one design workspace", async () => {
     const user = userEvent.setup();
-    const saveDesign = vi.fn();
-    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
-    await user.click(screen.getByRole("tab", { name: "荷重ケース" }));
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={vi.fn()} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
 
-    await user.click(screen.getByRole("button", { name: "巡航楕円荷重を削除" }));
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["構造案", "基準荷重", "単独解析"]);
+    expect(screen.getByRole("img", { name: "パイプ設計の曲げ強度と破壊モード" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "パイプ設計の曲げ剛性" })).toBeTruthy();
 
-    const dialog = screen.getByRole("alertdialog", { name: "荷重ケースを削除" });
-    expect(saveDesign).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "削除する" }));
-    expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({ loadCases: [] }));
+    await user.click(screen.getByRole("tab", { name: "基準荷重" }));
+    expect(screen.getByRole("heading", { name: "構造荷重ケース" })).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "巡航楕円荷重をグラフに表示" })).toBeTruthy();
+  });
+
+  it("runs a baseline load case and moves to uncoupled analysis", async () => {
+    const user = userEvent.setup();
+    const saveResult = vi.fn();
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} analysisRunner={{ run: async (input) => executeStructuralAnalysis(input) }} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={vi.fn()} onRemoveDesign={vi.fn()} onSaveResult={saveResult} /></MemoryRouter>);
+
+    await user.click(screen.getByRole("tab", { name: "基準荷重" }));
+    await user.click(screen.getByRole("button", { name: "巡航楕円荷重を解析" }));
+
+    await waitFor(() => expect(saveResult).toHaveBeenCalledWith(expect.objectContaining({ designId: "main-spar-1", loadCaseId: "structure-load-cruise", status: "completed" })));
+    expect(screen.getByRole("tab", { name: "単独解析" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("registers a structural analysis job while the worker result is pending", async () => {
+    const user = userEvent.setup();
+    const saveResult = vi.fn();
+    let finish!: (result: ReturnType<typeof executeStructuralAnalysis>) => void;
+    const pendingResult = new Promise<ReturnType<typeof executeStructuralAnalysis>>((resolve) => { finish = resolve; });
+    const analysisRunner = { run: vi.fn(() => pendingResult) };
+    render(<MemoryRouter><JobProvider><JobStatusButton /><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} analysisRunner={analysisRunner} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={vi.fn()} onRemoveDesign={vi.fn()} onSaveResult={saveResult} /></JobProvider></MemoryRouter>);
+
+    await user.click(screen.getByRole("tab", { name: "基準荷重" }));
+    await user.click(screen.getByRole("button", { name: "巡航楕円荷重を解析" }));
+
+    expect(screen.getByRole("button", { name: "巡航楕円荷重の解析をキャンセル" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("巡航楕円荷重を解析中");
+    expect(screen.getByRole("button", { name: "解析中 1" })).toBeTruthy();
+    expect(saveResult).not.toHaveBeenCalled();
+
+    finish(executeStructuralAnalysis({ design: structuralDesigns[0], loadCase: structuralDesigns[0].loadCases[0], materials: carbonMaterials, resultId: "result-worker" }));
+    await waitFor(() => expect(saveResult).toHaveBeenCalledWith(expect.objectContaining({ id: "result-worker" })));
   });
 
   it("opens carbon material properties in a right-side drawer and saves edits", async () => {
@@ -129,24 +166,23 @@ describe("StructuresPage", () => {
     expect(removedMidSection.plies.map((ply: { id: string }) => ply.id)).toEqual(["mid-0", "mid-45p"]);
   });
 
-  it("edits the spar, runs a load case, and exposes result inspection", async () => {
+  it("edits the spar and exposes existing result inspection", async () => {
     const user = userEvent.setup();
     const saveDesign = vi.fn();
-    const saveResult = vi.fn();
-    const { rerender } = render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={saveResult} /></MemoryRouter>);
+    const result = executeStructuralAnalysis({
+      design: structuralDesigns[0],
+      loadCase: structuralDesigns[0].loadCases[0],
+      materials: carbonMaterials,
+      resultId: "result-1",
+    });
+    render(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[result]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={vi.fn()} /></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { name: "主翼カーボンパイプ構造設計" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "構造設計" })).toBeTruthy();
     expect(screen.getAllByText("T700 UD（設計値）").length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "CFRPパイプセクション" })).toBeTruthy();
     fireEvent.change(screen.getByRole("spinbutton", { name: "セクション長さ" }), { target: { value: "0.5" } });
     expect(saveDesign).toHaveBeenCalledWith(expect.objectContaining({ sections: expect.arrayContaining([expect.objectContaining({ id: "spar-root", length: 0.5 })]) }));
-    await user.click(screen.getByRole("tab", { name: "荷重ケース" }));
-    await user.click(screen.getByRole("button", { name: "巡航楕円荷重を解析" }));
-
-    expect(saveResult).toHaveBeenCalledWith(expect.objectContaining({ designId: "main-spar-1", loadCaseId: "structure-load-cruise", status: "completed" }));
-    const result = saveResult.mock.calls[0][0];
-    rerender(<MemoryRouter><StructuresPage aircraft={aircraftGeometry} aerodynamicResults={[]} materials={carbonMaterials} designs={structuralDesigns} results={[result]} onSaveMaterial={vi.fn()} onRemoveMaterial={vi.fn()} onSaveDesign={saveDesign} onRemoveDesign={vi.fn()} onSaveResult={saveResult} /></MemoryRouter>);
-    await user.click(screen.getByRole("tab", { name: "結果" }));
+    await user.click(screen.getByRole("tab", { name: "単独解析" }));
 
     expect(screen.getByText("最小安全率")).toBeTruthy();
     expect(screen.getByText("パイプ固有特性")).toBeTruthy();

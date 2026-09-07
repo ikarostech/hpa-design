@@ -1,5 +1,5 @@
 import { Download, Play } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { CarbonMaterial, StructuralDesign } from "../../structures/model/types";
 import type { AirfoilPolar } from "../../airfoils/model/types";
@@ -8,7 +8,12 @@ import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardHeader } from "../../../shared/ui/Card";
 import { MetricCard } from "../../../shared/ui/MetricCard";
 import { createAeroelasticResultCsv, createAeroelasticResultSummary } from "../services/aeroelasticResultExporter";
-import { executeStaticAeroelasticAnalysis, type StaticAeroelasticResult } from "../services/staticAeroelasticSolver";
+import type { StaticAeroelasticResult } from "../services/staticAeroelasticSolver";
+import { AeroelasticAnalysisCancelledError, webAeroelasticAnalysisRunner, type AeroelasticAnalysisRunner } from "../services/webAeroelasticAnalysisRunner";
+import { useJobs } from "../../../shared/jobs/JobProvider";
+import type { Job } from "../../../shared/model";
+
+type AeroelasticJob = Job<string, StaticAeroelasticResult, { structuralDesignId: string }>;
 
 export function AeroelasticAnalysisPanel({
   aircraft,
@@ -17,6 +22,7 @@ export function AeroelasticAnalysisPanel({
   results,
   onSaveResult,
   polars = [],
+  analysisRunner = webAeroelasticAnalysisRunner,
 }: {
   aircraft: AircraftGeometry;
   materials: readonly CarbonMaterial[];
@@ -24,7 +30,10 @@ export function AeroelasticAnalysisPanel({
   results: readonly StaticAeroelasticResult[];
   onSaveResult: (result: StaticAeroelasticResult) => void;
   polars?: readonly AirfoilPolar[];
+  analysisRunner?: AeroelasticAnalysisRunner;
 }) {
+  const jobs = useJobs();
+  const controller = useRef<AbortController | null>(null);
   const [designId, setDesignId] = useState(structuralDesigns[0]?.id ?? "");
   const [mode, setMode] = useState<"fixed-alpha" | "target-lift">("fixed-alpha");
   const [alphaDegrees, setAlphaDegrees] = useState(4);
@@ -38,17 +47,32 @@ export function AeroelasticAnalysisPanel({
   const [error, setError] = useState<string | null>(null);
   const design = structuralDesigns.find((item) => item.id === designId) ?? structuralDesigns[0];
   const result = localResult ?? results[0];
+  const runningJob = jobs.jobs.find((job): job is AeroelasticJob => job.kind === "aeroelastic-analysis" && job.status === "running");
   const unavailableReason = !design
     ? "先に構造設計を作成してください。"
     : !materials.length
       ? "構造設計で使用する材料を作成してください。"
       : null;
 
-  const run = () => {
-    if (!design) return;
+  const run = async () => {
+    if (!design || runningJob) return;
     setError(null);
+    const jobId = createId("job-aeroelastic-analysis");
+    const startedAt = new Date().toISOString();
+    const nextController = new AbortController();
+    controller.current = nextController;
+    jobs.createJob<AeroelasticJob>({
+      id: jobId,
+      kind: "aeroelastic-analysis",
+      name: "空力構造連成解析",
+      status: "running",
+      createdAt: startedAt,
+      startedAt,
+      progress: { completed: 0, total: 50, message: "連成解析を開始しています…" },
+      settings: { structuralDesignId: design.id },
+    });
     try {
-      const next = executeStaticAeroelasticAnalysis({
+      const next = await analysisRunner.run({
         resultId: createId("aeroelastic-result"),
         aircraft,
         structuralDesign: design,
@@ -60,11 +84,19 @@ export function AeroelasticAnalysisPanel({
         condition: mode === "fixed-alpha"
           ? { mode, alphaDegrees }
           : { mode, targetLift, minimumAlpha, maximumAlpha },
-      });
+      }, nextController.signal, (progress) => jobs.updateJob<AeroelasticJob>(jobId, { progress }));
       setLocalResult(next);
       onSaveResult(next);
+      jobs.completeJob<AeroelasticJob>(jobId, { result: next, progress: { completed: next.iterations.length, total: next.iterations.length, message: "連成解析が完了しました" } });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "空力構造連成解析に失敗しました。");
+      if (cause instanceof AeroelasticAnalysisCancelledError) jobs.cancelJob(jobId);
+      else {
+        const message = cause instanceof Error ? cause.message : "空力構造連成解析に失敗しました。";
+        setError(message);
+        jobs.failJob(jobId, message);
+      }
+    } finally {
+      controller.current = null;
     }
   };
 
@@ -72,10 +104,11 @@ export function AeroelasticAnalysisPanel({
     <Card>
       <CardHeader className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="font-semibold text-slate-950">空力構造連成</h2><p className="mt-1 text-sm text-slate-500">VLM荷重と主翼梁変形を、変形後形状で収束するまで反復します。</p></div>
-        <Button aria-label="連成解析を実行" disabled={Boolean(unavailableReason)} title={unavailableReason ?? "連成解析を実行"} onClick={run}><Play size={16} />連成解析を実行</Button>
+        {runningJob ? <Button variant="destructive" aria-label="連成解析をキャンセル" onClick={() => controller.current?.abort()}>連成解析をキャンセル</Button> : <Button aria-label="連成解析を実行" disabled={Boolean(unavailableReason)} title={unavailableReason ?? "連成解析を実行"} onClick={() => void run()}><Play size={16} />連成解析を実行</Button>}
       </CardHeader>
       <CardBody className="space-y-4">
         {unavailableReason ? <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{unavailableReason}</p> : null}
+        {runningJob ? <div role="status" aria-live="polite" className="space-y-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800"><div className="flex justify-between gap-3"><span>{runningJob.progress?.message ?? "連成解析を実行中…"}</span><span>{progressPercent(runningJob)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent(runningJob)}%` }} /></div></div> : null}
         {error ? <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="構造設計"><select value={design?.id ?? ""} onChange={(event) => setDesignId(event.target.value)}>{structuralDesigns.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
@@ -152,6 +185,7 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
 }
 
 function statusLabel(status: StaticAeroelasticResult["status"]) { return status === "converged" ? "収束" : status === "max-iterations" ? "最大反復" : "発散"; }
+function progressPercent(job: AeroelasticJob) { return job.progress && job.progress.total > 0 ? Math.round(job.progress.completed / job.progress.total * 100) : 0; }
 function formatFinite(value: number, digits: number) { return Number.isFinite(value) ? value.toFixed(digits) : "∞"; }
 function createId(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function download(filename: string, content: string, type: string) { const url = URL.createObjectURL(new Blob([content], { type })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); }

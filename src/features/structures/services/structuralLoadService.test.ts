@@ -1,12 +1,27 @@
 import { describe, expect, it } from "vitest";
 import type { AnalysisResult } from "../../analysis/model/types";
 import type { AircraftGeometry } from "../../aircraft/model/types";
-import { createLoadCaseFromAerodynamicResult, createStructuralResultCsv, createStructuralSummary } from "./structuralLoadService";
+import { createEllipticalLoadCase, createLoadCaseFromAerodynamicResult, createStructuralResultCsv, createStructuralSummary } from "./structuralLoadService";
 
 const aircraft = { id: "aircraft-1", span: 4, wingArea: 3 } as AircraftGeometry;
 const result = { id: "aero-result-1", caseId: "case-1", clMax: 1, caseSnapshot: { speed: 10 }, rows: [] } as unknown as AnalysisResult;
 
 describe("structural load integration", () => {
+  it("creates an elliptical baseline load from the assumed aircraft weight", () => {
+    const loadCase = createEllipticalLoadCase({ aircraft, grossMass: 100, pointCount: 101 });
+    let integratedHalfWingLift = 0;
+    for (let index = 1; index < loadCase.distributedLoads.length; index += 1) {
+      const left = loadCase.distributedLoads[index - 1];
+      const right = loadCase.distributedLoads[index];
+      integratedHalfWingLift += (left.liftPerLength + right.liftPerLength) * (right.yPosition - left.yPosition) / 2;
+    }
+
+    expect(loadCase.source).toBe("elliptical");
+    expect(loadCase.name).toContain("想定重量 100 kg");
+    expect(integratedHalfWingLift).toBeCloseTo(100 * 9.80665 / 2, 2);
+    expect(loadCase.distributedLoads.at(-1)?.liftPerLength).toBeCloseTo(0, 8);
+  });
+
   it("creates a half-wing elliptical distribution with the requested total lift", () => {
     const loadCase = createLoadCaseFromAerodynamicResult({ result, aircraft, density: 1.225, pointCount: 101, safetyFactor: 1.5 });
     const targetHalfLift = 0.5 * 1.225 * 10 ** 2 * aircraft.wingArea * result.clMax / 2;

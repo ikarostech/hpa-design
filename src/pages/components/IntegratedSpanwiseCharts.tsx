@@ -13,6 +13,7 @@ import type { AerodynamicSpanDistribution } from "../../features/analysis/model/
 import type { StructuralAnalysisResult } from "../../features/structures/model/types";
 import { toStructuralSpanDistribution } from "../../features/structures/services/structuralResultDistribution";
 import { interpolateDistribution, mergeDistributionCoordinates } from "../../shared/lib/distribution";
+import { formatChartNumber, formatChartValue } from "../../shared/lib/chartNumber";
 
 const series = {
   aerodynamicLift: { label: "空力揚力分布", color: "#2563eb" },
@@ -72,9 +73,9 @@ function SpanwiseChart({ title, ariaLabel, unit, data, names, referenceValue, ze
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 10, right: 14, bottom: 12, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="y" type="number" domain={["dataMin", "dataMax"]} unit=" m" tick={{ fontSize: 11 }} />
-          <YAxis unit={unit ? ` ${unit}` : undefined} tick={{ fontSize: 11 }} width={unit === "Nm/m" ? 78 : 72} domain={domain} />
-          <Tooltip />
+          <XAxis dataKey="y" type="number" domain={["dataMin", "dataMax"]} unit=" m" tickFormatter={formatChartNumber} tick={{ fontSize: 11 }} />
+          <YAxis unit={unit ? ` ${unit}` : undefined} tickFormatter={formatChartNumber} tick={{ fontSize: 11 }} width={unit === "Nm/m" ? 78 : 72} domain={domain} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           {zeroLine ? <ReferenceLine y={0} stroke="#94a3b8" /> : null}
           {referenceValue !== undefined ? <ReferenceLine y={referenceValue} stroke="#7c3aed" strokeDasharray="4 4" /> : null}
           {names.map((name) => <Line key={name} dataKey={name} name={series[name].label} stroke={series[name].color} dot={false} strokeWidth={2} strokeDasharray={name === "structuralLift" ? "7 3" : name.endsWith("Capacity") ? "6 4" : undefined} connectNulls />)}

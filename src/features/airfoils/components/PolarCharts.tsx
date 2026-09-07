@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { PolarChartPoint, PolarChartSeries } from "../model/chartTypes";
+import { formatChartNumber, formatChartValue } from "../../../shared/lib/chartNumber";
 
 interface PolarChartsProps {
   data: PolarChartPoint[];
@@ -30,9 +31,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="CL - α">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="alpha" unit="°" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cl" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
@@ -43,9 +44,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="CD - α">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="alpha" unit="°" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cd" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
@@ -56,9 +57,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="CD - CL">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="cl" type="number" tick={{ fontSize: 12 }} />
-          <YAxis dataKey="cd" tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="cl" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis dataKey="cd" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cd" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
@@ -69,9 +70,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="L/D - α">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="alpha" unit="°" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="ld" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
@@ -82,9 +83,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="L/D - CL">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="cl" type="number" tick={{ fontSize: 12 }} />
-          <YAxis dataKey="ld" tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="cl" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis dataKey="ld" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="ld" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />
@@ -95,9 +96,9 @@ export function PolarCharts({ data, series }: PolarChartsProps) {
       <Chart title="Cm - α">
         <LineChart>
           <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="alpha" unit="°" type="number" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <XAxis dataKey="alpha" unit="°" type="number" tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={formatChartNumber} tick={{ fontSize: 12 }} />
+          <Tooltip formatter={formatChartValue} labelFormatter={formatChartValue} />
           <Legend />
           {derivedSeries.map((item) => (
             <Line key={item.id} data={item.data} type="monotone" dataKey="cm" name={item.name} stroke={item.color} strokeWidth={2} dot={false} />

@@ -19,6 +19,6 @@ describe("DashboardPage", () => {
     await user.upload(screen.getByLabelText("設計ファイルを読み込む"), new File(["invalid"], "invalid.json", { type: "application/json" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("JSON schema is invalid");
-    expect((screen.getByRole("button", { name: "翼型を編集" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: "空力設計を開く" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

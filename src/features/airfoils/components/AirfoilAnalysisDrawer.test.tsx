@@ -28,6 +28,16 @@ describe("AirfoilAnalysisDrawer", () => {
     expect((screen.getByRole("button", { name: "1件を一括解析" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("starts the analysis with one click on the enabled run button", async () => {
+    const user = userEvent.setup();
+    const run = vi.fn().mockResolvedValue({ status: "completed" });
+    render(<AirfoilAnalysisDrawer open airfoils={[airfoil]} airfoilPolars={[]} analysisTargets={targets} targetNames={[airfoil.name]} jobController={{ ...jobs, run }} onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "1件を一括解析" }));
+
+    expect(run).toHaveBeenCalledOnce();
+  });
+
   it("cancels the running analysis from its progress area", async () => {
     const user = userEvent.setup();
     const cancel = vi.fn();

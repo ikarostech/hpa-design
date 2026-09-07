@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CarbonMaterial, StructuralDesign, StructuralLoadCase } from "../model/types";
-import { calculateLaminate, calculateTubeLinearMass, executeStructuralAnalysis } from "./structuralAnalysis";
+import { calculateLaminate, calculateStructuralDesignProperties, calculateTubeLinearMass, executeStructuralAnalysis } from "./structuralAnalysis";
 
 const isotropic: CarbonMaterial = {
   id: "material-1",
@@ -63,6 +63,46 @@ describe("calculateTubeLinearMass", () => {
     };
 
     expect(calculateTubeLinearMass(section, new Map([[isotropic.id, isotropic]]))).toBeCloseTo(isotropic.density * isotropic.plyThickness * 0.04, 10);
+  });
+});
+
+describe("calculateStructuralDesignProperties", () => {
+  it("derives each bending failure strength and stiffness directly from the current pipe design", () => {
+    const points = calculateStructuralDesignProperties(design, [isotropic]);
+
+    expect(points).toHaveLength(2);
+    expect(points.map((point) => point.yPosition)).toEqual([0, 1]);
+    expect(points[0].laminateBendingStrength).toBeGreaterThan(0);
+    expect(points[0].localBucklingStrength).toBeGreaterThan(0);
+    expect(points[0].brazierStrength).toBeGreaterThan(0);
+    expect(points[0].laminateFailureMode).toBe("繊維圧縮");
+    expect(points[0].laminateFailurePlyId).toBe("ply-main");
+    expect(points[0].governingBendingStrength).toBe(Math.min(
+      points[0].laminateBendingStrength,
+      points[0].localBucklingStrength!,
+      points[0].brazierStrength!,
+    ));
+    expect(points[0].bendingStiffness).toBeGreaterThan(0);
+    expect(points[0].sectionId).toBe("section-main");
+  });
+
+  it("updates the relevant properties when pipe geometry or material design changes", () => {
+    const baseline = calculateStructuralDesignProperties(design, [isotropic])[0];
+    const enlarged = calculateStructuralDesignProperties({
+      ...design,
+      sections: design.sections.map((section) => ({ ...section, outerDiameter: section.outerDiameter * 1.2 })),
+    }, [isotropic])[0];
+    const stronger = calculateStructuralDesignProperties(design, [{
+      ...isotropic,
+      tensileStrength1: isotropic.tensileStrength1 * 1.2,
+      compressiveStrength1: isotropic.compressiveStrength1 * 1.2,
+      tensileStrength2: isotropic.tensileStrength2 * 1.2,
+      compressiveStrength2: isotropic.compressiveStrength2 * 1.2,
+      shearStrength12: isotropic.shearStrength12 * 1.2,
+    }])[0];
+
+    expect(enlarged.bendingStiffness).toBeGreaterThan(baseline.bendingStiffness);
+    expect(stronger.laminateBendingStrength).toBeGreaterThan(baseline.laminateBendingStrength);
   });
 });
 
