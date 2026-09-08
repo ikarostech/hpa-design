@@ -19,11 +19,12 @@ describe("App routes", () => {
     expect(screen.getByRole("button", { name: "連成解析を実行" })).toBeTruthy();
   });
 
-  it("opens the project file schema documentation", async () => {
+  it("redirects the retired schema viewer route to the dashboard", async () => {
     window.location.hash = "#/schema";
 
     render(<ApplicationRouter><App /></ApplicationRouter>);
 
-    expect(await screen.findByRole("heading", { name: "プロジェクトファイル仕様" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "設計概要" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "プロジェクトファイル仕様" })).toBeNull();
   });
 });
