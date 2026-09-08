@@ -14,6 +14,14 @@
 - Supply specific close and back labels. The shared drawer owns dialog semantics, backdrop behavior, scrolling, header layout, and the optional fixed footer.
 - Keep centered confirmation and short-form modal workflows as dialogs; do not force them into the inspector template when they are not associated with a selected row or page-side context.
 
+## Pages and tabs
+
+- Use a page for an independent design domain that appears in application navigation. Use tabs only for related working surfaces owned by that domain.
+- Keep aerodynamic design as one page with `翼型`, `主翼形状`, and `空力解析` tabs. These tabs produce the rigid-wing aerodynamic definition used by downstream analysis.
+- Keep structural design as a peer page with `構造案`, `基準荷重`, and `単独解析` tabs. Start structural sizing from an assumed elliptical load distribution, while allowing aerodynamic and manual load cases for comparison.
+- Use the FSI page for coupled evaluation of an aerodynamic design and a structural design. It owns coupled conditions, convergence, deformed-shape results, and rigid-versus-coupled comparisons; do not use it as a generic archive of uncoupled results.
+- Show domain-specific uncoupled results inside their owning aerodynamic or structural page. Do not add a top-level generic results page unless it has a distinct cross-domain task that is not FSI.
+
 ## Entity-management tables
 
 Use the table as the primary management surface when users maintain a collection of entities.

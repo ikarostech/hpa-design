@@ -1,0 +1,1893 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:hpa-design:schema:project:4",
+  "title": "HPADesign project document",
+  "description": "Machine-readable serialization contract for an HPADesign project file. Cross-object reference integrity is additionally checked by the application importer.",
+  "$comment": "Source type: src/app/designDocument.ts#DesignDocument. Non-finite calculated values are encoded as {$hpaNumber: 'Infinity' | '-Infinity'}.",
+  "$ref": "#/$defs/DesignDocument",
+  "$defs": {
+    "EncodedNonFiniteNumber": {
+      "type": "object",
+      "description": "JSON encoding used by HPADesign for a non-finite calculated number.",
+      "properties": {
+        "$hpaNumber": {
+          "enum": [
+            "Infinity",
+            "-Infinity"
+          ]
+        }
+      },
+      "required": [
+        "$hpaNumber"
+      ],
+      "additionalProperties": false
+    },
+    "DesignDocument": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "number",
+          "const": 4,
+          "description": "ファイル形式のバージョン。現在は `4` 固定。"
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "conceptualDesign": {
+          "$ref": "#/$defs/ConceptualDesign",
+          "description": "設計重量、巡航速度、最大翼幅などの概要設計条件。"
+        },
+        "airfoils": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Airfoil"
+          },
+          "description": "翼型形状の一覧。"
+        },
+        "polars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AirfoilPolar"
+          },
+          "description": "翼型ごとの XFoil Polar 一覧。"
+        },
+        "airfoilAnalysisRuns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AirfoilAnalysisRun"
+          },
+          "description": "翼型解析の実行条件と結果参照。"
+        },
+        "aircraft": {
+          "$ref": "#/$defs/AircraftGeometry",
+          "description": "主翼形状と翼幅方向セクション。"
+        },
+        "analysisCases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnalysisCase"
+          },
+          "description": "LLT / VLM 空力解析ケース。"
+        },
+        "analysisResults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnalysisResult"
+          },
+          "description": "保存済み空力解析結果。"
+        },
+        "carbonMaterials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CarbonMaterial"
+          },
+          "description": "CFRP 材料特性の一覧。"
+        },
+        "structuralDesigns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralDesign"
+          },
+          "description": "パイプ、積層、荷重ケースを含む構造設計案。"
+        },
+        "structuralResults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralAnalysisResult"
+          },
+          "description": "保存済み構造解析結果。"
+        },
+        "aeroelasticResults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StaticAeroelasticResult"
+          },
+          "description": "保存済み空力・構造連成解析結果。"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "name",
+        "airfoils",
+        "polars",
+        "airfoilAnalysisRuns",
+        "aircraft",
+        "analysisCases",
+        "analysisResults",
+        "carbonMaterials",
+        "structuralDesigns",
+        "structuralResults"
+      ],
+      "additionalProperties": false
+    },
+    "ConceptualDesign": {
+      "type": "object",
+      "properties": {
+        "grossMass": {
+          "type": "number"
+        },
+        "cruiseSpeed": {
+          "type": "number"
+        },
+        "maximumWingspan": {
+          "type": "number"
+        },
+        "groundHeight": {
+          "type": "number"
+        },
+        "sustainablePower": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "grossMass",
+        "cruiseSpeed",
+        "maximumWingspan",
+        "groundHeight",
+        "sustainablePower"
+      ],
+      "additionalProperties": false
+    },
+    "Airfoil": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "thicknessRatio": {
+          "type": "number"
+        },
+        "maxCamber": {
+          "type": "number"
+        },
+        "leadingEdgeRadius": {
+          "type": "number"
+        },
+        "trailingEdgeThickness": {
+          "type": "number"
+        },
+        "coordinates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "upper": {
+                "type": "number"
+              },
+              "lower": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "upper",
+              "lower"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "thicknessRatio",
+        "maxCamber",
+        "leadingEdgeRadius",
+        "trailingEdgeThickness",
+        "coordinates"
+      ],
+      "additionalProperties": false
+    },
+    "AirfoilPolar": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "airfoilId": {
+          "type": "string"
+        },
+        "caseName": {
+          "type": "string"
+        },
+        "reynolds": {
+          "type": "number"
+        },
+        "mach": {
+          "type": "number"
+        },
+        "alphaStart": {
+          "type": "number"
+        },
+        "alphaEnd": {
+          "type": "number"
+        },
+        "alphaStep": {
+          "type": "number"
+        },
+        "ncrit": {
+          "type": "number"
+        },
+        "convergedPoints": {
+          "type": "number"
+        },
+        "requestedPoints": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/PolarStatus"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alpha": {
+                "type": "number"
+              },
+              "cl": {
+                "type": "number"
+              },
+              "cd": {
+                "type": "number"
+              },
+              "cm": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "alpha",
+              "cl",
+              "cd",
+              "cm"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "airfoilId",
+        "caseName",
+        "reynolds",
+        "mach",
+        "alphaStart",
+        "alphaEnd",
+        "alphaStep",
+        "ncrit",
+        "convergedPoints",
+        "requestedPoints",
+        "status",
+        "points"
+      ],
+      "additionalProperties": false
+    },
+    "PolarStatus": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "needs-review"
+      ]
+    },
+    "AirfoilAnalysisRun": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "airfoilIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "polarIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reynolds": {
+          "type": "number"
+        },
+        "mach": {
+          "type": "number"
+        },
+        "alphaStart": {
+          "type": "number"
+        },
+        "alphaEnd": {
+          "type": "number"
+        },
+        "alphaStep": {
+          "type": "number"
+        },
+        "ncrit": {
+          "type": "number"
+        },
+        "iterations": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/AirfoilAnalysisRunStatus"
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "airfoilId": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "airfoilId",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "airfoilIds",
+        "polarIds",
+        "createdAt",
+        "reynolds",
+        "mach",
+        "alphaStart",
+        "alphaEnd",
+        "alphaStep",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "AirfoilAnalysisRunStatus": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "needs-review"
+      ]
+    },
+    "AircraftGeometry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "span": {
+          "type": "number"
+        },
+        "rootChord": {
+          "type": "number"
+        },
+        "tipChord": {
+          "type": "number"
+        },
+        "taperRatio": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "dihedral": {
+          "type": "number"
+        },
+        "sweep": {
+          "type": "number"
+        },
+        "incidence": {
+          "type": "number"
+        },
+        "wingArea": {
+          "type": "number"
+        },
+        "aspectRatio": {
+          "type": "number"
+        },
+        "mac": {
+          "type": "number"
+        },
+        "staticMargin": {
+          "type": "number"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingSection"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "span",
+        "rootChord",
+        "tipChord",
+        "taperRatio",
+        "twist",
+        "dihedral",
+        "sweep",
+        "incidence",
+        "wingArea",
+        "aspectRatio",
+        "mac",
+        "staticMargin",
+        "sections"
+      ],
+      "additionalProperties": false
+    },
+    "WingSection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "yPosition": {
+          "type": "number"
+        },
+        "chord": {
+          "type": "number"
+        },
+        "xOffset": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "dihedral": {
+          "type": "number"
+        },
+        "airfoilId": {
+          "type": "string"
+        },
+        "chordwisePanels": {
+          "type": "number"
+        },
+        "spanwisePanels": {
+          "type": "number"
+        },
+        "chordwiseDistribution": {
+          "$ref": "#/$defs/PanelDistribution"
+        },
+        "spanwiseDistribution": {
+          "$ref": "#/$defs/PanelDistribution"
+        },
+        "controlSurface": {
+          "type": "string",
+          "description": "Preserved while control-surface geometry is moved to an explicit model."
+        }
+      },
+      "required": [
+        "id",
+        "yPosition",
+        "chord",
+        "xOffset",
+        "twist",
+        "dihedral",
+        "airfoilId",
+        "chordwisePanels",
+        "spanwisePanels",
+        "chordwiseDistribution",
+        "spanwiseDistribution"
+      ],
+      "additionalProperties": false
+    },
+    "PanelDistribution": {
+      "type": "string",
+      "enum": [
+        "uniform",
+        "cosine",
+        "sine",
+        "inverse-sine"
+      ]
+    },
+    "AnalysisCase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "method": {
+          "$ref": "#/$defs/AnalysisMethod"
+        },
+        "alphaStart": {
+          "type": "number"
+        },
+        "alphaEnd": {
+          "type": "number"
+        },
+        "alphaStep": {
+          "type": "number"
+        },
+        "speed": {
+          "type": "number"
+        },
+        "altitude": {
+          "type": "number"
+        },
+        "reynolds": {
+          "type": "number"
+        },
+        "geometryId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/AnalysisCaseStatus"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "method",
+        "alphaStart",
+        "alphaEnd",
+        "alphaStep",
+        "speed",
+        "altitude",
+        "reynolds",
+        "geometryId",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "AnalysisMethod": {
+      "type": "string",
+      "enum": [
+        "LLT",
+        "VLM"
+      ]
+    },
+    "AnalysisCaseStatus": {
+      "type": "string",
+      "enum": [
+        "needs-review",
+        "completed",
+        "not-run"
+      ]
+    },
+    "AnalysisResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caseId": {
+          "type": "string"
+        },
+        "clMax": {
+          "type": "number"
+        },
+        "cdMin": {
+          "type": "number"
+        },
+        "maxLD": {
+          "type": "number"
+        },
+        "cm0": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/AnalysisCaseStatus"
+        },
+        "caseSnapshot": {
+          "$ref": "#/$defs/AnalysisCase"
+        },
+        "aircraftSnapshot": {
+          "$ref": "#/$defs/AircraftGeometry"
+        },
+        "airfoilIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "polarIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnalysisResultRow"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "caseId",
+        "clMax",
+        "cdMin",
+        "maxLD",
+        "cm0",
+        "status",
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "AnalysisResultRow": {
+      "type": "object",
+      "properties": {
+        "caseId": {
+          "type": "string"
+        },
+        "alpha": {
+          "type": "number"
+        },
+        "cl": {
+          "type": "number"
+        },
+        "cd": {
+          "type": "number"
+        },
+        "cm": {
+          "type": "number"
+        },
+        "ld": {
+          "type": "number"
+        },
+        "status": {
+          "$ref": "#/$defs/AnalysisCaseStatus"
+        },
+        "spanwise": {
+          "$ref": "#/$defs/AerodynamicSpanDistribution"
+        }
+      },
+      "required": [
+        "caseId",
+        "alpha",
+        "cl",
+        "cd",
+        "cm",
+        "ld",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "AerodynamicSpanDistribution": {
+      "type": "object",
+      "properties": {
+        "axis": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "const": "semi-span"
+            },
+            "unit": {
+              "type": "string",
+              "const": "m"
+            },
+            "label": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        "reference": {
+          "type": "object",
+          "properties": {
+            "side": {
+              "type": "string",
+              "const": "right"
+            },
+            "origin": {
+              "type": "string",
+              "const": "centerline"
+            },
+            "alphaDegrees": {
+              "type": "number"
+            },
+            "speed": {
+              "type": "number"
+            },
+            "density": {
+              "type": "number"
+            },
+            "elasticAxisChordFraction": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "side",
+            "origin",
+            "alphaDegrees",
+            "speed",
+            "density",
+            "elasticAxisChordFraction"
+          ],
+          "additionalProperties": false
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DistributionSample"
+          }
+        }
+      },
+      "required": [
+        "axis",
+        "reference",
+        "samples"
+      ],
+      "additionalProperties": false
+    },
+    "DistributionSample": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "number"
+        },
+        "values": {
+          "type": "object",
+          "properties": {
+            "stationWidth": {
+              "type": "number"
+            },
+            "chord": {
+              "type": "number"
+            },
+            "circulation": {
+              "type": "number"
+            },
+            "localLiftCoefficient": {
+              "type": "number"
+            },
+            "liftPerLength": {
+              "type": "number"
+            },
+            "inducedDragPerLength": {
+              "type": "number"
+            },
+            "profileDragPerLength": {
+              "type": "number"
+            },
+            "dragPerLength": {
+              "type": "number"
+            },
+            "pitchingMomentPerLength": {
+              "type": "number"
+            },
+            "torqueAboutElasticAxisPerLength": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "stationWidth",
+            "chord",
+            "circulation",
+            "localLiftCoefficient",
+            "liftPerLength",
+            "inducedDragPerLength",
+            "profileDragPerLength",
+            "dragPerLength",
+            "pitchingMomentPerLength",
+            "torqueAboutElasticAxisPerLength"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "position",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "CarbonMaterial": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "e1": {
+          "type": "number"
+        },
+        "e2": {
+          "type": "number"
+        },
+        "g12": {
+          "type": "number"
+        },
+        "nu12": {
+          "type": "number"
+        },
+        "tensileStrength1": {
+          "type": "number"
+        },
+        "compressiveStrength1": {
+          "type": "number"
+        },
+        "tensileStrength2": {
+          "type": "number"
+        },
+        "compressiveStrength2": {
+          "type": "number"
+        },
+        "shearStrength12": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "plyThickness": {
+          "type": "number"
+        },
+        "reductionFactor": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "e1",
+        "e2",
+        "g12",
+        "nu12",
+        "tensileStrength1",
+        "compressiveStrength1",
+        "tensileStrength2",
+        "compressiveStrength2",
+        "shearStrength12",
+        "density",
+        "plyThickness",
+        "reductionFactor"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralDesign": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralTubeSection"
+          }
+        },
+        "loadCases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralLoadCase"
+          }
+        },
+        "supports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "yPosition": {
+                "type": "number"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "rigid",
+                  "elastic"
+                ]
+              },
+              "stiffness": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "yPosition",
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "sections",
+        "loadCases"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralTubeSection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "length": {
+          "type": "number"
+        },
+        "outerDiameter": {
+          "type": "number"
+        },
+        "plies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LaminatePly"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "length",
+        "outerDiameter",
+        "plies"
+      ],
+      "additionalProperties": false
+    },
+    "LaminatePly": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "materialId": {
+          "type": "string"
+        },
+        "angle": {
+          "$ref": "#/$defs/PlyAngle"
+        },
+        "count": {
+          "type": "number"
+        },
+        "partialAngle": {
+          "type": "number",
+          "description": "Excelの「上下部分積層角度」。90°で全周、45°で上下合計が半周。"
+        },
+        "partialWidth": {
+          "type": "number",
+          "description": "上側または下側それぞれの積層幅 [m]。"
+        }
+      },
+      "required": [
+        "id",
+        "materialId",
+        "angle",
+        "count"
+      ],
+      "additionalProperties": false
+    },
+    "PlyAngle": {
+      "type": "number",
+      "enum": [
+        0,
+        45,
+        -45,
+        90
+      ]
+    },
+    "StructuralLoadCase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "#/$defs/StructuralLoadSource"
+        },
+        "aerodynamicResultId": {
+          "type": "string"
+        },
+        "aerodynamicAlphaDegrees": {
+          "type": "number"
+        },
+        "loadFactor": {
+          "type": "number"
+        },
+        "safetyFactor": {
+          "type": "number"
+        },
+        "distributedLoads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DistributedStructuralLoad"
+          }
+        },
+        "pointLoads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralPointLoad"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/StructuralStatus"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "source",
+        "loadFactor",
+        "safetyFactor",
+        "distributedLoads",
+        "pointLoads",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralLoadSource": {
+      "type": "string",
+      "enum": [
+        "aerodynamic",
+        "elliptical",
+        "manual"
+      ]
+    },
+    "DistributedStructuralLoad": {
+      "type": "object",
+      "properties": {
+        "yPosition": {
+          "type": "number"
+        },
+        "liftPerLength": {
+          "type": "number"
+        },
+        "torquePerLength": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "yPosition",
+        "liftPerLength",
+        "torquePerLength"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralPointLoad": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "yPosition": {
+          "type": "number"
+        },
+        "force": {
+          "type": "number"
+        },
+        "torque": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "yPosition",
+        "force",
+        "torque"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralStatus": {
+      "type": "string",
+      "enum": [
+        "needs-review",
+        "completed",
+        "not-run"
+      ]
+    },
+    "StructuralAnalysisResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "designId": {
+          "type": "string"
+        },
+        "loadCaseId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/StructuralStatus"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "designSnapshot": {
+          "$ref": "#/$defs/StructuralDesign"
+        },
+        "loadCaseSnapshot": {
+          "$ref": "#/$defs/StructuralLoadCase"
+        },
+        "materialIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "materialSnapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CarbonMaterial"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructuralResultPoint"
+          }
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "mass": {
+              "type": "number"
+            },
+            "maxDeflection": {
+              "type": "number"
+            },
+            "maxTwist": {
+              "type": "number"
+            },
+            "minReserveFactor": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/EncodedNonFiniteNumber"
+                }
+              ]
+            },
+            "governingLoadCase": {
+              "type": "string"
+            },
+            "governingPosition": {
+              "type": "number"
+            },
+            "governingPlyId": {
+              "type": "string"
+            },
+            "governingMode": {
+              "type": "string"
+            },
+            "reactionForce": {
+              "type": "number"
+            },
+            "reactionMoment": {
+              "type": "number"
+            },
+            "forceBalanceError": {
+              "type": "number"
+            },
+            "momentBalanceError": {
+              "type": "number"
+            },
+            "supportReactions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "supportId": {
+                    "type": "string"
+                  },
+                  "yPosition": {
+                    "type": "number"
+                  },
+                  "force": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "supportId",
+                  "yPosition",
+                  "force"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "analysisWarnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "mass",
+            "maxDeflection",
+            "maxTwist",
+            "minReserveFactor",
+            "governingLoadCase",
+            "governingPosition",
+            "governingPlyId",
+            "governingMode",
+            "reactionForce",
+            "reactionMoment",
+            "forceBalanceError"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "designId",
+        "loadCaseId",
+        "status",
+        "createdAt",
+        "designSnapshot",
+        "loadCaseSnapshot",
+        "materialIds",
+        "points",
+        "summary"
+      ],
+      "additionalProperties": false
+    },
+    "StructuralResultPoint": {
+      "type": "object",
+      "properties": {
+        "yPosition": {
+          "type": "number"
+        },
+        "distributedLoad": {
+          "type": "number"
+        },
+        "shearForce": {
+          "type": "number"
+        },
+        "bendingMoment": {
+          "type": "number"
+        },
+        "bendingMomentCapacity": {
+          "type": "number"
+        },
+        "bendingReserveFactor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/EncodedNonFiniteNumber"
+            }
+          ]
+        },
+        "localBucklingReserveFactor": {
+          "type": "number",
+          "description": "Perfect-shell elastic screening; manufacturing-imperfection knockdown is not included."
+        },
+        "brazierReserveFactor": {
+          "type": "number",
+          "description": "Perfect-shell elastic Brazier ovalization screening."
+        },
+        "torque": {
+          "type": "number"
+        },
+        "torqueCapacity": {
+          "type": "number"
+        },
+        "torsionReserveFactor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/EncodedNonFiniteNumber"
+            }
+          ]
+        },
+        "deflection": {
+          "type": "number"
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "outerDiameter": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number"
+        },
+        "ei": {
+          "type": "number"
+        },
+        "gj": {
+          "type": "number"
+        },
+        "linearMass": {
+          "type": "number"
+        },
+        "axialStress": {
+          "type": "number"
+        },
+        "shearStress": {
+          "type": "number"
+        },
+        "minReserveFactor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/EncodedNonFiniteNumber"
+            }
+          ]
+        },
+        "criticalPlyId": {
+          "type": "string"
+        },
+        "criticalMode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "yPosition",
+        "distributedLoad",
+        "shearForce",
+        "bendingMoment",
+        "torque",
+        "deflection",
+        "rotation",
+        "twist",
+        "outerDiameter",
+        "thickness",
+        "ei",
+        "gj",
+        "linearMass",
+        "axialStress",
+        "shearStress",
+        "minReserveFactor",
+        "criticalPlyId",
+        "criticalMode"
+      ],
+      "additionalProperties": false
+    },
+    "StaticAeroelasticResult": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/$defs/AeroelasticConvergenceStatus"
+        },
+        "reviewStatus": {
+          "type": "string",
+          "enum": [
+            "needs-review",
+            "current"
+          ]
+        },
+        "aircraftSnapshot": {
+          "$ref": "#/$defs/AircraftGeometry"
+        },
+        "structuralDesignId": {
+          "type": "string"
+        },
+        "materialIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "condition": {
+          "$ref": "#/$defs/AeroelasticCondition"
+        },
+        "settings": {
+          "$ref": "#/$defs/StaticAeroelasticSettings"
+        },
+        "density": {
+          "type": "number"
+        },
+        "speed": {
+          "type": "number"
+        },
+        "elasticAxisChordFraction": {
+          "type": "number"
+        },
+        "alphaDegrees": {
+          "type": "number"
+        },
+        "cl": {
+          "type": "number"
+        },
+        "cdi": {
+          "type": "number"
+        },
+        "cm": {
+          "type": "number"
+        },
+        "totalLift": {
+          "type": "number"
+        },
+        "spanLoads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AerodynamicSpanLoadPoint"
+          }
+        },
+        "structuralResult": {
+          "$ref": "#/$defs/StructuralAnalysisResult"
+        },
+        "undeformedMesh": {
+          "$ref": "#/$defs/WingAnalysisMesh"
+        },
+        "deformedMesh": {
+          "$ref": "#/$defs/WingAnalysisMesh"
+        },
+        "iterations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AeroelasticIteration"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "createdAt",
+        "status",
+        "reviewStatus",
+        "aircraftSnapshot",
+        "structuralDesignId",
+        "materialIds",
+        "condition",
+        "settings",
+        "density",
+        "speed",
+        "elasticAxisChordFraction",
+        "alphaDegrees",
+        "cl",
+        "cdi",
+        "cm",
+        "totalLift",
+        "spanLoads",
+        "structuralResult",
+        "undeformedMesh",
+        "deformedMesh",
+        "iterations",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "AeroelasticConvergenceStatus": {
+      "type": "string",
+      "enum": [
+        "converged",
+        "max-iterations",
+        "diverged"
+      ]
+    },
+    "AeroelasticCondition": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "fixed-alpha"
+            },
+            "alphaDegrees": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mode",
+            "alphaDegrees"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "const": "target-lift"
+            },
+            "targetLift": {
+              "type": "number"
+            },
+            "minimumAlpha": {
+              "type": "number"
+            },
+            "maximumAlpha": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mode",
+            "targetLift",
+            "minimumAlpha",
+            "maximumAlpha"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "StaticAeroelasticSettings": {
+      "type": "object",
+      "properties": {
+        "maxIterations": {
+          "type": "number"
+        },
+        "relaxationFactor": {
+          "type": "number"
+        },
+        "displacementTolerance": {
+          "type": "number"
+        },
+        "loadTolerance": {
+          "type": "number"
+        },
+        "liftTolerance": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "maxIterations",
+        "relaxationFactor",
+        "displacementTolerance",
+        "loadTolerance",
+        "liftTolerance"
+      ],
+      "additionalProperties": false
+    },
+    "AerodynamicSpanLoadPoint": {
+      "type": "object",
+      "properties": {
+        "yPosition": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "circulation": {
+          "type": "number"
+        },
+        "liftPerLength": {
+          "type": "number"
+        },
+        "dragPerLength": {
+          "type": "number"
+        },
+        "torquePerLength": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "yPosition",
+        "width",
+        "circulation",
+        "liftPerLength",
+        "dragPerLength",
+        "torquePerLength"
+      ],
+      "additionalProperties": false
+    },
+    "WingAnalysisMesh": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshNode"
+          }
+        },
+        "panels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshPanel"
+          }
+        },
+        "strips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshStrip"
+          }
+        }
+      },
+      "required": [
+        "nodes",
+        "panels",
+        "strips"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshNode": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        },
+        "chordFraction": {
+          "type": "number"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "right",
+            "left"
+          ]
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z",
+        "chordFraction",
+        "side"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshPanel": {
+      "type": "object",
+      "properties": {
+        "side": {
+          "type": "string",
+          "enum": [
+            "right",
+            "left"
+          ]
+        },
+        "stripIndex": {
+          "type": "number"
+        },
+        "chordIndex": {
+          "type": "number"
+        },
+        "airfoilRootId": {
+          "type": "string"
+        },
+        "airfoilTipId": {
+          "type": "string"
+        },
+        "corners": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "side",
+        "stripIndex",
+        "chordIndex",
+        "airfoilRootId",
+        "airfoilTipId",
+        "corners"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshStrip": {
+      "type": "object",
+      "properties": {
+        "yStart": {
+          "type": "number"
+        },
+        "yEnd": {
+          "type": "number"
+        },
+        "centerY": {
+          "type": "number"
+        },
+        "chord": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "quarterChordSweep": {
+          "type": "number"
+        },
+        "dihedral": {
+          "type": "number"
+        },
+        "halfArea": {
+          "type": "number"
+        },
+        "airfoilRootId": {
+          "type": "string"
+        },
+        "airfoilTipId": {
+          "type": "string"
+        },
+        "airfoilInterpolation": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "yStart",
+        "yEnd",
+        "centerY",
+        "chord",
+        "twist",
+        "quarterChordSweep",
+        "dihedral",
+        "halfArea",
+        "airfoilRootId",
+        "airfoilTipId",
+        "airfoilInterpolation"
+      ],
+      "additionalProperties": false
+    },
+    "AeroelasticIteration": {
+      "type": "object",
+      "properties": {
+        "iteration": {
+          "type": "number"
+        },
+        "alphaDegrees": {
+          "type": "number"
+        },
+        "cl": {
+          "type": "number"
+        },
+        "cdi": {
+          "type": "number"
+        },
+        "totalLift": {
+          "type": "number"
+        },
+        "maxDeflection": {
+          "type": "number"
+        },
+        "maxTwist": {
+          "type": "number"
+        },
+        "displacementResidual": {
+          "type": "number"
+        },
+        "loadResidual": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "liftResidual": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "iteration",
+        "alphaDegrees",
+        "cl",
+        "cdi",
+        "totalLift",
+        "maxDeflection",
+        "maxTwist",
+        "displacementResidual",
+        "loadResidual",
+        "liftResidual"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

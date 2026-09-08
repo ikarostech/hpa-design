@@ -15,3 +15,5 @@ Regenerate the file after intentional solver or mock-input changes with:
 ```powershell
 npx jiti scripts/generateSampleProject.ts
 ```
+
+`Anonymized-HPA-Reference.json` is an importable schema-version 4 project converted from anonymized human-powered-aircraft design records. Aircraft, airfoil, analysis-case, and material identifiers have been replaced with generic labels for public distribution. The project contains a main-wing airfoil family, Re=450,000 XFoil polars, spanwise planform, incidence, a completed viscous-corrected LLT sweep from -3 to 5 degrees at 7.4 m/s, a legacy XFLR5 trim point, the ordered spar inner diameters, the spanwise partial-ply schedule, and a net wing load distribution at 1.5 G. Completed aerodynamic and structural results are embedded, so importing the project opens the saved result distributions without rerunning either analysis. Four XFoil polars are marked for review because one or two points outside or at the edge of the LLT operating range did not converge; their converged points remain available to LLT. Material properties absent from the source records are identified as provisional in the material notes.

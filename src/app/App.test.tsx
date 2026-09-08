@@ -18,4 +18,12 @@ describe("App routes", () => {
     expect(await screen.findByRole("heading", { name: "空力・構造連成（FSI）" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "連成解析を実行" })).toBeTruthy();
   });
+
+  it("opens the project file schema documentation", async () => {
+    window.location.hash = "#/schema";
+
+    render(<ApplicationRouter><App /></ApplicationRouter>);
+
+    expect(await screen.findByRole("heading", { name: "プロジェクトファイル仕様" })).toBeTruthy();
+  });
 });

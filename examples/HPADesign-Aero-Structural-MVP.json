@@ -4197,13 +4197,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 26324936.120974053,
           "shearStress": 349404.79187440505,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 2.735049371786887,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 36.34503665933109,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 103.03235913530442,
-          "minReserveFactor": 2.664323472649344,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 36.34503665933109,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.02,
@@ -4221,13 +4221,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 25564466.98650091,
           "shearStress": 340589.70219240803,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 2.8164091994571594,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 37.42619663756615,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 105.69902662430661,
-          "minReserveFactor": 2.743312126044772,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 37.42619663756615,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.04,
@@ -4245,13 +4245,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 24816447.123690683,
           "shearStress": 331774.612510411,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 2.901301690815612,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 38.554300847439734,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 108.50739822315465,
-          "minReserveFactor": 2.8257460878184535,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 38.554300847439734,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.06000000000000001,
@@ -4269,13 +4269,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 24080873.146634813,
           "shearStress": 322998.1335697565,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 2.989924807193366,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 39.73197992220879,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 111.45575239748322,
-          "minReserveFactor": 2.9118121989147467,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 39.73197992220879,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.08,
@@ -4293,13 +4293,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 23357731.51169905,
           "shearStress": 314337.48685312964,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.082491121363297,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 40.96205866105336,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 114.52658847788194,
-          "minReserveFactor": 3.0017001522845406,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 40.96205866105336,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.1,
@@ -4317,13 +4317,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 22646998.517523453,
           "shearStress": 305831.2831018727,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.179229245071436,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 42.24757499900164,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 117.71196077416437,
-          "minReserveFactor": 3.095621013643577,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 42.24757499900164,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.12000000000000002,
@@ -4341,13 +4341,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 21948647.076839518,
           "shearStress": 297479.5223159859,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.2803844240575217,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 43.591787913932876,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 121.01673325184521,
-          "minReserveFactor": 3.193810236571874,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 43.591787913932876,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.14,
@@ -4365,13 +4365,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 21262650.102378756,
           "shearStress": 289282.20449546917,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.3862194812651802,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 44.998189960540785,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 124.44595429845684,
-          "minReserveFactor": 3.2965199788921806,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 44.998189960540785,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.16,
@@ -4389,13 +4389,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 20588978.68162049,
           "shearStress": 281242.9846050712,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.4970165889905678,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 46.470530819746614,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 128.00319286382253,
-          "minReserveFactor": 3.4040195886469036,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 46.470530819746614,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.18,
@@ -4413,13 +4413,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 19927598.42628759,
           "shearStress": 273369.1725742894,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.613079632567307,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 48.01284870881425,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 131.69004998256278,
-          "minReserveFactor": 3.5165974265133464,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 48.01284870881425,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.2,
@@ -4437,13 +4437,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 19278469.472346425,
           "shearStress": 265664.4233678724,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.7347363131330953,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 49.62949832422041,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 135.50929982879137,
-          "minReserveFactor": 3.634565018799037,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 49.62949832422041,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.22000000000000003,
@@ -4461,13 +4461,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 18641550.130511213,
           "shearStress": 258128.73698582037,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.862339746207873,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 51.32517208455524,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 139.46529325007918,
-          "minReserveFactor": 3.7582588512451856,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 51.32517208455524,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.24000000000000005,
@@ -4485,13 +4485,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 18016798.711496163,
           "shearStress": 250762.1134281332,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 3.9962704336624597,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 53.10492633526778,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 143.56235680043176,
-          "minReserveFactor": 3.8880410628807103,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 53.10492633526778,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.26,
@@ -4509,13 +4509,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 17404172.15776998,
           "shearStress": 243564.4068699,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.13693908261279,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 54.97421880788524,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 147.8048474432038,
-          "minReserveFactor": 4.024302096010417,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 54.97421880788524,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.28,
@@ -4533,13 +4533,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 16803623.30706481,
           "shearStress": 236535.32566129905,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.284790171993965,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 56.93895601486665,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 152.19713968453624,
-          "minReserveFactor": 4.167463993598486,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 56.93895601486665,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.3,
@@ -4557,13 +4557,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 16215100.892376244,
           "shearStress": 229674.72397741946,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.44030539667205,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 59.00553901710195,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 156.74341249470424,
-          "minReserveFactor": 4.317983413573224,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 59.00553901710195,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.32,
@@ -4581,13 +4581,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 15638552.278454363,
           "shearStress": 222982.6018182612,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.6040067339990465,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 61.18090417420113,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 161.44757351670552,
-          "minReserveFactor": 4.476354362520825,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 61.18090417420113,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.34,
@@ -4605,13 +4605,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 15073924.830049247,
           "shearStress": 216458.95918382434,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.776460066755209,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 63.47257128840448,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 166.3132823688188,
-          "minReserveFactor": 4.6431115068443285,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 63.47257128840448,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.36,
@@ -4629,13 +4629,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 14521164.80957539,
           "shearStress": 210102.10945350965,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 4.958279927552543,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 65.88870665116623,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 171.34525728293985,
-          "minReserveFactor": 4.818835533929185,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 65.88870665116623,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.38,
@@ -4653,13 +4653,13 @@
           "linearMass": 0.47933831659850523,
           "axialStress": 13980215.172440544,
           "shearStress": 203908.6793861188,
-          "bendingMomentCapacity": 431.62192671533734,
-          "bendingReserveFactor": 5.1501353242355625,
+          "bendingMomentCapacity": 5735.660537341992,
+          "bendingReserveFactor": 68.43820045470193,
           "torqueCapacity": 431.6219267153372,
           "torsionReserveFactor": 176.54962068500708,
-          "minReserveFactor": 5.004158827400919,
-          "criticalPlyId": "root-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 68.43820045470193,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.4,
@@ -4677,13 +4677,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 25450927.585143317,
           "shearStress": 374406.87833089335,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 2.8289735122278676,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 35.216587579791444,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 96.15207968530942,
-          "minReserveFactor": 2.748118733718742,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 35.216587579791444,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.42000000000000004,
@@ -4701,13 +4701,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 24471734.927009776,
           "shearStress": 363300.205566484,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 2.94216982223572,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 36.625716278900896,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 99.0916037161779,
-          "minReserveFactor": 2.8573316067833074,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 36.625716278900896,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.44000000000000006,
@@ -4725,13 +4725,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 23514542.17558851,
           "shearStress": 352499.5510300527,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.061935012910709,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 38.11661794630273,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 102.12778965193854,
-          "minReserveFactor": 2.9728060979605067,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 38.11661794630273,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.4600000000000001,
@@ -4749,13 +4749,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 22579231.284087285,
           "shearStress": 342000.53514549875,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.1887710920761956,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 39.69554184605006,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 105.26299318416085,
-          "minReserveFactor": 3.095012718060617,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 39.69554184605006,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.4800000000000001,
@@ -4773,13 +4773,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 21665678.899883747,
           "shearStress": 331794.3987606209,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.3232284265223906,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 41.36933924068906,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 108.50092748543612,
-          "minReserveFactor": 3.2244675900574897,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 41.36933924068906,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.5,
@@ -4797,13 +4797,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 20773756.364525408,
           "shearStress": 321876.7622993185,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.4659114479147264,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 43.14553442148286,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 111.84404783630514,
-          "minReserveFactor": 3.361735345179511,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 43.14553442148286,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.52,
@@ -4821,13 +4821,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 19903333.250949748,
           "shearStress": 312247.62576159165,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.6174845234309845,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 45.03239778926779,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 115.29311043500725,
-          "minReserveFactor": 3.50743382288713,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 45.03239778926779,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.54,
@@ -4845,13 +4845,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 19054279.13209426,
           "shearStress": 302906.98914744024,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.77867876821045,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 47.03903065949353,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 118.84836365554105,
-          "minReserveFactor": 3.6622410481846845,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 47.03903065949353,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.56,
@@ -4869,13 +4869,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 18226461.99870869,
           "shearStress": 293849.9589409896,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 3.9503003931921117,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 49.1754691806139,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 122.51150257002232,
-          "minReserveFactor": 3.8269044520398805,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 49.1754691806139,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.5800000000000001,
@@ -4893,13 +4893,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 17419745.09497964,
           "shearStress": 285066.7481104906,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 4.133240733858407,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 51.45280917729624,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 126.28621275058907,
-          "minReserveFactor": 4.002250467394335,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 51.45280917729624,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.6,
@@ -4917,13 +4917,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 16633986.918530539,
           "shearStress": 276552.4631400686,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 4.328487232353827,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 53.88334286175506,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 130.17421573919117,
-          "minReserveFactor": 4.189190390679101,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 53.88334286175506,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.62,
@@ -4941,13 +4941,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 15869044.384797089,
           "shearStress": 268307.10402972344,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 4.537135208278683,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 56.480705362939226,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 134.17460611110718,
-          "minReserveFactor": 4.388729632064314,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 56.480705362939226,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.64,
@@ -4965,13 +4965,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 15124774.409215003,
           "shearStress": 260330.67077945525,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 4.760401580345748,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 59.26004554111221,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 138.28566527413966,
-          "minReserveFactor": 4.601981123883909,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 59.26004554111221,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.66,
@@ -4989,13 +4989,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 14401032.499835009,
           "shearStress": 252617.6669042477,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 4.99964151881644,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 62.23823328635626,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 142.50784769398356,
-          "minReserveFactor": 4.8301829004773245,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 62.23823328635626,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.68,
@@ -5013,13 +5013,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 13697669.942552913,
           "shearStress": 245157.09943406805,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 5.256368440907327,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 65.43410843217339,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 146.8446154857602,
-          "minReserveFactor": 5.074716695643882,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 65.43410843217339,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.7,
@@ -5037,13 +5037,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 13014533.801109614,
           "shearStress": 237943.47188390014,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 5.532276537931872,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 68.86876118549186,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 151.29643908686637,
-          "minReserveFactor": 5.337120417637076,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 68.86876118549186,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.72,
@@ -5061,13 +5061,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 12351469.731861006,
           "shearStress": 230976.78425374386,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 5.829265792901856,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 72.56584355925747,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 155.85981992221144,
-          "minReserveFactor": 5.619107268385444,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 72.56584355925747,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.74,
@@ -5085,13 +5085,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 11708323.391163005,
           "shearStress": 224257.03654359918,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 6.149471414014997,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 76.55193577635707,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 160.53007992460925,
-          "minReserveFactor": 5.922592961510879,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 76.55193577635707,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.76,
@@ -5109,13 +5109,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 11084936.88928609,
           "shearStress": 217766.30842575233,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 6.49530085007431,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 80.85700705751643,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 165.31482881923512,
-          "minReserveFactor": 6.249745286999077,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 80.85700705751643,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.78,
@@ -5133,13 +5133,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 10481141.698244454,
           "shearStress": 211468.7592447755,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 6.869480641794939,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 85.51499885162843,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 170.2379118720318,
-          "minReserveFactor": 6.603033467466452,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 85.51499885162843,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.8,
@@ -5157,13 +5157,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 9896758.651796008,
           "shearStress": 205346.46867295494,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 7.275109208299616,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 90.56448195050965,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 175.31346038063793,
-          "minReserveFactor": 6.98523775516407,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 90.56448195050965,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.8200000000000001,
@@ -5181,13 +5181,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 9331603.884905193,
           "shearStress": 199377.83911084273,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 7.715715421275784,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 96.04938565158949,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 180.5616921145687,
-          "minReserveFactor": 7.399521007717274,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 96.04938565158949,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.8400000000000001,
@@ -5205,13 +5205,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 8785487.552648403,
           "shearStress": 193472.42657911175,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 8.195333448317898,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 102.01992944818863,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 186.07302671773456,
-          "minReserveFactor": 7.849608131690376,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 102.01992944818863,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.86,
@@ -5229,13 +5229,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 8258211.308449985,
           "shearStress": 187561.38469788287,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 8.718595021457977,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 108.53377163793577,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 191.93716264138007,
-          "minReserveFactor": 8.33976762057214,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 108.53377163793577,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.8800000000000001,
@@ -5253,13 +5253,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 7749574.21386014,
           "shearStress": 181644.85995033136,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 9.290833020377788,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 115.65729878244191,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 198.18892761316656,
-          "minReserveFactor": 8.874794473056527,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 115.65729878244191,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.9,
@@ -5277,13 +5277,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 7259379.906820638,
           "shearStress": 175723.32507153894,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 9.918202508226845,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 123.46713242642184,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 204.86750967945773,
-          "minReserveFactor": 9.460207700321567,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 123.46713242642184,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.9200000000000002,
@@ -5301,13 +5301,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 6787437.930262734,
           "shearStress": 169797.10631341173,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 10.60783181220384,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 132.05200983022985,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 212.0177474258669,
-          "minReserveFactor": 10.102381826891635,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 132.05200983022985,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.9400000000000001,
@@ -5325,13 +5325,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 6333560.238313513,
           "shearStress": 163866.2036759499,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 11.3680137696412,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 141.51516470423482,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 219.6914262515719,
-          "minReserveFactor": 10.808712937548439,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 141.51516470423482,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.9600000000000002,
@@ -5349,13 +5349,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 5897558.785100042,
           "shearStress": 157930.61715915325,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 12.20844125910288,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 151.9772592269168,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 227.94820059318397,
-          "minReserveFactor": 11.587821163704314,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 151.9772592269168,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 0.9800000000000001,
@@ -5373,13 +5373,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 5479245.5247494085,
           "shearStress": 151990.3467630219,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 13.140495288042949,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 163.57997031536954,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 236.85714761957846,
-          "minReserveFactor": 12.449798310236304,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 163.57997031536954,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1,
@@ -5397,13 +5397,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 5078428.7755654985,
           "shearStress": 146057.7001296405,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 14.177613427685142,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 176.49057610133056,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 246.47793281728028,
-          "minReserveFactor": 13.406462667992605,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 176.49057610133056,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.02,
@@ -5421,13 +5421,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 4694909.170786853,
           "shearStress": 140146.38436760995,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 15.335759943558829,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 190.90780836957344,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 256.87426873297323,
-          "minReserveFactor": 14.471774387295818,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 190.90780836957344,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.04,
@@ -5445,13 +5445,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 4328482.8809908815,
           "shearStress": 134257.79894344672,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 16.634003640443574,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 207.0690458833347,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 268.14084755824314,
-          "minReserveFactor": 15.662393696849069,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 207.0690458833347,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.06,
@@ -5469,13 +5469,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 3978945.66333601,
           "shearStress": 128391.94385715082,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 18.09524584953344,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 225.25937676104428,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 280.3914242474098,
-          "minReserveFactor": 16.99825239837292,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 225.25937676104428,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.08,
@@ -5493,13 +5493,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 3646093.274980665,
           "shearStress": 122548.81910872224,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 19.747163489771616,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 245.82333821229037,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 293.7604806135398,
-          "minReserveFactor": 18.503332683007407,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 245.82333821229037,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.1,
@@ -5517,13 +5517,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 3329721.473083275,
           "shearStress": 116728.42469816098,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 21.623430242448787,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 269.1801183776411,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 308.4081713009459,
-          "minReserveFactor": 20.206678836633582,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 269.1801183776411,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.12,
@@ -5541,13 +5541,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 3029626.014802266,
           "shearStress": 110930.76062546704,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 23.765309529367514,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 295.8433865797221,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 324.52675702410414,
-          "minReserveFactor": 22.14371090205587,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 295.8433865797221,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.1400000000000001,
@@ -5565,13 +5565,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 2745594.8059221804,
           "shearStress": 105169.39442590099,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 26.223825833548997,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 326.44832309408645,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 342.3049091089372,
-          "minReserveFactor": 24.357786699706054,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 326.44832309408645,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.1600000000000001,
@@ -5589,13 +5589,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 2477398.4051498105,
           "shearStress": 99460.73511257765,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 29.06274576197853,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 361.78872902557225,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 361.95187939494224,
-          "minReserveFactor": 26.902613795338066,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 361.78872902557225,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.1800000000000002,
@@ -5613,13 +5613,13 @@
           "linearMass": 0.31164599123610753,
           "axialStress": 2224796.231158098,
           "shearStress": 93807.62416335127,
-          "bendingMomentCapacity": 228.11558580345434,
-          "bendingReserveFactor": 32.36251436947151,
+          "bendingMomentCapacity": 2839.7058053174524,
+          "bendingReserveFactor": 402.86602779013657,
           "torqueCapacity": 228.11558580345428,
           "torsionReserveFactor": 383.76411641458526,
-          "minReserveFactor": 29.84565469543217,
-          "criticalPlyId": "mid-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 402.86602779013657,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.2,
@@ -5637,13 +5637,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 7069211.6435914645,
           "shearStress": 313741.45609847276,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 10.185011233221603,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 112.40084345385775,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 114.7441605189109,
-          "minReserveFactor": 9.35466510696483,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 112.40084345385775,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.2200000000000002,
@@ -5661,13 +5661,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 6279112.980331339,
           "shearStress": 294029.876939407,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 11.466587753004676,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 126.54420358137648,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 122.43653731630404,
-          "minReserveFactor": 10.484664182294125,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 126.54420358137648,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.24,
@@ -5685,13 +5685,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 5541894.528720603,
           "shearStress": 274515.8696255924,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 12.991947000590406,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 143.3779273812614,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 131.13995940963198,
-          "minReserveFactor": 11.820862186200001,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 143.3779273812614,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.2600000000000002,
@@ -5709,13 +5709,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 4856694.751775976,
           "shearStress": 255199.4341570277,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 14.82489711210929,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 163.60619555160469,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 141.06614350033672,
-          "minReserveFactor": 13.415081810850213,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 163.60619555160469,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.28,
@@ -5733,13 +5733,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 4222639.009400365,
           "shearStress": 236092.83737106467,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 17.050948432891108,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 188.17269236717146,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 152.48238955855814,
-          "minReserveFactor": 15.33603592125416,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 188.17269236717146,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.3,
@@ -5757,13 +5757,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 3638763.890304921,
           "shearStress": 217266.9180020832,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 19.78693923830451,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 218.3668342457163,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 165.69480678901527,
-          "minReserveFactor": 17.676095595703224,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 218.3668342457163,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.32,
@@ -5781,13 +5781,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 3103967.7501590457,
           "shearStress": 198780.2479471132,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 23.196117290945043,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 255.9902084204317,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 181.10451300764066,
-          "minReserveFactor": 20.562450147633225,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 255.9902084204317,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.34,
@@ -5805,13 +5805,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 2617086.379668179,
           "shearStress": 180632.8272061547,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 27.5115107240476,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 303.61449185114714,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 199.29932203803412,
-          "minReserveFactor": 24.174442502472242,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 303.61449185114714,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.36,
@@ -5829,13 +5829,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 2176955.5695377626,
           "shearStress": 162824.6557792077,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 33.07371129089599,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 364.9984236757889,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 221.09673641083236,
-          "minReserveFactor": 28.770023004375723,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 364.9984236757889,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.3800000000000001,
@@ -5853,13 +5853,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 1782411.1104732368,
           "shearStress": 145355.73366627225,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 40.394721272178195,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 445.79241378412814,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 247.66824873006917,
-          "minReserveFactor": 34.73021844960355,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 445.79241378412814,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.4,
@@ -5877,13 +5877,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 1432288.7931800461,
           "shearStress": 128226.06086734845,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 50.26919175995343,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 554.766158247549,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 280.7541599304253,
-          "minReserveFactor": 42.635314490284,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 554.766158247549,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.4200000000000002,
@@ -5901,13 +5901,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 1125404.5715569113,
           "shearStress": 111451.95071219644,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 63.97699264753608,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 706.0441830214571,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 323.00915120779877,
-          "minReserveFactor": 53.40024292868059,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 706.0441830214571,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.44,
@@ -5925,13 +5925,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 860360.2706133667,
           "shearStress": 95193.18450322896,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 83.68587260389171,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 923.5495622398253,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 378.1783348027282,
-          "minReserveFactor": 68.5227030809736,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 923.5495622398253,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.4600000000000002,
@@ -5949,13 +5949,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 635388.9680006284,
           "shearStress": 79593.23021309651,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 113.31641502458191,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 1250.5494922170676,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 452.2997735311973,
-          "minReserveFactor": 90.61443058030714,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 1250.5494922170676,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.48,
@@ -5973,13 +5973,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 448549.2860941425,
           "shearStress": 64652.08784179981,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 160.51747763764916,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 1771.4560605202776,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 556.8265651078442,
-          "minReserveFactor": 124.59906319241388,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 1771.4560605202776,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.5,
@@ -5997,13 +5997,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 297899.8472693382,
           "shearStress": 50369.75738933832,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 241.6919668136088,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 2667.29022715849,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 714.7145800551356,
-          "minReserveFactor": 180.6143769398463,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 2667.29022715849,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.52,
@@ -6021,13 +6021,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 181499.27390165406,
           "shearStress": 36746.238855712254,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 396.6958018741907,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 4377.898237345353,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 979.6921024042098,
-          "minReserveFactor": 282.3620746338962,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 4377.898237345353,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.54,
@@ -6045,13 +6045,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 97018.70278482484,
           "shearStress": 24384.051649495068,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 742.1249504818352,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 8190.0224233651315,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 1476.3748255407534,
-          "minReserveFactor": 493.8718525639841,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 8190.0224233651315,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.56,
@@ -6069,13 +6069,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 41180.3231912849,
           "shearStress": 14156.239134774654,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 1748.4078419092534,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 19295.267489830498,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 2543.048309459987,
-          "minReserveFactor": 1036.0785359988522,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 19295.267489830498,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.58,
@@ -6093,13 +6093,13 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 9970.886095970802,
           "shearStress": 6333.325267065408,
-          "bendingMomentCapacity": 64.13589750268525,
-          "bendingReserveFactor": 7221.02321769526,
+          "bendingMomentCapacity": 707.7978423291092,
+          "bendingReserveFactor": 79690.54541848609,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": 5684.217765856332,
-          "minReserveFactor": 3180.558078225705,
-          "criticalPlyId": "tip-45m",
-          "criticalMode": "横方向引張"
+          "minReserveFactor": 79690.54541848609,
+          "criticalPlyId": "-",
+          "criticalMode": "Excel準拠曲げ"
         },
         {
           "yPosition": 1.6,
@@ -6117,24 +6117,24 @@
           "linearMass": 0.1433449822970768,
           "axialStress": 0,
           "shearStress": 0,
-          "bendingMomentCapacity": 64.13589750268525,
+          "bendingMomentCapacity": 707.7978423291092,
           "bendingReserveFactor": null,
           "torqueCapacity": 64.13589750268524,
           "torsionReserveFactor": null,
           "minReserveFactor": null,
           "criticalPlyId": "-",
-          "criticalMode": "なし"
+          "criticalMode": "Excel準拠曲げ"
         }
       ],
       "summary": {
         "mass": 0.4983901125471189,
         "maxDeflection": 0.005500258350157888,
         "maxTwist": 0.0009388628653304595,
-        "minReserveFactor": 2.664323472649344,
+        "minReserveFactor": 35.216587579791444,
         "governingLoadCase": "巡航 VLM α=14°（空力結果から生成）",
-        "governingPosition": 0,
-        "governingPlyId": "root-45m",
-        "governingMode": "横方向引張",
+        "governingPosition": 0.4,
+        "governingPlyId": "-",
+        "governingMode": "Excel準拠曲げ",
         "reactionForce": -229.80683495799903,
         "reactionMoment": -157.8113840165694,
         "forceBalanceError": 2.842170943040401e-14,
@@ -6142,5 +6142,6 @@
         "supportReactions": []
       }
     }
-  ]
+  ],
+  "aeroelasticResults": []
 }

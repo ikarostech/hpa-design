@@ -27,6 +27,7 @@ describe("Sidebar", () => {
       ["構造設計", "/structures"],
       ["空力・構造連成（FSI）", "/fsi"],
       ["入出力", "/export"],
+      ["ファイル仕様", "/schema"],
     ]);
     expect(screen.getByRole("link", { name: "空力・構造連成（FSI）" }).className).toContain("bg-blue-50");
     expect(screen.getByRole("link", { name: "空力設計" }).className).not.toContain("bg-blue-50");

@@ -1,4 +1,4 @@
-import { Download, Gauge, Hammer, Home, Plane, Ruler, Workflow } from "lucide-react";
+import { Braces, Download, Gauge, Hammer, Home, Plane, Ruler, Workflow } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 export function Sidebar() {
@@ -10,6 +10,7 @@ export function Sidebar() {
     { label: "構造設計", path: "/structures", icon: Hammer },
     { label: "空力・構造連成（FSI）", path: "/fsi", icon: Workflow },
     { label: "入出力", path: "/export", icon: Download },
+    { label: "ファイル仕様", path: "/schema", icon: Braces },
   ];
 
   return (

@@ -15,6 +15,7 @@ const DashboardPage = lazy(async () => ({ default: (await import("../pages/Dashb
 const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
 const StructuresPage = lazy(async () => ({ default: (await import("../pages/StructuresPage")).StructuresPage }));
 const ConceptualDesignPage = lazy(async () => ({ default: (await import("../pages/ConceptualDesignPage")).ConceptualDesignPage }));
+const ProjectSchemaPage = lazy(async () => ({ default: (await import("../pages/ProjectSchemaPage")).ProjectSchemaPage }));
 
 export default function App() {
   return <DesignDocumentProvider><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
@@ -27,6 +28,7 @@ export default function App() {
     <Route path="/fsi" element={<FsiRoute />} />
     <Route path="/structures" element={<StructuresRoute />} />
     <Route path="/export" element={<ExportRoute />} />
+    <Route path="/schema" element={<ProjectSchemaPage />} />
     <Route path="/airfoils" element={<Navigate to="/aerodynamics/airfoils" replace />} />
     <Route path="/aircraft" element={<Navigate to="/aerodynamics/geometry" replace />} />
     <Route path="/analysis" element={<Navigate to="/aerodynamics/analysis" replace />} />
