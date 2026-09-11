@@ -459,7 +459,7 @@ function validateAerodynamicSpanwise(value: unknown, path: string[], rowAlpha: u
   else {
     for (const field of ["alphaDegrees", "speed", "density", "elasticAxisChordFraction"]) validateFiniteNumber(value.reference[field], [...path, "reference", field], issues);
     if (typeof rowAlpha === "number" && value.reference.alphaDegrees !== rowAlpha) addIssue(issues, [...path, "reference", "alphaDegrees"], "解析行の迎角と一致する必要があります。");
-    if (value.reference.side !== "right") addIssue(issues, [...path, "reference", "side"], "MVPの空力分布は右半翼である必要があります。");
+    if (value.reference.side !== "right") addIssue(issues, [...path, "reference", "side"], "空力分布は右半翼である必要があります。");
     if (value.reference.origin !== "centerline") addIssue(issues, [...path, "reference", "origin"], "翼幅座標の原点はcenterlineである必要があります。");
   }
   let previous = Number.NEGATIVE_INFINITY;

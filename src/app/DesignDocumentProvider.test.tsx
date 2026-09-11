@@ -10,7 +10,7 @@ describe("DesignDocumentProvider", () => {
   it("uses the aero-structural sample as the default project when no recovery exists", () => {
     render(<DesignDocumentProvider><DocumentProbe /></DesignDocumentProvider>);
 
-    expect(screen.getByTestId("name").textContent).toBe("HPADesign 空力・構造 MVP サンプル");
+    expect(screen.getByTestId("name").textContent).toBe("HPADesign 空力・構造サンプル");
     expect(screen.getByTestId("results").textContent).toBe("1 / 1");
   });
 

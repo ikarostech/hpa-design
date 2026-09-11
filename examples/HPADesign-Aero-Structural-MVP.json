@@ -1,6 +1,6 @@
 {
   "schemaVersion": 4,
-  "name": "HPADesign 空力・構造 MVP サンプル",
+  "name": "HPADesign 空力・構造サンプル",
   "airfoils": [
     {
       "id": "af1",
