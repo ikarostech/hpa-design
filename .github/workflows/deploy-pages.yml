@@ -3,7 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - package.json
 
 permissions:
   contents: read
@@ -15,7 +16,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  version_check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version.outputs.changed }}
+      current: ${{ steps.version.outputs.current }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check application version
+        id: version
+        shell: bash
+        run: |
+          current=$(node -p "require('./package.json').version")
+          before="${{ github.event.before }}"
+          if git cat-file -e "$before:package.json" 2>/dev/null; then
+            previous=$(git show "$before:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+          else
+            previous=""
+          fi
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [[ "$current" == "$previous" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "package.json changed without an application version update; deployment is skipped."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Application version changed from $previous to $current."
+          fi
+
   build:
+    if: needs.version_check.outputs.changed == 'true'
+    needs: version_check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

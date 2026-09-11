@@ -1,4 +1,4 @@
-import { Download, Gauge, Hammer, Home, Plane, Ruler, Workflow } from "lucide-react";
+import { Download, Hammer, Home, Plane, Ruler, Workflow } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 export function Sidebar() {
@@ -28,16 +28,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
-          <Gauge size={17} />
-          MVP1進捗
-        </div>
-        <div className="mt-3 h-2 rounded-full bg-blue-100">
-          <div className="h-2 w-3/4 rounded-full bg-blue-600" />
-        </div>
-        <p className="mt-2 text-xs leading-5 text-blue-800">翼型、機体、解析結果の導線を確認できます。</p>
-      </div>
     </aside>
   );
 }

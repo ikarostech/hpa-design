@@ -42,4 +42,10 @@ describe("Sidebar", () => {
       ["空力設計", "/aerodynamics/airfoils"],
     ]);
   });
+
+  it("does not show development-phase progress on the public navigation", () => {
+    render(<MemoryRouter><Sidebar /></MemoryRouter>);
+
+    expect(screen.queryByText(/MVP/i)).toBeNull();
+  });
 });
