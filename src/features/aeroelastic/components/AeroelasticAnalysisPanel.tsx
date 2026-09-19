@@ -1,5 +1,5 @@
 import { Download, Play } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { CarbonMaterial, StructuralDesign } from "../../structures/model/types";
 import type { AirfoilPolar } from "../../airfoils/model/types";
@@ -12,6 +12,8 @@ import type { StaticAeroelasticResult } from "../services/staticAeroelasticSolve
 import { AeroelasticAnalysisCancelledError, webAeroelasticAnalysisRunner, type AeroelasticAnalysisRunner } from "../services/webAeroelasticAnalysisRunner";
 import { useJobs } from "../../../shared/jobs/JobProvider";
 import type { Job } from "../../../shared/model";
+import { estimateAeroelasticPerformance } from "../services/aeroelasticPerformance";
+import { AeroelasticSpanwiseCharts } from "./AeroelasticSpanwiseCharts";
 
 type AeroelasticJob = Job<string, StaticAeroelasticResult, { structuralDesignId: string }>;
 
@@ -123,29 +125,35 @@ export function AeroelasticAnalysisPanel({
       </CardBody>
     </Card>
 
-    {result ? <AeroelasticResultView result={result} /> : <Card><CardBody><p className="py-8 text-center text-sm text-slate-500">連成解析結果はまだありません。</p></CardBody></Card>}
+    {result ? <AeroelasticResultView result={result} polars={polars} /> : <Card><CardBody><p className="py-8 text-center text-sm text-slate-500">連成解析結果はまだありません。</p></CardBody></Card>}
   </div>;
 }
 
-function AeroelasticResultView({ result }: { result: StaticAeroelasticResult }) {
-  const sampledPoints = useMemo(() => {
-    const step = Math.max(1, Math.ceil(result.structuralResult.points.length / 12));
-    return result.structuralResult.points.filter((_, index) => index % step === 0 || index === result.structuralResult.points.length - 1);
-  }, [result]);
+function AeroelasticResultView({ result, polars }: { result: StaticAeroelasticResult; polars: readonly AirfoilPolar[] }) {
+  const performance = estimateAeroelasticPerformance(result, polars);
   return <div className="space-y-5">
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <MetricCard label="収束状態" value={statusLabel(result.status)} />
       <MetricCard label="迎角" value={`${result.alphaDegrees.toFixed(3)}°`} />
       <MetricCard label="CL / CDi" value={`${result.cl.toFixed(4)} / ${result.cdi.toFixed(5)}`} />
+      <MetricCard label="Cm" value={result.cm.toFixed(4)} />
+      <MetricCard label="総揚力" value={`${result.totalLift.toFixed(1)} N`} />
+      <MetricCard label="翼型抗力係数 CDp（推定）" value={performance.available ? performance.profileCd.toFixed(5) : "-"} />
+      <MetricCard label="推定総抗力" value={performance.available ? `${performance.totalDrag.toFixed(1)} N` : "-"} />
+      <MetricCard label="推定 L/D" value={performance.available ? performance.liftToDrag.toFixed(2) : "-"} detail="Polar の Cd と連成解析の CDi から推定" />
       <MetricCard label="最大たわみ" value={`${result.structuralResult.summary.maxDeflection.toFixed(4)} m`} />
       <MetricCard label="最大ねじれ" value={`${result.structuralResult.summary.maxTwist.toFixed(4)} rad`} />
+      <MetricCard label="最小安全率" value={formatFinite(result.structuralResult.summary.minReserveFactor, 2)} detail={`${result.structuralResult.summary.governingPosition.toFixed(2)} m / ${result.structuralResult.summary.governingMode}`} />
+      <MetricCard label="収束反復" value={`${result.iterations.length} 回`} />
     </div>
+    <p className="text-xs text-slate-500">推定 L/D は現在の翼型 Polar を変形後の局所迎角で補間した概算です。Reynolds 数の補正は行わず、保存済みの連成荷重と強度評価には反映していません。</p>
+    {!performance.available ? <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{performanceUnavailableMessage(performance.reason)}</p> : performance.usesReviewPolar ? <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">要確認の Polar を含むため、推定 L/D を確認してください。</p> : null}
     <Card>
       <CardHeader className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><h3 className="font-semibold text-slate-950">連成結果</h3><Badge tone={result.status === "converged" ? "green" : "amber"}>{statusLabel(result.status)}</Badge>{result.reviewStatus === "needs-review" ? <Badge tone="amber">要確認</Badge> : null}</div><div className="flex gap-2"><Button variant="secondary" size="sm" aria-label="連成結果をCSV出力" onClick={() => download(`${result.id}.csv`, createAeroelasticResultCsv(result), "text/csv;charset=utf-8")}><Download size={15} />CSV</Button><Button variant="secondary" size="sm" aria-label="連成結果をMarkdown出力" onClick={() => download(`${result.id}.md`, createAeroelasticResultSummary(result), "text/markdown;charset=utf-8")}><Download size={15} />Markdown</Button></div></CardHeader>
       <CardBody className="space-y-4">
         <WingDeformationPreview result={result} />
         {result.warnings.map((warning) => <p key={warning} className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{warning}</p>)}
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["y", "荷重", "たわみ", "ねじれ", "曲げモーメント", "安全率"].map((item) => <th className="px-2 py-2" key={item}>{item}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{sampledPoints.map((point) => <tr key={point.yPosition}><td className="px-2 py-2">{point.yPosition.toFixed(3)} m</td><td className="px-2 py-2">{point.distributedLoad.toFixed(2)} N/m</td><td className="px-2 py-2">{point.deflection.toFixed(5)} m</td><td className="px-2 py-2">{point.twist.toFixed(5)} rad</td><td className="px-2 py-2">{point.bendingMoment.toFixed(2)} Nm</td><td className="px-2 py-2">{formatFinite(point.minReserveFactor, 2)}</td></tr>)}</tbody></table></div>
+        <AeroelasticSpanwiseCharts result={result} profileDragPerLength={performance.available ? performance.profileDragPerLength : undefined} />
       </CardBody>
     </Card>
     <Card><CardHeader><h3 className="font-semibold text-slate-950">反復履歴</h3></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["反復", "迎角", "CL", "総揚力", "変位残差", "荷重残差"].map((item) => <th className="px-2 py-2" key={item}>{item}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{result.iterations.map((iteration) => <tr key={iteration.iteration}><td className="px-2 py-2">{iteration.iteration}</td><td className="px-2 py-2">{iteration.alphaDegrees.toFixed(3)}°</td><td className="px-2 py-2">{iteration.cl.toFixed(4)}</td><td className="px-2 py-2">{iteration.totalLift.toFixed(2)} N</td><td className="px-2 py-2">{iteration.displacementResidual.toExponential(2)}</td><td className="px-2 py-2">{iteration.loadResidual === null ? "-" : iteration.loadResidual.toExponential(2)}</td></tr>)}</tbody></table></div></CardBody></Card>
@@ -187,5 +195,13 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
 function statusLabel(status: StaticAeroelasticResult["status"]) { return status === "converged" ? "収束" : status === "max-iterations" ? "最大反復" : "発散"; }
 function progressPercent(job: AeroelasticJob) { return job.progress && job.progress.total > 0 ? Math.round(job.progress.completed / job.progress.total * 100) : 0; }
 function formatFinite(value: number, digits: number) { return Number.isFinite(value) ? value.toFixed(digits) : "∞"; }
+function performanceUnavailableMessage(reason: "missing-polar" | "ambiguous-polar" | "alpha-out-of-range" | "invalid-drag") {
+  switch (reason) {
+    case "missing-polar": return "対応する Polar がないため L/D を推定できません。";
+    case "ambiguous-polar": return "同じ翼型の Polar が複数あるため、使用する Polar を特定できません。";
+    case "alpha-out-of-range": return "局所迎角が Polar の範囲外のため L/D を推定できません。";
+    case "invalid-drag": return "抗力データが有効でないため L/D を推定できません。";
+  }
+}
 function createId(prefix: string) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function download(filename: string, content: string, type: string) { const url = URL.createObjectURL(new Blob([content], { type })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url); }

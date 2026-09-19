@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { CarbonMaterial, StructuralDesign } from "../../structures/model/types";
+import type { AirfoilPolar } from "../../airfoils/model/types";
 import { AeroelasticAnalysisPanel } from "./AeroelasticAnalysisPanel";
 import { executeStaticAeroelasticAnalysis } from "../services/staticAeroelasticSolver";
 import { JobProvider } from "../../../shared/jobs/JobProvider";
@@ -24,6 +25,27 @@ const design: StructuralDesign = { id: "spar", name: "Main spar", sections: [{ i
 afterEach(cleanup);
 
 describe("AeroelasticAnalysisPanel", () => {
+  it("shows estimated L/D and spanwise graphs for a saved coupled result", () => {
+    const result = executeStaticAeroelasticAnalysis({ resultId: "saved", aircraft, structuralDesign: design, materials: [material], density: 1.225, speed: 7.4, elasticAxisChordFraction: 0.4, condition: { mode: "fixed-alpha", alphaDegrees: 5 } });
+    const polar: AirfoilPolar = { id: "polar-af", airfoilId: "af", caseName: "test", reynolds: 400_000, mach: 0, alphaStart: -10, alphaEnd: 20, alphaStep: 30, ncrit: 9, convergedPoints: 2, requestedPoints: 2, status: "complete", points: [{ alpha: -10, cl: 0, cd: 0.02, cm: 0 }, { alpha: 20, cl: 1, cd: 0.04, cm: 0 }] };
+    render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[material]} structuralDesigns={[design]} results={[result]} polars={[polar]} onSaveResult={vi.fn()} />);
+
+    expect(screen.getByText("推定 L/D").parentElement?.textContent).toMatch(/\d+\.\d+/);
+    expect(screen.getByText(/Polar の Cd と連成解析の CDi から推定/)).toBeTruthy();
+    expect(screen.getByRole("img", { name: "FSI 翼幅方向の揚力分布" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "FSI 翼幅方向の抗力分布" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "FSI 翼幅方向のたわみ分布" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "FSI 翼幅方向の安全率分布" })).toBeTruthy();
+  });
+
+  it("explains why L/D cannot be estimated without matching Polars", () => {
+    const result = executeStaticAeroelasticAnalysis({ resultId: "saved-no-polar", aircraft, structuralDesign: design, materials: [material], density: 1.225, speed: 7.4, elasticAxisChordFraction: 0.4, condition: { mode: "fixed-alpha", alphaDegrees: 5 } });
+    render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[material]} structuralDesigns={[design]} results={[result]} onSaveResult={vi.fn()} />);
+
+    expect(screen.getByText("推定 L/D").parentElement?.textContent).toContain("-");
+    expect(screen.getByText(/対応する Polar がないため L\/D を推定できません/)).toBeTruthy();
+  });
+
   it("starts fixed-angle analysis at 7.4 m/s and 5 degrees", () => {
     render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[material]} structuralDesigns={[design]} results={[]} onSaveResult={vi.fn()} />);
 
