@@ -1338,11 +1338,31 @@
           ]
         },
         "localBucklingReserveFactor": {
-          "type": "number",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/EncodedNonFiniteNumber"
+            }
+          ],
           "description": "Perfect-shell elastic screening; manufacturing-imperfection knockdown is not included."
         },
         "brazierReserveFactor": {
-          "type": "number",
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/EncodedNonFiniteNumber"
+            }
+          ],
           "description": "Perfect-shell elastic Brazier ovalization screening."
         },
         "torque": {

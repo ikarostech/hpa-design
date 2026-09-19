@@ -24,6 +24,13 @@ const design: StructuralDesign = { id: "spar", name: "Main spar", sections: [{ i
 afterEach(cleanup);
 
 describe("AeroelasticAnalysisPanel", () => {
+  it("starts fixed-angle analysis at 7.4 m/s and 5 degrees", () => {
+    render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[material]} structuralDesigns={[design]} results={[]} onSaveResult={vi.fn()} />);
+
+    expect((screen.getByLabelText("速度 (m/s)") as HTMLInputElement).value).toBe("7.4");
+    expect((screen.getByLabelText("迎角 (°)") as HTMLInputElement).value).toBe("5");
+  });
+
   it("explains why analysis is unavailable without a structural design", () => {
     render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[]} structuralDesigns={[]} results={[]} onSaveResult={vi.fn()} />);
 

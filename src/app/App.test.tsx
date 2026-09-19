@@ -17,6 +17,7 @@ describe("App routes", () => {
 
     expect(await screen.findByRole("heading", { name: "空力・構造連成（FSI）" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "連成解析を実行" })).toBeTruthy();
+    expect(screen.getByText(/翼端たわみが半翼長の10%を超えており/)).toBeTruthy();
   });
 
   it("redirects the retired schema viewer route to the dashboard", async () => {

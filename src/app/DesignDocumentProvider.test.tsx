@@ -7,11 +7,11 @@ describe("DesignDocumentProvider", () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(cleanup);
 
-  it("uses the aero-structural sample as the default project when no recovery exists", () => {
+  it("uses the anonymized HPA reference as the default project when no recovery exists", () => {
     render(<DesignDocumentProvider><DocumentProbe /></DesignDocumentProvider>);
 
-    expect(screen.getByTestId("name").textContent).toBe("HPADesign 空力・構造サンプル");
-    expect(screen.getByTestId("results").textContent).toBe("1 / 1");
+    expect(screen.getByTestId("name").textContent).toBe("匿名化 HPA 参照設計（保存済み解析結果）");
+    expect(screen.getByTestId("results").textContent).toBe("2 / 1");
   });
 
   it("exposes conceptual design updates to application routes", async () => {

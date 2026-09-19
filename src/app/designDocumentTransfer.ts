@@ -55,7 +55,7 @@ function validateConceptualDesign(value: unknown, issues: ValidationIssue[]) {
   }
 }
 
-function parseDesignDocument(input: string): DesignDocument {
+export function parseDesignDocument(input: string): DesignDocument {
   try {
     return migrateDesignDocument(JSON.parse(input, restoreInfiniteNumber)) as DesignDocument;
   } catch (error) {

@@ -19,7 +19,13 @@ export interface ProjectJsonSchema {
 
 const sourceFile = "src/app/designDocument.ts";
 const rootTypeName = "DesignDocument";
-const encodedNumberProperties = new Set(["bendingReserveFactor", "torsionReserveFactor", "minReserveFactor"]);
+const encodedNumberProperties = new Set([
+  "bendingReserveFactor",
+  "torsionReserveFactor",
+  "localBucklingReserveFactor",
+  "brazierReserveFactor",
+  "minReserveFactor",
+]);
 const projectTopLevelDescriptions: Readonly<Record<string, string>> = {
   schemaVersion: "ファイル形式のバージョン。現在は `4` 固定。",
   name: "設計プロジェクトの表示名。",

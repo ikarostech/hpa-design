@@ -36,11 +36,11 @@ export function AeroelasticAnalysisPanel({
   const controller = useRef<AbortController | null>(null);
   const [designId, setDesignId] = useState(structuralDesigns[0]?.id ?? "");
   const [mode, setMode] = useState<"fixed-alpha" | "target-lift">("fixed-alpha");
-  const [alphaDegrees, setAlphaDegrees] = useState(4);
+  const [alphaDegrees, setAlphaDegrees] = useState(5);
   const [targetLift, setTargetLift] = useState(500);
   const [minimumAlpha, setMinimumAlpha] = useState(-5);
   const [maximumAlpha, setMaximumAlpha] = useState(15);
-  const [speed, setSpeed] = useState(10);
+  const [speed, setSpeed] = useState(7.4);
   const [density, setDensity] = useState(1.225);
   const [elasticAxis, setElasticAxis] = useState(0.4);
   const [localResult, setLocalResult] = useState<StaticAeroelasticResult | null>(null);
