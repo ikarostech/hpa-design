@@ -27,15 +27,16 @@ describe("deformWingAnalysisMesh", () => {
 
     const deformed = deformWingAnalysisMesh(mesh, [
       { yPosition: 0, deflection: 0, rotation: 0, twist: 0 },
-      { yPosition: 2, deflection: 0.2, rotation: 0.1, twist: 0.1 },
+      { yPosition: 2, deflection: 0.2, rotation: 5, twist: 10 },
     ], 0.4);
     const tipAxis = deformed.nodes.find((node) => node.side === "right" && node.y === 2 && node.chordFraction === 0.5)!;
     const tipTrailing = deformed.nodes.find((node) => node.side === "right" && node.y === 2 && node.chordFraction === 1)!;
 
     expect(originalTip).toMatchObject({ x: 1, z: 0 });
-    expect(tipAxis.z).toBeCloseTo(0.2 - 0.1 * Math.sin(0.1), 8);
-    expect(tipTrailing.x).toBeCloseTo(0.4 + 0.6 * Math.cos(0.1), 8);
-    expect(tipTrailing.z).toBeCloseTo(0.2 - 0.6 * Math.sin(0.1), 8);
+    expect(tipAxis.z).toBeCloseTo(0.2 - 0.1 * Math.sin(10 * Math.PI / 180), 8);
+    expect(tipTrailing.x).toBeCloseTo(0.4 + 0.6 * Math.cos(10 * Math.PI / 180), 8);
+    expect(tipTrailing.z).toBeCloseTo(0.2 - 0.6 * Math.sin(10 * Math.PI / 180), 8);
     expect(deformed.strips[1].twist).toBeGreaterThan(mesh.strips[1].twist);
+    expect(deformed.strips[1].dihedral).toBeCloseTo(3.75, 8);
   });
 });

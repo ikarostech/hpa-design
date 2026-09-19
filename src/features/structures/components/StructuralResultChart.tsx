@@ -1,6 +1,6 @@
 import { formatChartNumber } from "../../../shared/lib/chartNumber";
 
-export function StructuralResultChart({ points, label }: { points: readonly { x: number; value: number }[]; label: string }) {
+export function StructuralResultChart({ points, label, unit = "" }: { points: readonly { x: number; value: number }[]; label: string; unit?: string }) {
   if (!points.length) return <p className="text-sm text-slate-500">表示できるデータがありません。</p>;
 
   const maxX = Math.max(...points.map((point) => point.x), 1);
@@ -16,7 +16,7 @@ export function StructuralResultChart({ points, label }: { points: readonly { x:
       <line x1="40" y1="190" x2="760" y2="190" stroke="#cbd5e1" />
       <line x1="40" y1="40" x2="40" y2="190" stroke="#cbd5e1" />
       <polyline points={polyline} fill="none" stroke="#2563eb" strokeWidth="3" />
-      <text x="45" y="30" fontSize="12" fill="#64748b">max {formatChartNumber(max)}</text>
+      <text x="45" y="30" fontSize="12" fill="#64748b">max {formatChartNumber(max)}{unit}</text>
       <text x="760" y="208" textAnchor="end" fontSize="12" fill="#64748b">Y {formatChartNumber(maxX)} m</text>
     </svg>
   </div>;

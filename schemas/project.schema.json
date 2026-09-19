@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:hpa-design:schema:project:4",
+  "$id": "urn:hpa-design:schema:project:5",
   "title": "HPADesign project document",
   "description": "Machine-readable serialization contract for an HPADesign project file. Cross-object reference integrity is additionally checked by the application importer.",
   "$comment": "Source type: src/app/designDocument.ts#DesignDocument. Non-finite calculated values are encoded as {$hpaNumber: 'Infinity' | '-Infinity'}.",
@@ -27,8 +27,8 @@
       "properties": {
         "schemaVersion": {
           "type": "number",
-          "const": 4,
-          "description": "ファイル形式のバージョン。現在は `4` 固定。"
+          "const": 5,
+          "description": "ファイル形式のバージョン。現在は `5` 固定。"
         },
         "name": {
           "type": "string",

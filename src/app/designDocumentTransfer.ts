@@ -106,21 +106,68 @@ export function migrateDesignDocument(document: unknown): unknown {
         structuralResults: [],
       });
     case 3:
-      return {
+      return migrateDesignDocument({
         ...document,
         schemaVersion: 4,
         structuralDesigns: Array.isArray(document.structuralDesigns) ? document.structuralDesigns.map(migrateVersion3StructuralDesign) : document.structuralDesigns,
         structuralResults: Array.isArray(document.structuralResults) ? document.structuralResults.map(migrateVersion3StructuralResult) : document.structuralResults,
-      };
+      });
     case 4:
+      return {
+        ...document,
+        schemaVersion: 5,
+        structuralResults: mapLegacyArray(document.structuralResults, migrateRadiansInStructuralResult),
+        aeroelasticResults: mapLegacyArray(document.aeroelasticResults, migrateRadiansInAeroelasticResult),
+      };
+    case 5:
       return document;
     default:
       return document;
   }
 }
 
+function mapLegacyArray(value: unknown, migrate: (item: unknown) => unknown): unknown {
+  return Array.isArray(value) ? value.map(migrate) : value;
+}
+
+function degreesFromLegacyRadians(value: unknown): unknown {
+  return typeof value === "number" ? value * 180 / Math.PI : value;
+}
+
+function migrateAngleFields(value: unknown, fields: readonly string[]): unknown {
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key, fields.includes(key) ? degreesFromLegacyRadians(item) : item,
+  ]));
+}
+
+function migrateRadiansInStructuralResult(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    points: mapLegacyArray(value.points, (point) => migrateAngleFields(point, ["rotation", "twist"])),
+    summary: migrateAngleFields(value.summary, ["maxTwist"]),
+  };
+}
+
+function migrateRadiansInMesh(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return { ...value, strips: mapLegacyArray(value.strips, (strip) => migrateAngleFields(strip, ["dihedral", "quarterChordSweep"])) };
+}
+
+function migrateRadiansInAeroelasticResult(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    structuralResult: migrateRadiansInStructuralResult(value.structuralResult),
+    iterations: mapLegacyArray(value.iterations, (iteration) => migrateAngleFields(iteration, ["maxTwist"])),
+    undeformedMesh: migrateRadiansInMesh(value.undeformedMesh),
+    deformedMesh: migrateRadiansInMesh(value.deformedMesh),
+  };
+}
+
 function validateSchemaVersion(document: JsonRecord, issues: ValidationIssue[]) {
-  if (document.schemaVersion !== 4) {
+  if (document.schemaVersion !== 5) {
     addIssue(issues, ["schemaVersion"], "対応していない設計ファイルのバージョンです。");
   }
 }

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 
 const document = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   name: "Test aircraft",
   airfoils: [], polars: [], airfoilAnalysisRuns: [], analysisCases: [], analysisResults: [], carbonMaterials: [], structuralDesigns: [], structuralResults: [],
   aircraft: { id: "aircraft-1", span: 4, rootChord: 1, tipChord: 0.5, taperRatio: 0.5, twist: 0, dihedral: 0, sweep: 0, incidence: 0, wingArea: 3, aspectRatio: 5.33, mac: 0.78, staticMargin: 8, sections: [] },

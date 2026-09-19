@@ -23,9 +23,9 @@ export interface WingMeshStrip {
   yEnd: number;
   centerY: number;
   chord: number;
-  twist: number;
-  quarterChordSweep: number;
-  dihedral: number;
+  twist: number; // degrees
+  quarterChordSweep: number; // degrees
+  dihedral: number; // degrees
   halfArea: number;
   airfoilRootId: string;
   airfoilTipId: string;
@@ -72,8 +72,8 @@ export function createWingAnalysisMesh(sections: readonly WingSection[]): WingAn
         centerY: (yStart + yEnd) / 2,
         chord: interpolate(root.chord, tip.chord, spanMid),
         twist: interpolate(root.twist, tip.twist, spanMid),
-        quarterChordSweep: Math.atan2(quarterChordEnd - quarterChordStart, yEnd - yStart),
-        dihedral: Math.atan2(zEnd - zStart, yEnd - yStart),
+        quarterChordSweep: Math.atan2(quarterChordEnd - quarterChordStart, yEnd - yStart) * 180 / Math.PI,
+        dihedral: Math.atan2(zEnd - zStart, yEnd - yStart) * 180 / Math.PI,
         halfArea: (yEnd - yStart) * (chordStart + chordEnd) / 2,
         airfoilRootId: root.airfoilId,
         airfoilTipId: tip.airfoilId,

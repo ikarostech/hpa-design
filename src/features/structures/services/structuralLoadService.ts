@@ -103,7 +103,7 @@ function formatMass(value: number) {
 }
 
 export function createStructuralResultCsv(result: StructuralAnalysisResult) {
-  const header = "y_m,load_N_per_m,shear_N,bending_Nm,bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor,local_buckling_reserve_factor,brazier_reserve_factor,deflection_m,rotation_rad,twist_rad,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
+  const header = "y_m,load_N_per_m,shear_N,bending_Nm,bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor,local_buckling_reserve_factor,brazier_reserve_factor,deflection_m,rotation_deg,twist_deg,outer_diameter_m,thickness_m,EI_Nm2,GJ_Nm2,linear_mass_kg_per_m,axial_stress_Pa,shear_stress_Pa,reserve_factor,critical_ply,critical_mode";
   const rows = result.points.map((point) => [
     point.yPosition, point.distributedLoad, point.shearForce, point.bendingMoment, point.bendingMomentCapacity ?? "", point.bendingReserveFactor ?? "",
     point.torque, point.torqueCapacity ?? "", point.torsionReserveFactor ?? "",
@@ -133,7 +133,7 @@ export function createStructuralSummary(result: StructuralAnalysisResult) {
 - 実行日時: ${result.createdAt}
 - パイプ重量: ${result.summary.mass.toFixed(3)} kg（片翼）
 - 最大たわみ: ${result.summary.maxDeflection.toFixed(6)} m
-- 最大ねじれ: ${result.summary.maxTwist.toFixed(6)} rad
+- 最大ねじれ: ${result.summary.maxTwist.toFixed(6)} °
 - 最小リザーブファクター: ${result.summary.minReserveFactor.toFixed(3)}
 - 支配位置: ${result.summary.governingPosition.toFixed(3)} m
 - 判定方式: ${result.summary.governingMode}

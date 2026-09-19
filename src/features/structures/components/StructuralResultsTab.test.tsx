@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StructuralAnalysisResult } from "../model/types";
 import { StructuralResultsTab } from "./StructuralResultsTab";
@@ -14,7 +14,7 @@ const result = {
     governingPosition: 0,
     governingMode: "繊維引張",
     maxDeflection: 0.003,
-    maxTwist: 0.002,
+    maxTwist: 10,
     mass: 0.8,
     governingLoadCase: "Cruise",
     analysisWarnings: ["局部座屈とBrazier扁平化は完全円筒の弾性スクリーニングです。"],
@@ -31,7 +31,7 @@ const result = {
     torqueCapacity: 32,
     deflection: 0,
     rotation: 0,
-    twist: 0,
+    twist: 5,
     outerDiameter: 0.08,
     thickness: 0.0015,
     ei: 42_000,
@@ -48,6 +48,14 @@ const result = {
 afterEach(cleanup);
 
 describe("StructuralResultsTab", () => {
+  it("shows saved twist values as degrees in metrics, table, and chart", () => {
+    render(<StructuralResultsTab results={[result]} result={result} onSelectResult={vi.fn()} />);
+    expect(screen.getByText("10.00°")).toBeTruthy();
+    expect(screen.getByText("5.000°")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "表示量" }), { target: { value: "twist" } });
+    expect(screen.getByRole("img", { name: "ねじれ (°)" })).toBeTruthy();
+    expect(screen.getByText("max 5°")).toBeTruthy();
+  });
   it("leads with pipe strength and stiffness before load-case response", () => {
     render(<StructuralResultsTab results={[result]} result={result} onSelectResult={vi.fn()} />);
 

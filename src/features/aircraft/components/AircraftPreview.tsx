@@ -28,11 +28,13 @@ export function AircraftPreview({ lift = false, geometry, selectedSectionId = nu
   const planX = (yPosition: number, side: -1 | 1 = 1) => 380 + side * yPosition * planScale;
   const planY = (xPosition: number) => 111 + (xPosition - planMidX) * planScale;
   const frontZRange = Math.max(...sorted.map((section) => Math.abs(section.zPosition)), 0.001);
-  const frontY = (zPosition: number) => 350 - zPosition / frontZRange * 72;
+  const frontScale = Math.min(planScale, 65 / frontZRange);
+  const frontX = (yPosition: number, side: -1 | 1 = 1) => 380 + side * yPosition * frontScale;
+  const frontY = (zPosition: number) => 350 - zPosition * frontScale;
   const rightPlanform = planformPath(sorted, 1, planX, planY);
   const leftPlanform = planformPath(sorted, -1, planX, planY);
-  const frontRight = polylinePath(sorted.map((section) => [planX(section.yPosition), frontY(section.zPosition)]));
-  const frontLeft = polylinePath(sorted.map((section) => [planX(section.yPosition, -1), frontY(section.zPosition)]));
+  const frontRight = polylinePath(sorted.map((section) => [frontX(section.yPosition), frontY(section.zPosition)]));
+  const frontLeft = polylinePath(sorted.map((section) => [frontX(section.yPosition, -1), frontY(section.zPosition)]));
   const meshLines = createMeshLines(sorted, planX, planY);
 
   const selectSection = (sectionId: string) => onSelectSection?.(sectionId);
@@ -77,7 +79,7 @@ export function AircraftPreview({ lift = false, geometry, selectedSectionId = nu
       <path d={frontLeft} className={styles.frontLine} />
       {sorted.map((section, index) => {
         const selected = section.id === selectedSectionId;
-        const x = planX(section.yPosition);
+        const x = frontX(section.yPosition);
         const y = frontY(section.zPosition);
         return <g key={section.id} role="button" tabIndex={0} aria-label={`正面図のSection ${index + 1}を選択`} aria-current={selected ? "true" : undefined} onClick={() => selectSection(section.id)} onKeyDown={(event) => selectWithKeyboard(event, section.id)} className={styles.sectionHandle}>
           <circle cx={x} cy={y} r={12} className={styles.hitTarget} />

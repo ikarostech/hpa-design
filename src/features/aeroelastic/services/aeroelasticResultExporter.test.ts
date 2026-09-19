@@ -36,6 +36,9 @@ describe("aeroelastic result export", () => {
     expect(csv).toContain("lift_N_per_m");
     expect(csv).toContain("[iterations]");
     expect(csv).toContain("displacement_residual");
+    expect(csv).toContain("max_twist_deg");
+    expect(csv).toContain("rotation_deg,twist_deg");
+    expect(createAeroelasticResultSummary(result)).toContain("0.02 °");
   });
 
   it("reports non-convergence, applicability warnings, and method limits in Markdown", () => {

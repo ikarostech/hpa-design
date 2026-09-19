@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDesignDocumentRecoveryRepository, readDesignDocumentRecoveryState, WORKING_DOCUMENT_ID } from "./designDocumentRecoveryRepository";
 
 const document = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   name: "Recovered Glider",
   airfoils: [],
   polars: [],
@@ -65,7 +65,7 @@ describe("design document recovery repository", () => {
     }));
 
     expect(readDesignDocumentRecoveryState(storage)).toMatchObject({
-      document: { schemaVersion: 4, aircraft: { sections: [expect.objectContaining({ yPosition: 0 }), expect.objectContaining({ yPosition: 2 })] } },
+      document: { schemaVersion: 5, aircraft: { sections: [expect.objectContaining({ yPosition: 0 }), expect.objectContaining({ yPosition: 2 })] } },
       isDirty: true,
     });
   });

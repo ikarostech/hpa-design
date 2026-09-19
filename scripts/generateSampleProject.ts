@@ -46,7 +46,7 @@ const structuralResult = executeStructuralAnalysis({
   sampleCount: 81,
 });
 const document = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   name: "HPADesign 空力・構造 MVP サンプル",
   airfoils,
   polars: airfoilPolars,

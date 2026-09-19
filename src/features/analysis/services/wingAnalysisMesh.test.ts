@@ -26,4 +26,11 @@ describe("wing analysis mesh", () => {
     expect(Math.min(...tipNodes.map((node) => node.z))).not.toBeCloseTo(Math.max(...tipNodes.map((node) => node.z)), 8);
     expect(tipQuarterChord?.z).toBeCloseTo(2 * Math.tan(5 * Math.PI / 180), 8);
   });
+
+  it("exposes strip dihedral and sweep in degrees alongside twist", () => {
+    const mesh = createWingAnalysisMesh(sections);
+    expect(mesh.strips[0].dihedral).toBeCloseTo(5, 8);
+    expect(mesh.strips[0].quarterChordSweep).toBeCloseTo(Math.atan2(0.275, 2) * 180 / Math.PI, 8);
+    expect(mesh.strips[0].twist).toBeCloseTo(-2 / 3, 8);
+  });
 });

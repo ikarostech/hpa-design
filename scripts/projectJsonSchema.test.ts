@@ -17,7 +17,7 @@ describe("project JSON Schema generator", () => {
 
     expect(schema).toMatchObject({
       $schema: "https://json-schema.org/draft/2020-12/schema",
-      $id: "urn:hpa-design:schema:project:4",
+      $id: "urn:hpa-design:schema:project:5",
       $ref: "#/$defs/DesignDocument",
     });
     expect(designDocument).toMatchObject({ type: "object", additionalProperties: false });

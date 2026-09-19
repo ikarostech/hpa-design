@@ -16,8 +16,8 @@ export interface AerodynamicLoadTransferResult {
 export interface BeamDeformationPoint {
   yPosition: number;
   deflection: number;
-  rotation: number;
-  twist: number;
+  rotation: number; // degrees
+  twist: number; // degrees
 }
 
 export type AeroelasticCondition =
@@ -39,7 +39,7 @@ export interface AeroelasticIteration {
   cdi: number;
   totalLift: number;
   maxDeflection: number;
-  maxTwist: number;
+  maxTwist: number; // degrees
   displacementResidual: number;
   loadResidual: number | null;
   liftResidual: number;

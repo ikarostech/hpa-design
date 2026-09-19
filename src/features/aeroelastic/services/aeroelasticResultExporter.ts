@@ -13,7 +13,7 @@ export function createAeroelasticResultCsv(result: StaticAeroelasticResult) {
     point.yPosition, point.distributedLoad, point.shearForce, point.bendingMoment, point.torque,
     point.deflection, point.rotation, point.twist, point.minReserveFactor,
   ].map(csvValue).join(","));
-  return `\uFEFF[result]\nkey,value\nstatus,${csvValue(result.status)}\nreview_status,${csvValue(result.reviewStatus)}\nalpha_deg,${result.alphaDegrees}\nCL,${result.cl}\nCDi,${result.cdi}\nCm,${result.cm}\ntotal_lift_N,${result.totalLift}\nspeed_m_per_s,${result.speed}\ndensity_kg_per_m3,${result.density}\nelastic_axis_x_over_c,${result.elasticAxisChordFraction}\n\n[span_loads]\ny_m,width_m,circulation_m2_per_s,lift_N_per_m,drag_N_per_m,torque_Nm_per_m\n${spanLoads.join("\n")}\n\n[iterations]\niteration,alpha_deg,CL,CDi,total_lift_N,max_deflection_m,max_twist_rad,displacement_residual,load_residual,lift_residual\n${iterations.join("\n")}\n\n[structural_results]\ny_m,load_N_per_m,shear_N,bending_Nm,torque_Nm,deflection_m,rotation_rad,twist_rad,reserve_factor\n${structural.join("\n")}`;
+  return `\uFEFF[result]\nkey,value\nstatus,${csvValue(result.status)}\nreview_status,${csvValue(result.reviewStatus)}\nalpha_deg,${result.alphaDegrees}\nCL,${result.cl}\nCDi,${result.cdi}\nCm,${result.cm}\ntotal_lift_N,${result.totalLift}\nspeed_m_per_s,${result.speed}\ndensity_kg_per_m3,${result.density}\nelastic_axis_x_over_c,${result.elasticAxisChordFraction}\n\n[span_loads]\ny_m,width_m,circulation_m2_per_s,lift_N_per_m,drag_N_per_m,torque_Nm_per_m\n${spanLoads.join("\n")}\n\n[iterations]\niteration,alpha_deg,CL,CDi,total_lift_N,max_deflection_m,max_twist_deg,displacement_residual,load_residual,lift_residual\n${iterations.join("\n")}\n\n[structural_results]\ny_m,load_N_per_m,shear_N,bending_Nm,torque_Nm,deflection_m,rotation_deg,twist_deg,reserve_factor\n${structural.join("\n")}`;
 }
 
 export function createAeroelasticResultSummary(result: StaticAeroelasticResult) {
@@ -32,7 +32,7 @@ export function createAeroelasticResultSummary(result: StaticAeroelasticResult) 
 - CL / CDi / Cm: ${result.cl} / ${result.cdi} / ${result.cm}
 - 総揚力: ${result.totalLift} N
 - 最大たわみ: ${result.structuralResult.summary.maxDeflection} m
-- 最大ねじれ: ${result.structuralResult.summary.maxTwist} rad
+- 最大ねじれ: ${result.structuralResult.summary.maxTwist} °
 - 最小安全率: ${result.structuralResult.summary.minReserveFactor}
 - 反復回数: ${result.iterations.length} / ${result.settings.maxIterations}
 

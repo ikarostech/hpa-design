@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { CarbonMaterial, StructuralDesign } from "../features/structures/model/types";
 import { executeStructuralAnalysis } from "../features/structures/services/structuralAnalysis";
 import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResult } from "../mocks/mockData";
-import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
+import { designDocumentExporter, designDocumentImporter, formatValidationIssues, parseDesignDocument } from "./designDocumentTransfer";
 
 const document = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   name: "Imported Glider",
   airfoils: [],
   polars: [],
@@ -19,6 +19,34 @@ const document = {
 };
 
 describe("design document transfer", () => {
+  it("converts version 4 saved result and mesh angles from radians to degrees", () => {
+    const old = {
+      ...document,
+      schemaVersion: 4,
+      structuralResults: [{ points: [{ rotation: Math.PI / 6, twist: -Math.PI / 4 }], summary: { maxTwist: Math.PI / 4 } }],
+      aeroelasticResults: [{
+        structuralResult: { points: [{ rotation: Math.PI / 3, twist: Math.PI / 2 }], summary: { maxTwist: Math.PI / 2 } },
+        iterations: [{ maxTwist: Math.PI / 6 }],
+        undeformedMesh: { strips: [{ dihedral: Math.PI / 6, quarterChordSweep: -Math.PI / 4, twist: -3 }] },
+        deformedMesh: { strips: [{ dihedral: Math.PI / 3, quarterChordSweep: Math.PI / 4, twist: 3 }] },
+      }],
+    };
+    const migrated = parseDesignDocument(JSON.stringify(old));
+    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.structuralResults[0].points[0].rotation).toBeCloseTo(30);
+    expect(migrated.structuralResults[0].points[0].twist).toBeCloseTo(-45);
+    expect(migrated.structuralResults[0].summary.maxTwist).toBeCloseTo(45);
+    expect(migrated.aeroelasticResults![0].structuralResult.points[0].rotation).toBeCloseTo(60);
+    expect(migrated.aeroelasticResults![0].structuralResult.points[0].twist).toBeCloseTo(90);
+    expect(migrated.aeroelasticResults![0].iterations[0].maxTwist).toBeCloseTo(30);
+    expect(migrated.aeroelasticResults![0].undeformedMesh.strips[0].dihedral).toBeCloseTo(30);
+    expect(migrated.aeroelasticResults![0].undeformedMesh.strips[0].quarterChordSweep).toBeCloseTo(-45);
+    expect(migrated.aeroelasticResults![0].undeformedMesh.strips[0].twist).toBe(-3);
+    expect(migrated.aeroelasticResults![0].deformedMesh.strips[0].dihedral).toBeCloseTo(60);
+    expect(migrated.aeroelasticResults![0].deformedMesh.strips[0].quarterChordSweep).toBeCloseTo(45);
+    expect(migrated.aeroelasticResults![0].deformedMesh.strips[0].twist).toBe(3);
+    expect(parseDesignDocument(JSON.stringify(migrated)).structuralResults[0].points[0].rotation).toBeCloseTo(30);
+  });
   it("round-trips an exported design file", async () => {
     const text = await designDocumentExporter.export(document);
     const imported = await designDocumentImporter.parse(text);
@@ -68,7 +96,7 @@ describe("design document transfer", () => {
     }));
 
     expect(imported).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       aircraft: {
         sections: [
           expect.objectContaining({ yPosition: 0, xOffset: 0, chordwisePanels: 12, spanwisePanels: 8 }),
@@ -81,7 +109,7 @@ describe("design document transfer", () => {
 
   it("accepts the populated document used to initialize the application", async () => {
     const imported = await designDocumentImporter.parse(await designDocumentExporter.export({
-      schemaVersion: 4,
+      schemaVersion: 5,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,
@@ -147,7 +175,7 @@ describe("design document transfer", () => {
     }));
 
     expect(imported).toMatchObject({
-      schemaVersion: 4,
+      schemaVersion: 5,
       structuralDesigns: [{
         id: "spar-1",
         sections: [

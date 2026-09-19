@@ -8,7 +8,7 @@ const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chor
 const tipSection = { ...sectionDefaults, id: "section-tip", yPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1" };
 
 const document = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   name: "LongRange UAV",
   airfoils: [
     { id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1.5, trailingEdgeThickness: 0, coordinates: [] },

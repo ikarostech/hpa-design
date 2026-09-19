@@ -114,7 +114,7 @@ function IntegratedResultSummary({ aerodynamicResult, alphaDegrees, structuralRe
       <MetricCard label="空力結果" value={aerodynamicResult?.caseSnapshot?.name ?? aerodynamicResult?.caseId ?? "-"} detail={aerodynamicResult ? `CLmax ${formatAnalysisNumber(aerodynamicResult.clMax, 3)} / CDmin ${formatAnalysisNumber(aerodynamicResult.cdMin, 5)}` : "未選択"} />
       <MetricCard label="構造設計" value={structuralResult.designSnapshot.name} detail={structuralResult.loadCaseSnapshot.name} />
       <MetricCard label="最小安全率" value={formatAnalysisNumber(structuralResult.summary.minReserveFactor, 2)} detail={`${structuralResult.summary.governingPosition.toFixed(2)} m / ${displayFailureMode(structuralResult.summary.governingMode)}`} />
-      <MetricCard label="最大変形" value={`${(structuralResult.summary.maxDeflection * 1000).toFixed(1)} mm`} detail={`ねじれ ${(structuralResult.summary.maxTwist * 180 / Math.PI).toFixed(2)}°`} />
+      <MetricCard label="最大変形" value={`${(structuralResult.summary.maxDeflection * 1000).toFixed(1)} mm`} detail={`ねじれ ${structuralResult.summary.maxTwist.toFixed(2)}°`} />
     </div>
   </div>;
 }

@@ -121,8 +121,8 @@ export function executeStructuralAnalysis({
     bendingMoment: moment[index],
     torque: torque[index],
     deflection: deflection[index],
-    rotation: rotation[index],
-    twist: twist[index],
+    rotation: rotation[index] * 180 / Math.PI,
+    twist: twist[index] * 180 / Math.PI,
   }, sections[index]));
   const governing = points.reduce((current, point) => point.minReserveFactor < current.minReserveFactor ? point : current, points[0]);
   const mass = tubeSections.reduce((sum, section, index) => sum + sectionProperties[index].linearMass * section.length, 0);
@@ -143,7 +143,7 @@ export function executeStructuralAnalysis({
     summary: {
       mass,
       maxDeflection: Math.max(...deflection.map(Math.abs)),
-      maxTwist: Math.max(...twist.map(Math.abs)),
+      maxTwist: Math.max(...twist.map(Math.abs)) * 180 / Math.PI,
       minReserveFactor: governing.minReserveFactor,
       governingLoadCase: loadCase.name,
       governingPosition: governing.yPosition,

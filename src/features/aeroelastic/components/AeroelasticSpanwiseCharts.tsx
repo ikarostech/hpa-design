@@ -19,7 +19,7 @@ export function AeroelasticSpanwiseCharts({ result, profileDragPerLength }: {
   const structure: ChartDatum[] = result.structuralResult.points.map((point) => ({
     y: point.yPosition,
     deflection: point.deflection,
-    twistDegrees: point.twist * 180 / Math.PI,
+    twistDegrees: point.twist,
     shear: point.shearForce,
     bending: point.bendingMoment,
     torque: point.torque,

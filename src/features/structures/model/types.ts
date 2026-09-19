@@ -87,8 +87,8 @@ export interface StructuralResultPoint {
   torqueCapacity?: number;
   torsionReserveFactor?: number;
   deflection: number;
-  rotation: number;
-  twist: number;
+  rotation: number; // degrees
+  twist: number; // degrees
   outerDiameter: number;
   thickness: number;
   ei: number;
@@ -115,7 +115,7 @@ export interface StructuralAnalysisResult {
   summary: {
     mass: number;
     maxDeflection: number;
-    maxTwist: number;
+    maxTwist: number; // degrees
     minReserveFactor: number;
     governingLoadCase: string;
     governingPosition: number;

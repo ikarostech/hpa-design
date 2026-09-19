@@ -14,8 +14,9 @@ export function deformWingAnalysisMesh(
     const axis = elasticAxisPoint(mesh.nodes, node, elasticAxisChordFraction);
     const relativeX = node.x - axis.x;
     const relativeZ = node.z - axis.z;
-    const cosine = Math.cos(beam.twist);
-    const sine = Math.sin(beam.twist);
+    const twistRadians = beam.twist * Math.PI / 180;
+    const cosine = Math.cos(twistRadians);
+    const sine = Math.sin(twistRadians);
     const next = {
       ...node,
       x: axis.x + relativeX * cosine + relativeZ * sine,
@@ -34,7 +35,7 @@ export function deformWingAnalysisMesh(
       const beam = interpolateDeformation(deformation, strip.centerY);
       return {
         ...strip,
-        twist: strip.twist + beam.twist * 180 / Math.PI,
+        twist: strip.twist + beam.twist,
         dihedral: strip.dihedral + beam.rotation,
       };
     }),

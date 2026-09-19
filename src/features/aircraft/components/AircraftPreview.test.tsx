@@ -64,6 +64,23 @@ describe("AircraftPreview", () => {
     expect(renderedRootChord / renderedHalfSpan).toBeCloseTo(1.1 / 15, 5);
   });
 
+  it("draws a five degree dihedral with a five degree front-view slope", () => {
+    const fiveDegreeWing: AircraftGeometry = {
+      ...geometry,
+      sections: [
+        { ...defaults, id: "root", yPosition: 0, chord: 1, xOffset: 0, twist: 0, dihedral: 5, airfoilId: "af-1" },
+        { ...defaults, id: "tip", yPosition: 2, chord: 1, xOffset: 0, twist: 0, dihedral: 0, airfoilId: "af-1" },
+      ],
+    };
+    render(<AircraftPreview geometry={fiveDegreeWing} />);
+
+    const [root, tip] = screen.getAllByTestId("front-section").map((element) => ({
+      x: Number(element.getAttribute("cx")),
+      y: Number(element.getAttribute("cy")),
+    }));
+    expect((root.y - tip.y) / (tip.x - root.x)).toBeCloseTo(Math.tan(5 * Math.PI / 180), 8);
+  });
+
   it("allows a section to be selected from the preview", () => {
     const onSelectSection = vi.fn();
     render(<AircraftPreview geometry={geometry} selectedSectionId="root" onSelectSection={onSelectSection} />);

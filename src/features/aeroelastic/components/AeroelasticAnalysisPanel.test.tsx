@@ -36,6 +36,7 @@ describe("AeroelasticAnalysisPanel", () => {
     expect(screen.getByRole("img", { name: "FSI 翼幅方向の抗力分布" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "FSI 翼幅方向のたわみ分布" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "FSI 翼幅方向の安全率分布" })).toBeTruthy();
+    expect(screen.getByText("最大ねじれ").parentElement?.textContent).toContain(`${result.structuralResult.summary.maxTwist.toFixed(2)}°`);
   });
 
   it("explains why L/D cannot be estimated without matching Polars", () => {

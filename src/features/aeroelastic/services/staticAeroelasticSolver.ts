@@ -310,7 +310,7 @@ function interpolateDeformation(points: readonly BeamDeformationPoint[], yPositi
 function applicabilityWarnings(result: StructuralAnalysisResult, semiSpan: number) {
   const warnings: string[] = [];
   if (result.summary.maxDeflection / Math.max(semiSpan, 1e-12) > 0.1) warnings.push("翼端たわみが半翼長の10%を超えており、線形梁の適用範囲を外れる可能性があります。");
-  if (result.summary.maxTwist > 0.2) warnings.push("弾性ねじれが0.2 radを超えており、幾何学的非線形解析が必要です。");
+  if (result.summary.maxTwist > 0.2 * 180 / Math.PI) warnings.push("弾性ねじれが約11.46°を超えており、幾何学的非線形解析が必要です。");
   return warnings;
 }
 

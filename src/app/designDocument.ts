@@ -7,7 +7,7 @@ import type { StaticAeroelasticResult } from "../features/aeroelastic/services/s
 import type { ConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 
 export interface DesignDocument {
-  schemaVersion: 4;
+  schemaVersion: 5;
   name: string;
   conceptualDesign?: ConceptualDesign;
   airfoils: readonly Airfoil[];

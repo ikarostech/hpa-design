@@ -370,7 +370,8 @@ describe("executeStructuralAnalysis", () => {
     const expectedTwist = 50 * 1.5 / (isotropic.g12 * polarMoment);
     const expectedTorqueCapacity = isotropic.shearStrength12 * polarMoment / 0.05;
 
-    expect(result.summary.maxTwist).toBeCloseTo(expectedTwist, 3);
+    expect(result.summary.maxTwist).toBeCloseTo(expectedTwist * 180 / Math.PI, 3);
+    expect(result.points.at(-1)!.twist).toBeCloseTo(expectedTwist * 180 / Math.PI, 3);
     expect(result.points[0].torqueCapacity!).toBeCloseTo(expectedTorqueCapacity, 4);
     expect(result.points[0].torsionReserveFactor!).toBeCloseTo(expectedTorqueCapacity / 75, 4);
     expect(result.summary.minReserveFactor).toBeCloseTo(expectedTorqueCapacity / 75, 4);

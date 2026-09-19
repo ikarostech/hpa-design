@@ -27,7 +27,7 @@ const encodedNumberProperties = new Set([
   "minReserveFactor",
 ]);
 const projectTopLevelDescriptions: Readonly<Record<string, string>> = {
-  schemaVersion: "ファイル形式のバージョン。現在は `4` 固定。",
+  schemaVersion: "ファイル形式のバージョン。現在は `5` 固定。",
   name: "設計プロジェクトの表示名。",
   conceptualDesign: "設計重量、巡航速度、最大翼幅などの概要設計条件。",
   airfoils: "翼型形状の一覧。",
@@ -69,7 +69,7 @@ export function generateProjectJsonSchema({ projectRoot }: GenerateProjectJsonSc
 
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: "urn:hpa-design:schema:project:4",
+    $id: "urn:hpa-design:schema:project:5",
     title: "HPADesign project document",
     description: "Machine-readable serialization contract for an HPADesign project file. Cross-object reference integrity is additionally checked by the application importer.",
     $comment: `Source type: ${sourceFile}#${rootTypeName}. Non-finite calculated values are encoded as {$hpaNumber: 'Infinity' | '-Infinity'}.`,

@@ -142,7 +142,7 @@ function AeroelasticResultView({ result, polars }: { result: StaticAeroelasticRe
       <MetricCard label="推定総抗力" value={performance.available ? `${performance.totalDrag.toFixed(1)} N` : "-"} />
       <MetricCard label="推定 L/D" value={performance.available ? performance.liftToDrag.toFixed(2) : "-"} detail="Polar の Cd と連成解析の CDi から推定" />
       <MetricCard label="最大たわみ" value={`${result.structuralResult.summary.maxDeflection.toFixed(4)} m`} />
-      <MetricCard label="最大ねじれ" value={`${result.structuralResult.summary.maxTwist.toFixed(4)} rad`} />
+      <MetricCard label="最大ねじれ" value={`${result.structuralResult.summary.maxTwist.toFixed(2)}°`} />
       <MetricCard label="最小安全率" value={formatFinite(result.structuralResult.summary.minReserveFactor, 2)} detail={`${result.structuralResult.summary.governingPosition.toFixed(2)} m / ${result.structuralResult.summary.governingMode}`} />
       <MetricCard label="収束反復" value={`${result.iterations.length} 回`} />
     </div>

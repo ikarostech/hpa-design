@@ -77,6 +77,8 @@ describe("structural load integration", () => {
     expect(createStructuralResultCsv(structuralResult)).toContain("y_m,load_N_per_m,shear_N,bending_Nm");
     expect(createStructuralResultCsv(structuralResult)).toContain("bending_capacity_Nm,bending_reserve_factor,torque_Nm,torque_capacity_Nm,torsion_reserve_factor");
     expect(createStructuralResultCsv(structuralResult)).toContain("local_buckling_reserve_factor,brazier_reserve_factor");
+    expect(createStructuralResultCsv(structuralResult)).toContain("rotation_deg,twist_deg");
+    expect(createStructuralSummary(structuralResult)).toContain("0.010000 °");
     expect(createStructuralResultCsv(structuralResult)).toContain("2.5,ply-1");
     expect(createStructuralSummary(structuralResult)).toContain("最小リザーブファクター: 2.500");
     expect(createStructuralSummary(structuralResult)).toContain("Timoshenko梁");

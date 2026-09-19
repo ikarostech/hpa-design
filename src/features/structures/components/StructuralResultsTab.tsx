@@ -39,7 +39,7 @@ export function StructuralResultsTab({ results, result, onSelectResult }: {
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       <MetricCard label="最小安全率" value={formatStructuralNumber(result.summary.minReserveFactor, 2)} detail={`${result.summary.governingPosition.toFixed(2)} m / ${displayFailureMode(result.summary.governingMode)}`} />
       <MetricCard label="最大たわみ" value={`${(result.summary.maxDeflection * 1000).toFixed(1)} mm`} />
-      <MetricCard label="最大ねじれ" value={`${(result.summary.maxTwist * 180 / Math.PI).toFixed(2)}°`} />
+      <MetricCard label="最大ねじれ" value={`${result.summary.maxTwist.toFixed(2)}°`} />
       <MetricCard label="パイプ重量" value={`${result.summary.mass.toFixed(3)} kg`} detail="片翼" />
       <MetricCard label="支配ケース" value={result.summary.governingLoadCase} detail={statusLabel(result.status)} />
     </div>
@@ -70,13 +70,13 @@ export function StructuralResultsTab({ results, result, onSelectResult }: {
           <option value="shearForce">せん断力</option><option value="bendingMoment">曲げモーメント</option><option value="torque">ねじりモーメント</option><option value="deflection">たわみ</option><option value="twist">ねじれ</option><option value="minReserveFactor">安全率</option>
         </select>
       </CardHeader>
-      <CardBody><StructuralResultChart points={chart} label={quantity} /></CardBody>
+      <CardBody><StructuralResultChart points={chart} label={quantity === "twist" ? "ねじれ (°)" : quantity} unit={quantity === "twist" ? "°" : undefined} /></CardBody>
     </Card>
     <Card>
       <CardHeader><h2 className="font-semibold">荷重応答一覧</h2></CardHeader>
       <CardBody><div className="max-h-96 overflow-auto"><table className="w-full min-w-[1100px] text-left text-sm">
         <thead className="sticky top-0 bg-white text-xs text-slate-500"><tr><th className="px-2 py-2">Y</th><th>荷重</th><th>せん断力</th><th>曲げ</th><th>たわみ</th><th>ねじれ</th><th>軸応力</th><th>せん断応力</th><th>安全率</th><th>局部座屈安全率</th><th>Brazier安全率</th><th>判定</th></tr></thead>
-        <tbody>{sampledPoints.map((point) => <tr key={point.yPosition} className="border-t"><td className="px-2 py-2">{point.yPosition.toFixed(3)}</td><td>{point.distributedLoad.toFixed(1)}</td><td>{point.shearForce.toFixed(1)}</td><td>{point.bendingMoment.toFixed(1)}</td><td>{(point.deflection * 1000).toFixed(2)} mm</td><td>{(point.twist * 180 / Math.PI).toFixed(3)}°</td><td>{(point.axialStress / 1e6).toFixed(1)} MPa</td><td>{(point.shearStress / 1e6).toFixed(1)} MPa</td><td>{formatStructuralNumber(point.minReserveFactor, 2)}</td><td>{formatOptionalNumber(point.localBucklingReserveFactor)}</td><td>{formatOptionalNumber(point.brazierReserveFactor)}</td><td>{displayFailureMode(point.criticalMode)}</td></tr>)}</tbody>
+        <tbody>{sampledPoints.map((point) => <tr key={point.yPosition} className="border-t"><td className="px-2 py-2">{point.yPosition.toFixed(3)}</td><td>{point.distributedLoad.toFixed(1)}</td><td>{point.shearForce.toFixed(1)}</td><td>{point.bendingMoment.toFixed(1)}</td><td>{(point.deflection * 1000).toFixed(2)} mm</td><td>{point.twist.toFixed(3)}°</td><td>{(point.axialStress / 1e6).toFixed(1)} MPa</td><td>{(point.shearStress / 1e6).toFixed(1)} MPa</td><td>{formatStructuralNumber(point.minReserveFactor, 2)}</td><td>{formatOptionalNumber(point.localBucklingReserveFactor)}</td><td>{formatOptionalNumber(point.brazierReserveFactor)}</td><td>{displayFailureMode(point.criticalMode)}</td></tr>)}</tbody>
       </table></div></CardBody>
     </Card>
   </div>;
