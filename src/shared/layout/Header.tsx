@@ -1,5 +1,6 @@
 import { Menu, X } from "lucide-react";
 import { JobStatusButton } from "../jobs/JobStatusButton";
+import { version } from "../../../package.json";
 
 interface HeaderProps {
   mobileMenuOpen?: boolean;
@@ -21,7 +22,10 @@ export function Header({ mobileMenuOpen = false, onMobileMenuToggle }: HeaderPro
           {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-sm font-bold text-white">HPA</div>
-        <p className="text-sm font-semibold text-slate-950">HPADesign</p>
+        <div className="flex items-baseline gap-2 whitespace-nowrap">
+          <p className="text-sm font-semibold text-slate-950">HPADesign</p>
+          <span className="text-xs text-slate-500">v{version}</span>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <JobStatusButton />
