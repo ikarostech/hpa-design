@@ -1,6 +1,6 @@
 # Release process
 
-HPADesign uses the `version` field in `package.json` as its application version. The current public version is `0.1.0`.
+HPADesign uses the `version` field in `package.json` as its application version. The current public version is `0.1.2`.
 
 GitHub Pages is deployed only when a push to `main` changes that version. Changes to source code, dependencies, or the lockfile do not publish the site unless the application version changes in the same push.
 
