@@ -126,7 +126,7 @@ function getLiftDragRatio(point: PolarChartPoint) {
 
 function Chart({ title, children }: { title: string; children: React.ReactElement }) {
   return (
-    <div className="h-64 rounded-lg border border-slate-200 bg-white p-3">
+    <div className="h-80 rounded-lg border border-slate-200 bg-white p-3 xl:h-96">
       <p className="mb-2 text-sm font-semibold text-slate-800">{title}</p>
       <ResponsiveContainer width="100%" height="86%">
         {children}
