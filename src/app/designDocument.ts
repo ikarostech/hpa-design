@@ -7,7 +7,7 @@ import type { StaticAeroelasticResult } from "../features/aeroelastic/services/s
 import type { ConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
 
 export interface DesignDocument {
-  schemaVersion: 5;
+  schemaVersion: 6;
   name: string;
   conceptualDesign?: ConceptualDesign;
   airfoils: readonly Airfoil[];
@@ -61,7 +61,7 @@ export class AirfoilReferenceError extends Error {
   }
 }
 
-type EditableAircraftGeometry = Pick<AircraftGeometry, "incidence" | "sections" | "staticMargin">;
+type EditableAircraftGeometry = Pick<AircraftGeometry, "incidence" | "sections" | "staticMargin" | "tailSurfaces">;
 
 export function createDesignDocumentStore(initialDocument: DesignDocument, { saved = true }: { saved?: boolean } = {}): DesignDocumentStore {
   let document = cloneDocument(initialDocument);
@@ -216,7 +216,17 @@ function cloneDocument(document: DesignDocument): DesignDocument {
 function cloneAirfoil(airfoil: Airfoil): Airfoil { return { ...airfoil, coordinates: airfoil.coordinates.map((point) => ({ ...point })) }; }
 function clonePolar(polar: AirfoilPolar): AirfoilPolar { return { ...polar, points: polar.points.map((point) => ({ ...point })) }; }
 function cloneRun(run: AirfoilAnalysisRun): AirfoilAnalysisRun { return { ...run, airfoilIds: [...run.airfoilIds], polarIds: [...run.polarIds], failures: run.failures?.map((failure) => ({ ...failure })) }; }
-function cloneAircraft(aircraft: AircraftGeometry): AircraftGeometry { return { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })) }; }
+function cloneAircraft(aircraft: AircraftGeometry): AircraftGeometry {
+  return {
+    ...aircraft,
+    sections: aircraft.sections.map((section) => ({ ...section })),
+    tailSurfaces: aircraft.tailSurfaces?.map((surface) => ({
+      ...surface,
+      rootPosition: { ...surface.rootPosition },
+      sections: surface.sections.map((section) => ({ ...section })),
+    })),
+  };
+}
 function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
   return {
     ...result,
@@ -277,7 +287,9 @@ function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
 }
 
 function aircraftAnalysisInputsChanged(left: AircraftGeometry, right: AircraftGeometry) {
-  return left.incidence !== right.incidence || JSON.stringify(left.sections) !== JSON.stringify(right.sections);
+  return left.incidence !== right.incidence
+    || JSON.stringify(left.sections) !== JSON.stringify(right.sections)
+    || JSON.stringify(left.tailSurfaces ?? []) !== JSON.stringify(right.tailSurfaces ?? []);
 }
 
 function sameCoordinates(left: Airfoil, right: Airfoil) {
@@ -288,6 +300,9 @@ function sameCoordinates(left: Airfoil, right: Airfoil) {
 export function listAirfoilReferences(document: DesignDocument, airfoilId: string) {
   return [
     ...document.aircraft.sections.filter((section) => section.airfoilId === airfoilId).map((section) => `aircraft section ${section.id}`),
+    ...(document.aircraft.tailSurfaces ?? []).flatMap((surface) => surface.sections
+      .filter((section) => section.leftAirfoilId === airfoilId || section.rightAirfoilId === airfoilId)
+      .map((section) => `aircraft tail section ${surface.id}/${section.id}`)),
     ...document.polars.filter((polar) => polar.airfoilId === airfoilId).map((polar) => `Polar ${polar.id}`),
     ...document.airfoilAnalysisRuns.filter((run) => run.airfoilIds.includes(airfoilId)).map((run) => `airfoil run ${run.id}`),
     ...document.analysisResults.filter((result) => result.airfoilIds?.includes(airfoilId)).map((result) => `aircraft result ${result.id}`),

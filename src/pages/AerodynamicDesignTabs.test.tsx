@@ -6,15 +6,16 @@ import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 afterEach(cleanup);
 
 describe("AerodynamicDesignTabs", () => {
-  it("keeps airfoils, wing geometry, and rigid-wing analysis in one aerodynamic design page", () => {
-    render(<MemoryRouter initialEntries={["/aerodynamics/geometry"]}><AerodynamicDesignTabs /></MemoryRouter>);
+  it("provides tail design as a separate aerodynamic-design tab", () => {
+    render(<MemoryRouter initialEntries={["/aerodynamics/tails"]}><AerodynamicDesignTabs /></MemoryRouter>);
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => [tab.textContent, tab.getAttribute("href")])).toEqual([
       ["翼型", "/aerodynamics/airfoils"],
       ["主翼形状", "/aerodynamics/geometry"],
+      ["尾翼設計", "/aerodynamics/tails"],
       ["空力解析", "/aerodynamics/analysis"],
     ]);
-    expect(screen.getByRole("tab", { name: "主翼形状" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("aria-selected")).toBe("true");
   });
 });

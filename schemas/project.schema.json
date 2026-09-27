@@ -27,8 +27,8 @@
       "properties": {
         "schemaVersion": {
           "type": "number",
-          "const": 5,
-          "description": "ファイル形式のバージョン。現在は `5` 固定。"
+          "const": 6,
+          "description": "ファイル形式のバージョン。現在は `6` 固定。"
         },
         "name": {
           "type": "string",
@@ -443,6 +443,13 @@
           "items": {
             "$ref": "#/$defs/WingSection"
           }
+        },
+        "tailSurfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TailSurface"
+          },
+          "description": "Optional for backward compatibility with projects created before tail modelling."
         }
       },
       "required": [
@@ -528,6 +535,145 @@
         "sine",
         "inverse-sine"
       ]
+    },
+    "TailSurface": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "設計プロジェクトの表示名。",
+          "minLength": 1
+        },
+        "orientation": {
+          "$ref": "#/$defs/TailSurfaceOrientation"
+        },
+        "rootPosition": {
+          "$ref": "#/$defs/AircraftPosition",
+          "description": "Root leading-edge position in aircraft axes, in metres."
+        },
+        "incidence": {
+          "type": "number"
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "XFLR5 `Symetric` flag. Geometry remains mirrored; this controls left/right foil symmetry."
+        },
+        "isDoubleFin": {
+          "type": "boolean",
+          "description": "XFLR5 fin arrangement flags; valid only for vertical surfaces."
+        },
+        "isSymmetricFin": {
+          "type": "boolean"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TailSurfaceSection"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "orientation",
+        "rootPosition",
+        "incidence",
+        "symmetric",
+        "isDoubleFin",
+        "isSymmetricFin",
+        "sections"
+      ],
+      "additionalProperties": false
+    },
+    "TailSurfaceOrientation": {
+      "type": "string",
+      "enum": [
+        "horizontal",
+        "vertical"
+      ]
+    },
+    "AircraftPosition": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "additionalProperties": false
+    },
+    "TailSurfaceSection": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spanPosition": {
+          "type": "number",
+          "description": "Distance from the tail root along its span axis, in metres."
+        },
+        "chord": {
+          "type": "number"
+        },
+        "xOffset": {
+          "type": "number",
+          "description": "Leading-edge offset aft of the tail root reference, in metres."
+        },
+        "dihedral": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "leftAirfoilId": {
+          "type": "string"
+        },
+        "rightAirfoilId": {
+          "type": "string"
+        },
+        "chordwisePanels": {
+          "type": "number"
+        },
+        "spanwisePanels": {
+          "type": "number"
+        },
+        "chordwiseDistribution": {
+          "$ref": "#/$defs/PanelDistribution"
+        },
+        "spanwiseDistribution": {
+          "$ref": "#/$defs/PanelDistribution"
+        }
+      },
+      "required": [
+        "id",
+        "spanPosition",
+        "chord",
+        "xOffset",
+        "dihedral",
+        "twist",
+        "leftAirfoilId",
+        "rightAirfoilId",
+        "chordwisePanels",
+        "spanwisePanels",
+        "chordwiseDistribution",
+        "spanwiseDistribution"
+      ],
+      "additionalProperties": false
     },
     "AnalysisCase": {
       "type": "object",

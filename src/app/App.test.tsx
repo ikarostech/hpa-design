@@ -30,4 +30,14 @@ describe("App routes", () => {
     expect(await screen.findByRole("heading", { name: "設計概要" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "プロジェクトファイル仕様" })).toBeNull();
   });
+
+  it("opens tail design on its own aerodynamic-design route", async () => {
+    window.location.hash = "#/aerodynamics/tails";
+
+    render(<ApplicationRouter><App /></ApplicationRouter>);
+
+    expect(await screen.findByRole("heading", { name: "尾翼設計" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: "尾翼を追加" })).toBeTruthy();
+  });
 });

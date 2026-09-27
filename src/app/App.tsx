@@ -9,6 +9,7 @@ import { createDefaultConceptualDesign } from "../features/conceptual-design/mod
 
 const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
+const TailDesignPage = lazy(async () => ({ default: (await import("../pages/TailDesignPage")).TailDesignPage }));
 const AnalysisPage = lazy(async () => ({ default: (await import("../pages/AnalysisPage")).AnalysisPage }));
 const FsiPage = lazy(async () => ({ default: (await import("../pages/FsiPage")).FsiPage }));
 const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
@@ -23,6 +24,7 @@ export default function App() {
     <Route path="/aerodynamics" element={<Navigate to="/aerodynamics/airfoils" replace />} />
     <Route path="/aerodynamics/airfoils" element={<AirfoilRoute />} />
     <Route path="/aerodynamics/geometry" element={<AircraftRoute />} />
+    <Route path="/aerodynamics/tails" element={<TailRoute />} />
     <Route path="/aerodynamics/analysis" element={<AnalysisRoute />} />
     <Route path="/fsi" element={<FsiRoute />} />
     <Route path="/structures" element={<StructuresRoute />} />
@@ -61,6 +63,11 @@ function AirfoilRoute() {
 function AircraftRoute() {
   const { document, updateAircraft } = useDesignDocument();
   return <AircraftWorkspacePage aircraft={document.aircraft} airfoils={document.airfoils} onUpdateAircraft={updateAircraft} />;
+}
+
+function TailRoute() {
+  const { document, updateAircraft } = useDesignDocument();
+  return <TailDesignPage aircraft={document.aircraft} airfoils={document.airfoils} onUpdateAircraft={updateAircraft} />;
 }
 
 function AnalysisRoute() {

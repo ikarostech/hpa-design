@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 const tabs = [
   { label: "翼型", path: "/aerodynamics/airfoils" },
   { label: "主翼形状", path: "/aerodynamics/geometry" },
+  { label: "尾翼設計", path: "/aerodynamics/tails" },
   { label: "空力解析", path: "/aerodynamics/analysis" },
 ] as const;
 

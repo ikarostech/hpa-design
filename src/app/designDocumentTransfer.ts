@@ -30,6 +30,7 @@ export function validateDesignDocument(document: unknown): ValidationResult {
 
   const airfoilIds = validateAirfoils(arrays.airfoils, issues);
   validateWingSections(aircraft?.sections ?? [], airfoilIds, issues);
+  validateTailSurfaces(aircraft?.tailSurfaces ?? [], airfoilIds, issues);
   const polarIds = validatePolars(arrays.polars, airfoilIds, issues);
   validateAnalysisRuns(arrays.airfoilAnalysisRuns, airfoilIds, polarIds, issues);
   const caseIds = validateAnalysisCases(arrays.analysisCases, aircraft?.id, issues);
@@ -113,17 +114,55 @@ export function migrateDesignDocument(document: unknown): unknown {
         structuralResults: Array.isArray(document.structuralResults) ? document.structuralResults.map(migrateVersion3StructuralResult) : document.structuralResults,
       });
     case 4:
-      return {
+      return migrateDesignDocument({
         ...document,
         schemaVersion: 5,
         structuralResults: mapLegacyArray(document.structuralResults, migrateRadiansInStructuralResult),
         aeroelasticResults: mapLegacyArray(document.aeroelasticResults, migrateRadiansInAeroelasticResult),
-      };
+      });
     case 5:
+      return migrateDesignDocument({
+        ...document,
+        schemaVersion: 6,
+        aircraft: migrateVersion5Aircraft(document.aircraft),
+      });
+    case 6:
       return document;
     default:
       return document;
   }
+}
+
+function migrateVersion5Aircraft(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    tailSurfaces: mapLegacyArray(value.tailSurfaces, migrateVersion5TailSurface),
+  };
+}
+
+function migrateVersion5TailSurface(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const { controlSurface: _controlSurface, ...surface } = value;
+  return {
+    ...surface,
+    symmetric: typeof value.symmetric === "boolean" ? value.symmetric : value.orientation === "horizontal",
+    isDoubleFin: typeof value.isDoubleFin === "boolean" ? value.isDoubleFin : false,
+    isSymmetricFin: typeof value.isSymmetricFin === "boolean" ? value.isSymmetricFin : false,
+    sections: mapLegacyArray(value.sections, migrateVersion5TailSection),
+  };
+}
+
+function migrateVersion5TailSection(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const { airfoilId: _airfoilId, ...section } = value;
+  const legacyAirfoilId = typeof value.airfoilId === "string" ? value.airfoilId : "";
+  return {
+    ...section,
+    dihedral: typeof value.dihedral === "number" ? value.dihedral : 0,
+    leftAirfoilId: typeof value.leftAirfoilId === "string" ? value.leftAirfoilId : legacyAirfoilId,
+    rightAirfoilId: typeof value.rightAirfoilId === "string" ? value.rightAirfoilId : legacyAirfoilId,
+  };
 }
 
 function mapLegacyArray(value: unknown, migrate: (item: unknown) => unknown): unknown {
@@ -167,7 +206,7 @@ function migrateRadiansInAeroelasticResult(value: unknown): unknown {
 }
 
 function validateSchemaVersion(document: JsonRecord, issues: ValidationIssue[]) {
-  if (document.schemaVersion !== 5) {
+  if (document.schemaVersion !== 6) {
     addIssue(issues, ["schemaVersion"], "対応していない設計ファイルのバージョンです。");
   }
 }
@@ -414,7 +453,11 @@ function validateAircraft(value: unknown, issues: ValidationIssue[]) {
   for (const field of ["span", "rootChord", "tipChord", "taperRatio", "twist", "dihedral", "sweep", "incidence", "wingArea", "aspectRatio", "mac", "staticMargin"]) {
     validateFiniteNumber(value[field], [...path, field], issues);
   }
-  return { id, sections: readArray(value.sections, [...path, "sections"], issues) };
+  return {
+    id,
+    sections: readArray(value.sections, [...path, "sections"], issues),
+    tailSurfaces: value.tailSurfaces === undefined ? [] : readArray(value.tailSurfaces, [...path, "tailSurfaces"], issues),
+  };
 }
 
 function validateWingSections(items: readonly unknown[], airfoilIds: ReadonlySet<string>, issues: ValidationIssue[]) {
@@ -432,6 +475,41 @@ function validateWingSections(items: readonly unknown[], airfoilIds: ReadonlySet
     validateReference(item.airfoilId, [...path, "airfoilId"], airfoilIds, "翼型", issues);
     validateEnum(item.chordwiseDistribution, [...path, "chordwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
     validateEnum(item.spanwiseDistribution, [...path, "spanwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
+  });
+}
+
+function validateTailSurfaces(items: readonly unknown[], airfoilIds: ReadonlySet<string>, issues: ValidationIssue[]) {
+  const ids = new Set<string>();
+  items.forEach((item, surfaceIndex) => {
+    const path = ["aircraft", "tailSurfaces", String(surfaceIndex)];
+    if (!isRecord(item)) {
+      addIssue(issues, path, "Tail surface must be an object.");
+      return;
+    }
+    addUniqueId(item.id, path, ids, issues);
+    validateNonEmptyString(item.name, [...path, "name"], issues);
+    validateEnum(item.orientation, [...path, "orientation"], ["horizontal", "vertical"], issues);
+    if (!isRecord(item.rootPosition)) addIssue(issues, [...path, "rootPosition"], "Tail root position must be an object.");
+    else for (const axis of ["x", "y", "z"]) validateFiniteNumber(item.rootPosition[axis], [...path, "rootPosition", axis], issues);
+    validateFiniteNumber(item.incidence, [...path, "incidence"], issues);
+    for (const field of ["symmetric", "isDoubleFin", "isSymmetricFin"]) validateBoolean(item[field], [...path, field], issues);
+
+    const sectionIds = new Set<string>();
+    readArray(item.sections, [...path, "sections"], issues).forEach((section, sectionIndex) => {
+      const sectionPath = [...path, "sections", String(sectionIndex)];
+      if (!isRecord(section)) {
+        addIssue(issues, sectionPath, "Tail section must be an object.");
+        return;
+      }
+      addUniqueId(section.id, sectionPath, sectionIds, issues);
+      for (const field of ["spanPosition", "chord", "xOffset", "dihedral", "twist"]) validateFiniteNumber(section[field], [...sectionPath, field], issues);
+      validateReference(section.leftAirfoilId, [...sectionPath, "leftAirfoilId"], airfoilIds, "airfoil", issues);
+      validateReference(section.rightAirfoilId, [...sectionPath, "rightAirfoilId"], airfoilIds, "airfoil", issues);
+      validatePanelCount(section.chordwisePanels, [...sectionPath, "chordwisePanels"], issues);
+      validatePanelCount(section.spanwisePanels, [...sectionPath, "spanwisePanels"], issues);
+      validateEnum(section.chordwiseDistribution, [...sectionPath, "chordwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
+      validateEnum(section.spanwiseDistribution, [...sectionPath, "spanwiseDistribution"], ["uniform", "cosine", "sine", "inverse-sine"], issues);
+    });
   });
 }
 
@@ -540,6 +618,10 @@ function validateDate(value: unknown, path: string[], issues: ValidationIssue[])
 
 function validateEnum(value: unknown, path: string[], values: readonly string[], issues: ValidationIssue[]) {
   if (typeof value !== "string" || !values.includes(value)) addIssue(issues, path, `値は ${values.join("、")} のいずれかである必要があります。`);
+}
+
+function validateBoolean(value: unknown, path: string[], issues: ValidationIssue[]) {
+  if (typeof value !== "boolean") addIssue(issues, path, "Value must be a boolean.");
 }
 
 function validateFiniteNumber(value: unknown, path: string[], issues: ValidationIssue[]) {

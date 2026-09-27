@@ -5,7 +5,7 @@ import { aircraftGeometry, airfoilPolars, airfoils, analysisCases, analysisResul
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues, parseDesignDocument } from "./designDocumentTransfer";
 
 const document = {
-  schemaVersion: 5 as const,
+  schemaVersion: 6 as const,
   name: "Imported Glider",
   airfoils: [],
   polars: [],
@@ -19,6 +19,49 @@ const document = {
 };
 
 describe("design document transfer", () => {
+  it("migrates version 5 tail surfaces to the XFLR5 section schema", () => {
+    const migrated = parseDesignDocument(JSON.stringify({
+      ...document,
+      schemaVersion: 5,
+      aircraft: {
+        ...document.aircraft,
+        tailSurfaces: [{
+          id: "tail-1",
+          name: "Horizontal tail",
+          orientation: "horizontal",
+          rootPosition: { x: 4, y: 0, z: 0.2 },
+          incidence: 0,
+          sections: [{
+            id: "tail-root",
+            spanPosition: 0,
+            chord: 0.8,
+            xOffset: 0,
+            twist: 0,
+            airfoilId: "af-1",
+            chordwisePanels: 8,
+            spanwisePanels: 6,
+            chordwiseDistribution: "cosine",
+            spanwiseDistribution: "cosine",
+          }],
+        }],
+      },
+    }));
+
+    expect(migrated).toMatchObject({
+      schemaVersion: 6,
+      aircraft: {
+        tailSurfaces: [{
+          symmetric: true,
+          isDoubleFin: false,
+          isSymmetricFin: false,
+          sections: [{ dihedral: 0, leftAirfoilId: "af-1", rightAirfoilId: "af-1" }],
+        }],
+      },
+    });
+    expect("airfoilId" in migrated.aircraft.tailSurfaces![0].sections[0]).toBe(false);
+    expect("controlSurface" in migrated.aircraft.tailSurfaces![0]).toBe(false);
+  });
+
   it("converts version 4 saved result and mesh angles from radians to degrees", () => {
     const old = {
       ...document,
@@ -32,7 +75,7 @@ describe("design document transfer", () => {
       }],
     };
     const migrated = parseDesignDocument(JSON.stringify(old));
-    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.schemaVersion).toBe(6);
     expect(migrated.structuralResults[0].points[0].rotation).toBeCloseTo(30);
     expect(migrated.structuralResults[0].points[0].twist).toBeCloseTo(-45);
     expect(migrated.structuralResults[0].summary.maxTwist).toBeCloseTo(45);
@@ -96,7 +139,7 @@ describe("design document transfer", () => {
     }));
 
     expect(imported).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       aircraft: {
         sections: [
           expect.objectContaining({ yPosition: 0, xOffset: 0, chordwisePanels: 12, spanwisePanels: 8 }),
@@ -109,7 +152,7 @@ describe("design document transfer", () => {
 
   it("accepts the populated document used to initialize the application", async () => {
     const imported = await designDocumentImporter.parse(await designDocumentExporter.export({
-      schemaVersion: 5,
+      schemaVersion: 6,
       name: "LongRange UAV",
       airfoils,
       polars: airfoilPolars,
@@ -175,7 +218,7 @@ describe("design document transfer", () => {
     }));
 
     expect(imported).toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 6,
       structuralDesigns: [{
         id: "spar-1",
         sections: [
@@ -292,6 +335,33 @@ describe("design document transfer", () => {
       valid: false,
       issues: expect.arrayContaining([
         expect.objectContaining({ path: ["aircraft", "sections", "0", "airfoilId"], severity: "error" }),
+      ]),
+    });
+  });
+
+  it("rejects an XFLR5 tail section that references a missing airfoil", async () => {
+    const imported = await designDocumentImporter.parse(JSON.stringify({
+      ...document,
+      aircraft: {
+        ...document.aircraft,
+        tailSurfaces: [{
+          id: "tail-1", name: "Horizontal tail", orientation: "horizontal",
+          rootPosition: { x: 4, y: 0, z: 0.2 }, incidence: 0,
+          symmetric: true, isDoubleFin: false, isSymmetricFin: false,
+          sections: [{
+            id: "root", spanPosition: 0, chord: 0.8, xOffset: 0, dihedral: 0, twist: 0,
+            leftAirfoilId: "missing-airfoil", rightAirfoilId: "missing-airfoil",
+            chordwisePanels: 8, spanwisePanels: 6,
+            chordwiseDistribution: "cosine", spanwiseDistribution: "cosine",
+          }],
+        }],
+      },
+    }));
+
+    expect(await designDocumentImporter.validate(imported)).toMatchObject({
+      valid: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ path: ["aircraft", "tailSurfaces", "0", "sections", "0", "rightAirfoilId"], severity: "error" }),
       ]),
     });
   });

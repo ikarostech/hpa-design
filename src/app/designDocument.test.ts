@@ -6,9 +6,23 @@ import { createDefaultConceptualDesign } from "../features/conceptual-design/mod
 const sectionDefaults = { xOffset: 0, chordwisePanels: 12, spanwisePanels: 8, chordwiseDistribution: "cosine" as const, spanwiseDistribution: "uniform" as const };
 const rootSection = { ...sectionDefaults, id: "section-root", yPosition: 0, chord: 1, twist: 0, dihedral: 0, airfoilId: "af-1" };
 const tipSection = { ...sectionDefaults, id: "section-tip", yPosition: 2, chord: 0.5, twist: 0, dihedral: 0, airfoilId: "af-1" };
+const horizontalTail = {
+  id: "tail-1",
+  name: "Horizontal tail",
+  orientation: "horizontal" as const,
+  rootPosition: { x: 4, y: 0, z: 0.2 },
+  incidence: -1,
+  sections: [
+    { ...sectionDefaults, id: "tail-root", spanPosition: 0, chord: 0.8, dihedral: 0, twist: 0, leftAirfoilId: "af-1", rightAirfoilId: "af-1" },
+    { ...sectionDefaults, id: "tail-tip", spanPosition: 1.5, chord: 0.4, xOffset: 0.2, dihedral: 0, twist: 0, leftAirfoilId: "af-1", rightAirfoilId: "af-1" },
+  ],
+  symmetric: true,
+  isDoubleFin: false,
+  isSymmetricFin: false,
+};
 
 const document = {
-  schemaVersion: 5 as const,
+  schemaVersion: 6 as const,
   name: "LongRange UAV",
   airfoils: [
     { id: "af-1", name: "NACA0012", thicknessRatio: 12, maxCamber: 0, leadingEdgeRadius: 1.5, trailingEdgeThickness: 0, coordinates: [] },
@@ -147,6 +161,25 @@ describe("createDesignDocumentStore", () => {
     });
   });
 
+  it("persists an isolated tail model and marks aerodynamic results stale after it changes", () => {
+    const analysisCase = { id: "case-tail", name: "Cruise", method: "VLM" as const, alphaStart: 0, alphaEnd: 4, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId: document.aircraft.id, status: "completed" as const };
+    const store = createDesignDocumentStore({
+      ...document,
+      analysisCases: [analysisCase],
+      analysisResults: [{ id: "result-tail", caseId: analysisCase.id, clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed" as const, rows: [] }],
+    });
+
+    const inputTail = { ...horizontalTail, rootPosition: { ...horizontalTail.rootPosition }, sections: horizontalTail.sections.map((section) => ({ ...section })) };
+    store.updateAircraft({ tailSurfaces: [inputTail] });
+    inputTail.sections[1].chord = 99;
+
+    expect(store.getDocument()).toMatchObject({
+      aircraft: { tailSurfaces: [{ id: "tail-1", sections: [{ chord: 0.8 }, { chord: 0.4 }] }] },
+      analysisCases: [{ id: analysisCase.id, status: "needs-review" }],
+      analysisResults: [{ id: "result-tail", status: "needs-review" }],
+    });
+  });
+
   it("persists analysis cases and removes their related results with the case", () => {
     const analysisCase = {
       id: "case-1", name: "Cruise", method: "LLT" as const,
@@ -233,6 +266,15 @@ describe("createDesignDocumentStore", () => {
       airfoilAnalysisRuns: [{ id: "run-1", status: "needs-review" }],
       analysisResults: [{ id: "result-1", status: "needs-review", rows: [{ status: "needs-review" }] }],
     });
+  });
+
+  it("rejects deletion of an airfoil referenced by a tail section", () => {
+    const store = createDesignDocumentStore({
+      ...document,
+      aircraft: { ...document.aircraft, tailSurfaces: [horizontalTail] },
+    });
+
+    expect(() => store.removeAirfoil("af-1")).toThrow("aircraft tail section");
   });
 
   it("removes only orphaned polars when an airfoil analysis run is deleted", () => {

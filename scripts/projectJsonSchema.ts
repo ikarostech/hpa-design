@@ -27,7 +27,7 @@ const encodedNumberProperties = new Set([
   "minReserveFactor",
 ]);
 const projectTopLevelDescriptions: Readonly<Record<string, string>> = {
-  schemaVersion: "ファイル形式のバージョン。現在は `5` 固定。",
+  schemaVersion: "ファイル形式のバージョン。現在は `6` 固定。",
   name: "設計プロジェクトの表示名。",
   conceptualDesign: "設計重量、巡航速度、最大翼幅などの概要設計条件。",
   airfoils: "翼型形状の一覧。",

@@ -93,7 +93,7 @@ describe("AnalysisPage", () => {
     render(<MemoryRouter initialEntries={["/aerodynamics/analysis"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
     expect(screen.getByRole("heading", { name: "空力設計" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼形状", "空力解析"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼形状", "尾翼設計", "空力解析"]);
     expect(screen.getByRole("tab", { name: "空力解析" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
   });
