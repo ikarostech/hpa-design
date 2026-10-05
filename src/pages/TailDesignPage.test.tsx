@@ -31,6 +31,41 @@ describe("TailDesignPage", () => {
     expect(screen.getAllByText("1.800 m²")).toHaveLength(2);
     expect(screen.getByText("3.000 m")).toBeTruthy();
     expect(screen.getByText("ELEVATOR")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "水平尾翼の単体解析" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "水平尾翼を単体解析" })).toBeNull();
+  });
+
+  it("does not display the first foil as selected when a tail references an unavailable foil", () => {
+    const missingFoilAircraft = { ...aircraft, tailSurfaces: aircraft.tailSurfaces!.map((surface) => ({
+      ...surface,
+      sections: surface.sections.map((section) => ({ ...section, leftAirfoilId: "missing-foil", rightAirfoilId: "missing-foil" })),
+    })) };
+    render(<MemoryRouter><TailDesignPage aircraft={missingFoilAircraft} airfoils={airfoils} onUpdateAircraft={vi.fn()} /></MemoryRouter>);
+
+    const select = screen.getByRole("combobox", { name: "水平尾翼 section 1 right foil" }) as HTMLSelectElement;
+    expect(select.selectedOptions[0].textContent).toContain("未登録の翼型");
+    expect(select.selectedOptions[0].textContent).not.toBe("NACA0012");
+  });
+
+  it("shows and edits rudder stations in aircraft Z coordinates", async () => {
+    const user = userEvent.setup();
+    const onUpdateAircraft = vi.fn();
+    const rudderAircraft = { ...aircraft, tailSurfaces: aircraft.tailSurfaces!.map((surface) => ({
+      ...surface, orientation: "vertical" as const, name: "ラダー", rootPosition: { ...surface.rootPosition, z: -0.6 },
+    })) };
+    render(<MemoryRouter><TailDesignPage aircraft={rudderAircraft} airfoils={airfoils} onUpdateAircraft={onUpdateAircraft} /></MemoryRouter>);
+
+    expect(screen.getByRole("columnheader", { name: "Z Position" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Y Position" })).toBeNull();
+    expect((screen.getByRole("spinbutton", { name: "ラダー section 1 Z position" }) as HTMLInputElement).value).toBe("-0.6");
+    expect((screen.getByRole("spinbutton", { name: "ラダー section 2 Z position" }) as HTMLInputElement).value).toBe("0.9");
+    expect(screen.getByRole("spinbutton", { name: "翼根前縁X位置 (m)" })).toBeTruthy();
+    await user.clear(screen.getByRole("spinbutton", { name: "ラダー section 2 Z position" }));
+    await user.type(screen.getByRole("spinbutton", { name: "ラダー section 2 Z position" }), "1.2");
+    await user.click(screen.getByRole("button", { name: "尾翼設計を保存" }));
+    expect(onUpdateAircraft).toHaveBeenCalledWith({ tailSurfaces: [expect.objectContaining({
+      sections: [expect.anything(), expect.objectContaining({ spanPosition: expect.closeTo(1.8, 8) })],
+    })] });
   });
 
   it("edits tail sections inline with the same table pattern as the main wing", () => {
@@ -41,6 +76,25 @@ describe("TailDesignPage", () => {
     }
     expect(screen.getByRole("button", { name: "後ろにセクションを追加" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "水平尾翼を編集" })).toBeNull();
+  });
+
+  it("sets a tail spar position and aligns its sections on request", async () => {
+    const user = userEvent.setup();
+    const onUpdateAircraft = vi.fn();
+    render(<MemoryRouter><TailDesignPage aircraft={aircraft} airfoils={airfoils} onUpdateAircraft={onUpdateAircraft} /></MemoryRouter>);
+
+    const sparPosition = screen.getByRole("spinbutton", { name: "水平尾翼の桁位置 (%翼弦)" });
+    expect((sparPosition as HTMLInputElement).value).toBe("25");
+    await user.clear(sparPosition);
+    await user.type(sparPosition, "30");
+    await user.click(screen.getByRole("button", { name: "水平尾翼の桁を直線に揃える" }));
+    expect((screen.getByLabelText("水平尾翼 section 2 X offset") as HTMLInputElement).value).toBe("0.12");
+    await user.click(screen.getByRole("button", { name: "尾翼設計を保存" }));
+
+    expect(onUpdateAircraft).toHaveBeenCalledWith({ tailSurfaces: [expect.objectContaining({
+      sparChordFraction: 0.3,
+      sections: expect.arrayContaining([expect.objectContaining({ id: "tip", xOffset: 0.12 })]),
+    })] });
   });
 
   it("adds a complete tail table and saves it through the page-level action", async () => {
@@ -64,5 +118,18 @@ describe("TailDesignPage", () => {
 
     expect(screen.getAllByRole("columnheader", { name: "Y Position" })).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "水平尾翼 2", level: 2 })).toBeTruthy();
+  });
+
+  it("keeps tail geometry editing without standalone analysis controls", async () => {
+    const user = userEvent.setup();
+    const onUpdateAircraft = vi.fn();
+    render(<MemoryRouter initialEntries={["/aerodynamics/tails"]}><TailDesignPage aircraft={aircraft} airfoils={airfoils} onUpdateAircraft={onUpdateAircraft} /></MemoryRouter>);
+
+    expect(screen.queryByRole("heading", { name: "水平尾翼の単体解析" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "水平尾翼を単体解析" })).toBeNull();
+    await user.clear(screen.getByRole("spinbutton", { name: "取付角 (°)" }));
+    await user.type(screen.getByRole("spinbutton", { name: "取付角 (°)" }), "2");
+    await user.click(screen.getByRole("button", { name: "尾翼設計を保存" }));
+    expect(onUpdateAircraft).toHaveBeenCalledWith({ tailSurfaces: [expect.objectContaining({ incidence: 2 })] });
   });
 });

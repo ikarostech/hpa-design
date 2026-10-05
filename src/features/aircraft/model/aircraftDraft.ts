@@ -1,32 +1,36 @@
 import type { AircraftGeometry, TailSurface, WingSection } from "./types";
 import { validateTailSurface } from "./tailGeometry";
 import { deriveWingGeometry, validateWingSections } from "./wingGeometry";
+import { DEFAULT_WING_SPAR_CHORD_FRACTION, isValidSparChordFraction } from "./sparGeometry";
 
 export interface AircraftDraft {
   incidence: number;
   staticMargin: number;
+  sparChordFraction: number;
   sections: WingSection[];
   tailSurfaces: TailSurface[];
 }
 
 export type AircraftDraftValidation =
   | { valid: true; errors: {} }
-  | { valid: false; errors: Partial<Record<"incidence" | "staticMargin", string>> & { sections?: readonly string[]; tailSurfaces?: readonly string[] } };
+  | { valid: false; errors: Partial<Record<"incidence" | "staticMargin" | "sparChordFraction", string>> & { sections?: readonly string[]; tailSurfaces?: readonly string[] } };
 
 export function createAircraftDraft(aircraft: AircraftGeometry): AircraftDraft {
   return {
     incidence: aircraft.incidence,
     staticMargin: aircraft.staticMargin,
+    sparChordFraction: aircraft.sparChordFraction ?? DEFAULT_WING_SPAR_CHORD_FRACTION,
     sections: aircraft.sections.map((section) => ({ ...section })),
     tailSurfaces: (aircraft.tailSurfaces ?? []).map(cloneTailSurface),
   };
 }
 
 export function validateAircraftDraft(draft: AircraftDraft, airfoilIds: ReadonlySet<string>): AircraftDraftValidation {
-  const errors: Partial<Record<"incidence" | "staticMargin", string>> & { sections?: string[]; tailSurfaces?: string[] } = {};
+  const errors: Partial<Record<"incidence" | "staticMargin" | "sparChordFraction", string>> & { sections?: string[]; tailSurfaces?: string[] } = {};
   for (const field of ["incidence", "staticMargin"] as const) {
     if (!Number.isFinite(draft[field])) errors[field] = "Must be a finite number.";
   }
+  if (!isValidSparChordFraction(draft.sparChordFraction)) errors.sparChordFraction = "Spar position must be between 0 and 100% of the chord.";
 
   const sectionErrors = validateWingSections(draft.sections, airfoilIds);
   if (sectionErrors.length) errors.sections = sectionErrors;
@@ -50,6 +54,7 @@ export function applyAircraftDraft(draft: AircraftDraft, aircraft: AircraftGeome
     ...aircraft,
     incidence: draft.incidence,
     staticMargin: draft.staticMargin,
+    sparChordFraction: draft.sparChordFraction,
     span: round(metrics.span, 3),
     rootChord: round(metrics.rootChord, 3),
     tipChord: round(metrics.tipChord, 3),

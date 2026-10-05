@@ -121,7 +121,7 @@ export function createNaca4Airfoil(code: string, id: string, pointCount = 81): A
   for (let index = 0; index < pointCount; index += 1) {
     const beta = Math.PI * index / (pointCount - 1);
     const x = (1 - Math.cos(beta)) / 2;
-    const thickness = 5 * t * (
+    const thickness = x === 1 ? 0 : 5 * t * (
       0.2969 * Math.sqrt(x)
       - 0.126 * x
       - 0.3516 * x ** 2

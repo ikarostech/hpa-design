@@ -32,6 +32,15 @@ const geometry: AircraftGeometry = {
 };
 
 describe("AircraftPreview", () => {
+  it("shows the selected main-wing spar position in the planform", () => {
+    const { container, rerender } = render(<AircraftPreview geometry={{ ...geometry, sparChordFraction: 0.25 }} />);
+    const first = container.querySelector('[data-testid="main-wing-spar"]')?.getAttribute("d");
+    const firstHandleY = screen.getByRole("button", { name: "上面図のSection 2を選択" }).querySelector("circle")?.getAttribute("cy");
+    expect(first).toBeTruthy();
+    rerender(<AircraftPreview geometry={{ ...geometry, sparChordFraction: 0.4 }} />);
+    expect(container.querySelector('[data-testid="main-wing-spar"]')?.getAttribute("d")).not.toBe(first);
+    expect(screen.getByRole("button", { name: "上面図のSection 2を選択" }).querySelector("circle")?.getAttribute("cy")).not.toBe(firstHandleY);
+  });
   afterEach(cleanup);
 
   it("renders plan and front views from every wing section", () => {

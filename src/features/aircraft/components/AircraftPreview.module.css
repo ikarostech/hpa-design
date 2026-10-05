@@ -40,6 +40,14 @@
   pointer-events: none;
 }
 
+.sparLine {
+  fill: none;
+  stroke: #fcd34d;
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+}
+
 .sectionLine {
   fill: none;
   stroke: oklch(0.809 0.105 251.813);

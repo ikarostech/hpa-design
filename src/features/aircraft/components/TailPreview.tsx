@@ -1,4 +1,5 @@
 import type { AircraftGeometry, TailSurface, WingSection } from "../model/types";
+import { DEFAULT_SPAR_CHORD_FRACTION, DEFAULT_WING_SPAR_CHORD_FRACTION } from "../model/sparGeometry";
 
 export function TailPreview({ aircraft }: { aircraft: AircraftGeometry }) {
   const surfaces = aircraft.tailSurfaces ?? [];
@@ -33,18 +34,23 @@ export function TailPreview({ aircraft }: { aircraft: AircraftGeometry }) {
     <text x="20" y="25" fill="#cbd5e1" fontSize="13" fontWeight="600">上面図</text>
     <path d={`M ${topSpan(0)} 32 L ${topSpan(0)} 195`} stroke="#64748b" strokeDasharray="5 5" />
     {wingSections.length >= 2 ? ([1, -1] as const).map((side) => <polygon data-testid="main-wing-planform" key={`main-wing-${side}`} points={wingPlanformPoints(wingSections, (span) => topSpan(side * span), topLongitudinal)} fill="#f59e0b33" stroke="#fbbf24" strokeWidth="1.5" />) : null}
+    {wingSections.length >= 2 ? ([1, -1] as const).map((side) => <path data-testid="main-wing-spar" key={`main-wing-spar-${side}`} d={wingSparPath(wingSections, aircraft.sparChordFraction ?? DEFAULT_WING_SPAR_CHORD_FRACTION, (span) => topSpan(side * span), topLongitudinal)} fill="none" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="5 3" />) : null}
     {surfaces.filter((surface) => surface.orientation === "horizontal").flatMap((surface) => ([1, -1] as const).map((side) => <polygon key={`${surface.id}-${side}`} points={planformPoints(surface, topLongitudinal, (span) => topSpan(side * span))} fill="#2563eb66" stroke="#60a5fa" strokeWidth="1.5" />))}
+    {surfaces.filter((surface) => surface.orientation === "horizontal").flatMap((surface) => ([1, -1] as const).map((side) => <path data-testid="tail-spar" key={`${surface.id}-spar-${side}`} d={topSparPath(surface, topLongitudinal, (span) => topSpan(side * span))} fill="none" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="5 3" />))}
 
     <text x="20" y="240" fill="#cbd5e1" fontSize="13" fontWeight="600">側面図</text>
     <path d={`M ${sideX(minimumX)} 325 L ${sideX(maximumX)} 325`} stroke="#64748b" strokeDasharray="5 5" />
     {wingSections.length >= 2 ? <path data-testid="main-wing-side" d={wingSidePath(wingSections, sideX)} fill="#f59e0b33" stroke="#fbbf24" strokeWidth="1.5" /> : null}
     {surfaces.filter((surface) => surface.orientation === "vertical").map((surface) => <polygon key={surface.id} points={sidePlanformPoints(surface, sideX, (span) => 325 - (surface.rootPosition.z + span) * sideScale)} fill="#0d948866" stroke="#2dd4bf" strokeWidth="1.5" />)}
+    {surfaces.filter((surface) => surface.orientation === "vertical").map((surface) => <path data-testid="tail-spar" key={`${surface.id}-spar`} d={sideSparPath(surface, sideX, (span) => 325 - (surface.rootPosition.z + span) * sideScale)} fill="none" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="5 3" />)}
     {surfaces.map((surface) => <text key={`${surface.id}-label`} x={surface.orientation === "horizontal" ? topSpan(surfaceSemiSpan(surface) * 0.2) : sideX(surface.rootPosition.x)} y={surface.orientation === "horizontal" ? Math.max(32, topLongitudinal(surface.rootPosition.x) - 5) : 255} fill="#e2e8f0" fontSize="11">{surface.name}</text>)}
     <g aria-label="凡例">
       <rect x="590" y="12" width="12" height="8" fill="#f59e0b33" stroke="#fbbf24" />
       <text x="608" y="20" fill="#fde68a" fontSize="11">主翼</text>
       <rect x="650" y="12" width="12" height="8" fill="#2563eb66" stroke="#60a5fa" />
       <text x="668" y="20" fill="#bfdbfe" fontSize="11">尾翼</text>
+      <path d="M 650 32 L 662 32" fill="none" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="5 3" />
+      <text x="668" y="36" fill="#fde68a" fontSize="11">桁</text>
     </g>
   </svg>;
 }
@@ -70,11 +76,27 @@ function sidePlanformPoints(surface: TailSurface, longitudinalAxis: (value: numb
   ].join(" ");
 }
 
+function topSparPath(surface: TailSurface, longitudinalAxis: (value: number) => number, spanAxis: (value: number) => number) {
+  const fraction = surface.sparChordFraction ?? DEFAULT_SPAR_CHORD_FRACTION;
+  return [...surface.sections].sort((left, right) => left.spanPosition - right.spanPosition)
+    .map((section, index) => `${index ? "L" : "M"} ${spanAxis(section.spanPosition)} ${longitudinalAxis(surface.rootPosition.x + section.xOffset + section.chord * fraction)}`).join(" ");
+}
+
+function sideSparPath(surface: TailSurface, longitudinalAxis: (value: number) => number, spanAxis: (value: number) => number) {
+  const fraction = surface.sparChordFraction ?? DEFAULT_SPAR_CHORD_FRACTION;
+  return [...surface.sections].sort((left, right) => left.spanPosition - right.spanPosition)
+    .map((section, index) => `${index ? "L" : "M"} ${longitudinalAxis(surface.rootPosition.x + section.xOffset + section.chord * fraction)} ${spanAxis(section.spanPosition)}`).join(" ");
+}
+
 function wingPlanformPoints(sections: readonly WingSection[], spanAxis: (value: number) => number, longitudinalAxis: (value: number) => number) {
   return [
     ...sections.map((section) => `${spanAxis(section.yPosition)},${longitudinalAxis(section.xOffset)}`),
     ...[...sections].reverse().map((section) => `${spanAxis(section.yPosition)},${longitudinalAxis(section.xOffset + section.chord)}`),
   ].join(" ");
+}
+
+function wingSparPath(sections: readonly WingSection[], fraction: number, spanAxis: (value: number) => number, longitudinalAxis: (value: number) => number) {
+  return sections.map((section, index) => `${index ? "L" : "M"} ${spanAxis(section.yPosition)} ${longitudinalAxis(section.xOffset + section.chord * fraction)}`).join(" ");
 }
 
 function wingSidePath(sections: readonly WingSection[], x: (value: number) => number) {

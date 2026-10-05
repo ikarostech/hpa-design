@@ -15,6 +15,7 @@ export interface WingGeometryMetrics {
   wingArea: number;
   aspectRatio: number;
   mac: number;
+  quarterMacX: number;
   sectionPositions: PositionedWingSection[];
 }
 
@@ -24,6 +25,7 @@ export function deriveWingGeometry(sections: readonly WingSection[]): WingGeomet
 
   let halfWingArea = 0;
   let chordSquareIntegral = 0;
+  let quarterChordMoment = 0;
   let zPosition = 0;
   const sectionPositions: PositionedWingSection[] = sorted.map((section, index) => {
     if (index > 0) {
@@ -39,6 +41,12 @@ export function deriveWingGeometry(sections: readonly WingSection[]): WingGeomet
     const length = tip.yPosition - root.yPosition;
     halfWingArea += length * (root.chord + tip.chord) / 2;
     chordSquareIntegral += length * (root.chord ** 2 + root.chord * tip.chord + tip.chord ** 2) / 3;
+    const rootQuarter = root.xOffset + root.chord / 4;
+    const tipQuarter = tip.xOffset + tip.chord / 4;
+    quarterChordMoment += length * (
+      2 * root.chord * rootQuarter + root.chord * tipQuarter
+      + tip.chord * rootQuarter + 2 * tip.chord * tipQuarter
+    ) / 6;
   }
 
   const root = sorted[0];
@@ -61,6 +69,7 @@ export function deriveWingGeometry(sections: readonly WingSection[]): WingGeomet
     wingArea,
     aspectRatio: safeDivide(span ** 2, wingArea),
     mac: safeDivide(chordSquareIntegral, halfWingArea),
+    quarterMacX: safeDivide(quarterChordMoment, halfWingArea),
     sectionPositions,
   };
 }
@@ -107,6 +116,7 @@ function emptyMetrics(sections: readonly WingSection[]): WingGeometryMetrics {
     wingArea: 0,
     aspectRatio: 0,
     mac: root?.chord ?? 0,
+    quarterMacX: root ? root.xOffset + root.chord / 4 : 0,
     sectionPositions,
   };
 }

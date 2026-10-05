@@ -11,7 +11,7 @@ describe("DesignDocumentProvider", () => {
     render(<DesignDocumentProvider><DocumentProbe /></DesignDocumentProvider>);
 
     expect(screen.getByTestId("name").textContent).toBe("匿名化 HPA 参照設計（保存済み解析結果）");
-    expect(screen.getByTestId("results").textContent).toBe("2 / 1");
+    expect(screen.getByTestId("results").textContent).toBe("3 / 1");
   });
 
   it("exposes conceptual design updates to application routes", async () => {

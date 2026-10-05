@@ -32,10 +32,18 @@ const aircraft: AircraftGeometry = {
 afterEach(cleanup);
 
 describe("TailPreview", () => {
+  it("shows a spar line at the configured tail chord fraction", () => {
+    const { container, rerender } = render(<TailPreview aircraft={aircraft} />);
+    const first = container.querySelector('[data-testid="tail-spar"]')?.getAttribute("d");
+    expect(first).toBeTruthy();
+    rerender(<TailPreview aircraft={{ ...aircraft, tailSurfaces: aircraft.tailSurfaces?.map((surface) => ({ ...surface, sparChordFraction: 0.4 })) }} />);
+    expect(container.querySelector('[data-testid="tail-spar"]')?.getAttribute("d")).not.toBe(first);
+  });
   it("draws the main wing in the same aircraft coordinates as the tail", () => {
     render(<TailPreview aircraft={aircraft} />);
 
     expect(screen.getAllByTestId("main-wing-planform")).toHaveLength(2);
+    expect(screen.getAllByTestId("main-wing-spar")).toHaveLength(2);
     expect(screen.getByTestId("main-wing-side")).toBeTruthy();
     expect(screen.getByText("主翼")).toBeTruthy();
     expect(screen.getByText("尾翼")).toBeTruthy();

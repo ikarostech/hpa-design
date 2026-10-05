@@ -1,4 +1,5 @@
 import type { AircraftPosition, TailSurface, TailSurfaceSection } from "./types";
+import { isValidSparChordFraction } from "./sparGeometry";
 
 export interface TailGeometryMetrics {
   span: number;
@@ -71,6 +72,7 @@ export function validateTailSurface(surface: TailSurface, airfoilIds: ReadonlySe
     if (!Number.isFinite(value)) errors.push(`Tail root ${axis.toUpperCase()} position must be finite.`);
   }
   if (!Number.isFinite(surface.incidence)) errors.push("Tail incidence must be finite.");
+  if (surface.sparChordFraction !== undefined && !isValidSparChordFraction(surface.sparChordFraction)) errors.push("Tail spar position must be between 0 and 100% of the chord.");
   if (surface.orientation === "horizontal" && (surface.isDoubleFin || surface.isSymmetricFin)) errors.push("XFLR5 fin flags are valid only for vertical tails.");
   if (surface.isSymmetricFin && !surface.isDoubleFin) errors.push("An XFLR5 symmetric fin arrangement requires double-fin mode.");
   errors.push(...validateSections(surface.sections, airfoilIds));

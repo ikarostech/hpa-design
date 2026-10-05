@@ -94,6 +94,7 @@ describe("airfoil creation", () => {
     const airfoil = createNaca4Airfoil("0012", "naca-0012", 11);
 
     expect(airfoil.coordinates).toHaveLength(11);
+    expect(airfoil.coordinates.at(-1)).toEqual({ x: 1, upper: 0, lower: 0 });
     for (const point of airfoil.coordinates) {
       expect(point.upper).toBeCloseTo(-point.lower, 12);
     }

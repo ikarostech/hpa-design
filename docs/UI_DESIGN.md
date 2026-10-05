@@ -17,7 +17,7 @@
 ## Pages and tabs
 
 - Use a page for an independent design domain that appears in application navigation. Use tabs only for related working surfaces owned by that domain.
-- Keep aerodynamic design as one page with `翼型`, `主翼形状`, and `空力解析` tabs. These tabs produce the rigid-wing aerodynamic definition used by downstream analysis.
+- Keep aerodynamic design as one page with `翼型`, `主翼形状`, `尾翼設計`, and `空力解析` tabs. `尾翼設計` owns horizontal-tail and vertical-tail geometry independently from the main wing. Each added tail surface renders its properties and ordered section table inline, using the same draft/save interaction as the main-wing workspace. Model each surface with the XFLR5 `ELEVATOR` or `FIN` section fields: span position, chord, X offset, dihedral, twist, left/right foil, and chordwise/spanwise panel settings. Represent elevators and rudders with flapped airfoils, matching XFLR5, instead of a separate tail-surface chord ratio. These tabs produce the rigid-aircraft aerodynamic definition used by downstream analysis.
 - Keep structural design as a peer page with `構造案`, `基準荷重`, and `単独解析` tabs. Start structural sizing from an assumed elliptical load distribution, while allowing aerodynamic and manual load cases for comparison.
 - Use the FSI page for coupled evaluation of an aerodynamic design and a structural design. It owns coupled conditions, convergence, deformed-shape results, and rigid-versus-coupled comparisons; do not use it as a generic archive of uncoupled results.
 - Show domain-specific uncoupled results inside their owning aerodynamic or structural page. Do not add a top-level generic results page unless it has a distinct cross-domain task that is not FSI.

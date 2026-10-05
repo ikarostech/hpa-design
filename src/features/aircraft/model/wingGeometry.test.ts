@@ -44,6 +44,15 @@ const sections = [
 ];
 
 describe("wing geometry", () => {
+  it("locates the quarter MAC from section offsets rather than MAC length alone", () => {
+    const result = deriveWingGeometry([
+      { ...sections[0], chord: 1, xOffset: 0 },
+      { ...sections[1], chord: 1, xOffset: 1, yPosition: 2 },
+    ]);
+
+    expect(result.quarterMacX).toBeCloseTo(0.75, 8);
+  });
+
   it("derives XFLR5-style planform metrics and section heights from sections", () => {
     const result = deriveWingGeometry(sections);
 

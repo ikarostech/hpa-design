@@ -2,6 +2,7 @@ import { cn } from "@/shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { AircraftGeometry, PanelDistribution, WingSection } from "../model/types";
 import { deriveWingGeometry } from "../model/wingGeometry";
+import { DEFAULT_WING_SPAR_CHORD_FRACTION } from "../model/sparGeometry";
 import styles from "./AircraftPreview.module.css";
 
 interface AircraftPreviewProps {
@@ -36,6 +37,8 @@ export function AircraftPreview({ lift = false, geometry, selectedSectionId = nu
   const frontRight = polylinePath(sorted.map((section) => [frontX(section.yPosition), frontY(section.zPosition)]));
   const frontLeft = polylinePath(sorted.map((section) => [frontX(section.yPosition, -1), frontY(section.zPosition)]));
   const meshLines = createMeshLines(sorted, planX, planY);
+  const sparFraction = geometry.sparChordFraction ?? DEFAULT_WING_SPAR_CHORD_FRACTION;
+  const sparLine = (side: -1 | 1) => polylinePath(sorted.map((section) => [planX(section.yPosition, side), planY(section.xOffset + section.chord * sparFraction)]));
 
   const selectSection = (sectionId: string) => onSelectSection?.(sectionId);
   const selectWithKeyboard = (event: KeyboardEvent<SVGGElement>, sectionId: string) => {
@@ -59,16 +62,18 @@ export function AircraftPreview({ lift = false, geometry, selectedSectionId = nu
       <path d="M 380 30 L 380 200" className={styles.centerLine} />
 
       {meshLines.map((line) => <path key={line.key} data-testid="mesh-line" d={line.path} className={styles.meshLine} />)}
+      <path data-testid="main-wing-spar" d={sparLine(1)} className={styles.sparLine} />
+      <path d={sparLine(-1)} className={styles.sparLine} />
 
       {sorted.map((section, index) => {
-        const quarterChordY = planY(section.xOffset + section.chord / 4);
+        const sparY = planY(section.xOffset + section.chord * sparFraction);
         const selected = section.id === selectedSectionId;
         return <g key={section.id}>
           <path data-testid="planform-section" d={`M ${planX(section.yPosition)} ${planY(section.xOffset)} L ${planX(section.yPosition)} ${planY(section.xOffset + section.chord)}`} className={cn(styles.sectionLine, selected && styles.selectedLine)} />
           {section.yPosition > 0 ? <path d={`M ${planX(section.yPosition, -1)} ${planY(section.xOffset)} L ${planX(section.yPosition, -1)} ${planY(section.xOffset + section.chord)}`} className={cn(styles.sectionLine, selected && styles.selectedLine)} /> : null}
           <g role="button" tabIndex={0} aria-label={`上面図のSection ${index + 1}を選択`} aria-current={selected ? "true" : undefined} onClick={() => selectSection(section.id)} onKeyDown={(event) => selectWithKeyboard(event, section.id)} className={styles.sectionHandle}>
-            <circle cx={planX(section.yPosition)} cy={quarterChordY} r={12} className={styles.hitTarget} />
-            <circle cx={planX(section.yPosition)} cy={quarterChordY} r={selected ? 6 : 4} className={cn(styles.sectionPoint, selected && styles.selectedPoint)} />
+            <circle cx={planX(section.yPosition)} cy={sparY} r={12} className={styles.hitTarget} />
+            <circle cx={planX(section.yPosition)} cy={sparY} r={selected ? 6 : 4} className={cn(styles.sectionPoint, selected && styles.selectedPoint)} />
           </g>
         </g>;
       })}

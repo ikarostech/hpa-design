@@ -96,6 +96,26 @@ describe("AircraftWorkspacePage", () => {
     }));
   });
 
+  it("sets the main-wing spar position and aligns its sections on request", async () => {
+    const user = userEvent.setup();
+    const onUpdateAircraft = vi.fn();
+    render(<MemoryRouter><AircraftWorkspacePage aircraft={aircraft} airfoils={airfoils} onUpdateAircraft={onUpdateAircraft} /></MemoryRouter>);
+
+    const sparPosition = screen.getByRole("spinbutton", { name: "主翼の桁位置 (%翼弦)" });
+    expect((sparPosition as HTMLInputElement).value).toBe("35");
+    await user.clear(sparPosition);
+    await user.type(sparPosition, "30");
+    expect((screen.getByLabelText("Section 2 X offset") as HTMLInputElement).value).toBe("0");
+    await user.click(screen.getByRole("button", { name: "主翼の桁を直線に揃える" }));
+    expect((screen.getByLabelText("Section 2 X offset") as HTMLInputElement).value).toBe("0.15");
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    expect(onUpdateAircraft).toHaveBeenCalledWith(expect.objectContaining({
+      sparChordFraction: 0.3,
+      sections: expect.arrayContaining([expect.objectContaining({ id: "tip", xOffset: 0.15 })]),
+    }));
+  });
+
   it("confirms before deleting a section", async () => {
     const user = userEvent.setup();
     const threeSectionAircraft = {

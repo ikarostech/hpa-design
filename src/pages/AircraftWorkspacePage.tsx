@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AircraftPreview } from "../features/aircraft/components/AircraftPreview";
 import { applyAircraftDraft, createAircraftDraft, type AircraftDraft, type AircraftDraftValidation, validateAircraftDraft } from "../features/aircraft/model/aircraftDraft";
+import { alignSectionsToStraightSpar, isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
 import type { AircraftGeometry, PanelDistribution, WingSection } from "../features/aircraft/model/types";
 import type { Airfoil } from "../features/airfoils/model/types";
 import type { FormController } from "../shared/model";
@@ -98,7 +99,7 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
     setPendingDeleteId(null);
   };
 
-  const fieldError = (field: "incidence" | "staticMargin") => validation.valid ? undefined : validation.errors[field];
+  const fieldError = (field: "incidence" | "staticMargin" | "sparChordFraction") => validation.valid ? undefined : validation.errors[field];
   const sectionErrors = validation.valid ? [] : validation.errors.sections ?? [];
   const pendingDeleteIndex = draft.sections.findIndex((section) => section.id === pendingDeleteId);
   const sectionColumns: OrderedTableColumn<WingSection>[] = [
@@ -159,6 +160,12 @@ export function AircraftWorkspacePage({ aircraft, airfoils, onUpdateAircraft }: 
           <CardHeader><h2 className="font-semibold text-slate-950">主翼プロパティ</h2><p className="mt-1 text-xs text-slate-500">断面列から自動計算されます。</p></CardHeader>
           <CardBody className="space-y-3">
             <NumberInput label="取り付け角" unit="°" value={draft.incidence} error={fieldError("incidence")} onChange={(value) => formController.update("incidence", Number(value))} />
+            <label className="block text-sm font-medium text-slate-700">主翼の桁位置 (%翼弦)
+              <input aria-label="主翼の桁位置 (%翼弦)" type="number" min="0" max="100" step="1" value={draft.sparChordFraction * 100} onChange={(event) => formController.update("sparChordFraction", Number(event.target.value) / 100)} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
+            </label>
+            {fieldError("sparChordFraction") ? <p role="alert" className="text-xs text-red-700">桁位置は0～100%で指定してください。</p> : null}
+            <Button variant="secondary" disabled={!isValidSparChordFraction(draft.sparChordFraction)} aria-label="主翼の桁を直線に揃える" onClick={() => setDraft((current) => ({ ...current, sections: alignSectionsToStraightSpar(current.sections, current.sparChordFraction) }))}>桁を直線に揃える</Button>
+            <p className="text-xs text-slate-500">桁位置を変更しても翼の輪郭は変わりません。直線に揃えると各断面の X Offset を更新します。</p>
             <ReadOnlyValue label="スパン" value={`${preview.span.toFixed(3)} m`} />
             <ReadOnlyValue label="ルート弦長" value={`${preview.rootChord.toFixed(3)} m`} />
             <ReadOnlyValue label="チップ弦長" value={`${preview.tipChord.toFixed(3)} m`} />

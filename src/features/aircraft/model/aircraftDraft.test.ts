@@ -67,9 +67,20 @@ describe("aircraft draft", () => {
     expect(createAircraftDraft(aircraft)).toEqual({
       incidence: 0,
       staticMargin: 8,
+      sparChordFraction: 0.35,
       sections,
       tailSurfaces: [],
     });
+  });
+
+  it("validates and saves the main-wing spar position", () => {
+    const draft = createAircraftDraft(aircraft);
+    draft.sparChordFraction = 1.1;
+    expect(validateAircraftDraft(draft, new Set(["af-1", "af-2"]))).toMatchObject({
+      valid: false, errors: { sparChordFraction: expect.any(String) },
+    });
+    draft.sparChordFraction = 0.3;
+    expect(applyAircraftDraft(draft, aircraft).sparChordFraction).toBe(0.3);
   });
 
   it("copies, validates, and persists tail surfaces without sharing nested state", () => {

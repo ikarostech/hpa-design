@@ -2,6 +2,7 @@ import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { TailPreview } from "../features/aircraft/components/TailPreview";
 import { deriveTailGeometry, validateTailSurface } from "../features/aircraft/model/tailGeometry";
+import { alignSectionsToStraightSpar, DEFAULT_SPAR_CHORD_FRACTION, isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
 import type { AircraftGeometry, PanelDistribution, TailSurface, TailSurfaceOrientation, TailSurfaceSection } from "../features/aircraft/model/types";
 import type { Airfoil } from "../features/airfoils/model/types";
 import { Badge } from "../shared/ui/Badge";
@@ -106,6 +107,7 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
   const [pendingSectionDeleteId, setPendingSectionDeleteId] = useState<string | null>(null);
   const metrics = deriveTailGeometry(surface);
   const updateRootPosition = (axis: "x" | "y" | "z", value: number) => onChange({ ...surface, rootPosition: { ...surface.rootPosition, [axis]: value } });
+  const sparChordFraction = surface.sparChordFraction ?? DEFAULT_SPAR_CHORD_FRACTION;
   const updateSection = (sectionId: string, patch: Partial<TailSurfaceSection>) => onChange({ ...surface, sections: sortTailSections(surface.sections.map((section) => section.id === sectionId ? { ...section, ...patch } : section), surface.sections[0]?.id) });
   const setOrientation = (orientation: TailSurfaceOrientation) => onChange({
     ...surface,
@@ -141,7 +143,7 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
     setPendingSectionDeleteId(null);
   };
   const columns: OrderedTableColumn<TailSurfaceSection>[] = [
-    { key: "y", header: "Y Position", renderCell: (section, index) => <NumericCell label={`${surface.name} section ${index + 1} Y position`} value={section.spanPosition} disabled={index === 0} onChange={(value) => updateSection(section.id, { spanPosition: value })} /> },
+    { key: "span", header: surface.orientation === "vertical" ? "Z Position" : "Y Position", renderCell: (section, index) => <NumericCell label={`${surface.name} section ${index + 1} ${surface.orientation === "vertical" ? "Z" : "Y"} position`} value={surface.orientation === "vertical" ? Number((surface.rootPosition.z + section.spanPosition).toFixed(6)) : section.spanPosition} disabled={index === 0} onChange={(value) => updateSection(section.id, { spanPosition: surface.orientation === "vertical" ? value - surface.rootPosition.z : value })} /> },
     { key: "chord", header: "Chord", renderCell: (section, index) => <NumericCell label={`${surface.name} section ${index + 1} chord`} value={section.chord} onChange={(value) => updateSection(section.id, { chord: value })} /> },
     { key: "offset", header: "X Offset", renderCell: (section, index) => <NumericCell label={`${surface.name} section ${index + 1} X offset`} value={section.xOffset} onChange={(value) => updateSection(section.id, { xOffset: value })} /> },
     { key: "dihedral", header: "Dihedral", renderCell: (section, index) => <NumericCell label={`${surface.name} section ${index + 1} dihedral`} value={section.dihedral} step={0.1} onChange={(value) => updateSection(section.id, { dihedral: value })} /> },
@@ -166,12 +168,19 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <TextInput label="名称" value={surface.name} onChange={(value) => onChange({ ...surface, name: value })} />
           <label className="grid gap-1 text-sm text-slate-700"><span>種類</span><select aria-label={`${surface.name}の種類`} className="rounded-md border border-slate-300 px-3 py-2" value={surface.orientation} onChange={(event) => setOrientation(event.target.value as TailSurfaceOrientation)}><option value="horizontal">水平尾翼</option><option value="vertical">垂直尾翼</option></select></label>
-          <NumberInput label="取付X位置" value={surface.rootPosition.x} unit="m" onChange={(value) => updateRootPosition("x", value)} />
+          <NumberInput label="翼根前縁X位置" value={surface.rootPosition.x} unit="m" onChange={(value) => updateRootPosition("x", value)} />
           <NumberInput label="取付Y位置" value={surface.rootPosition.y} unit="m" onChange={(value) => updateRootPosition("y", value)} />
           <NumberInput label="取付Z位置" value={surface.rootPosition.z} unit="m" onChange={(value) => updateRootPosition("z", value)} />
           <NumberInput label="取付角" value={surface.incidence} unit="°" onChange={(value) => onChange({ ...surface, incidence: value })} />
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.symmetric} onChange={(event) => onChange({ ...surface, symmetric: event.target.checked, sections: event.target.checked ? surface.sections.map((section) => ({ ...section, leftAirfoilId: section.rightAirfoilId })) : surface.sections })} />左右翼型を対称にする</label>
           {surface.orientation === "vertical" ? <><label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.isDoubleFin} onChange={(event) => onChange({ ...surface, isDoubleFin: event.target.checked, isSymmetricFin: event.target.checked ? surface.isSymmetricFin : false })} />Double Fin</label><label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.isSymmetricFin} disabled={!surface.isDoubleFin} onChange={(event) => onChange({ ...surface, isSymmetricFin: event.target.checked })} />Symmetric Fin</label></> : null}
+        </div>
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 text-sm text-slate-700">{surface.name}の桁位置 (%翼弦)
+            <input aria-label={`${surface.name}の桁位置 (%翼弦)`} type="number" min="0" max="100" step="1" value={sparChordFraction * 100} onChange={(event) => onChange({ ...surface, sparChordFraction: Number(event.target.value) / 100 })} className="w-36 rounded-md border border-slate-300 px-3 py-2" />
+          </label>
+          <Button variant="secondary" disabled={!isValidSparChordFraction(sparChordFraction)} aria-label={`${surface.name}の桁を直線に揃える`} onClick={() => onChange({ ...surface, sections: alignSectionsToStraightSpar(surface.sections, sparChordFraction) })}>桁を直線に揃える</Button>
+          <p className="text-xs text-slate-500">直線に揃えると各断面の X Offset を更新します。</p>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ReadOnlyValue label="面積" value={`${metrics.area.toFixed(3)} m²`} />
@@ -190,7 +199,7 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
 
 function createDefaultTail(airfoilId: string, name = "水平尾翼"): TailSurface {
   const id = `tail-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
-  return { id, name, orientation: "horizontal", rootPosition: { x: 4, y: 0, z: 0.2 }, incidence: 0, symmetric: true, isDoubleFin: false, isSymmetricFin: false, sections: [
+  return { id, name, orientation: "horizontal", rootPosition: { x: 4, y: 0, z: 0.2 }, incidence: 0, sparChordFraction: DEFAULT_SPAR_CHORD_FRACTION, symmetric: true, isDoubleFin: false, isSymmetricFin: false, sections: [
     { id: `${id}-root`, spanPosition: 0, chord: 0.8, xOffset: 0, dihedral: 0, twist: 0, leftAirfoilId: airfoilId, rightAirfoilId: airfoilId, chordwisePanels: 8, spanwisePanels: 6, chordwiseDistribution: "cosine", spanwiseDistribution: "cosine" },
     { id: `${id}-tip`, spanPosition: 1.5, chord: 0.4, xOffset: 0.2, dihedral: 0, twist: 0, leftAirfoilId: airfoilId, rightAirfoilId: airfoilId, chordwisePanels: 8, spanwisePanels: 1, chordwiseDistribution: "cosine", spanwiseDistribution: "uniform" },
   ] };
@@ -206,7 +215,7 @@ function TextInput({ label, value, onChange }: { label: string; value: string; o
 function NumberInput({ label, value, unit, onChange }: { label: string; value: number; unit?: string; onChange: (value: number) => void }) { return <label className="grid gap-1 text-sm text-slate-700"><span>{label}{unit ? ` (${unit})` : ""}</span><input aria-label={`${label} (${unit ?? ""})`} type="number" step="0.01" className="rounded-md border border-slate-300 px-3 py-2" value={value} onChange={(event) => onChange(Number(event.target.value))} /></label>; }
 function ReadOnlyValue({ label, value }: { label: string; value: string }) { return <div className="rounded-md border border-slate-200 bg-white px-3 py-2"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 text-sm font-medium text-slate-900">{value}</p></div>; }
 function NumericCell({ label, value, step = 0.01, disabled = false, onChange }: { label: string; value: number; step?: number; disabled?: boolean; onChange: (value: number) => void }) { return <input aria-label={label} type="number" step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} className="h-9 w-20 rounded border border-slate-200 px-2 disabled:bg-slate-100" />; }
-function FoilSelect({ label, value, airfoils, disabled = false, onChange }: { label: string; value: string; airfoils: readonly Airfoil[]; disabled?: boolean; onChange: (value: string) => void }) { return <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-9 min-w-32 rounded border border-slate-200 px-2 disabled:bg-slate-100">{airfoils.map((airfoil) => <option key={airfoil.id} value={airfoil.id}>{airfoil.name}</option>)}</select>; }
+function FoilSelect({ label, value, airfoils, disabled = false, onChange }: { label: string; value: string; airfoils: readonly Airfoil[]; disabled?: boolean; onChange: (value: string) => void }) { return <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="h-9 min-w-32 rounded border border-slate-200 px-2 disabled:bg-slate-100">{!airfoils.some((airfoil) => airfoil.id === value) ? <option value={value} disabled>未登録の翼型 ({value})</option> : null}{airfoils.map((airfoil) => <option key={airfoil.id} value={airfoil.id}>{airfoil.name}</option>)}</select>; }
 function DistributionSelect({ label, value, onChange }: { label: string; value: PanelDistribution; onChange: (value: PanelDistribution) => void }) { return <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value as PanelDistribution)} className="h-9 rounded border border-slate-200 px-2"><option value="uniform">Uniform</option><option value="cosine">Cosine</option><option value="sine">Sine</option><option value="inverse-sine">-Sine</option></select>; }
 function insertTailSection(sections: readonly TailSurfaceSection[], index: number) { const root = sections[index]; const tip = sections[index + 1]; const previous = sections[index - 1]; const distance = Math.max(0.1, root.spanPosition - (previous?.spanPosition ?? 0) || 1); const ratio = tip ? 0.5 : 1; const section: TailSurfaceSection = { ...root, id: createTailSectionId(), spanPosition: tip ? interpolate(root.spanPosition, tip.spanPosition, ratio) : root.spanPosition + distance, chord: tip ? interpolate(root.chord, tip.chord, ratio) : root.chord, xOffset: tip ? interpolate(root.xOffset, tip.xOffset, ratio) : root.xOffset, dihedral: root.dihedral, twist: tip ? interpolate(root.twist, tip.twist, ratio) : root.twist }; return [...sections.slice(0, index + 1), section, ...sections.slice(index + 1)]; }
 function sortTailSections(sections: TailSurfaceSection[], rootId: string | undefined) { return [...sections].sort((left, right) => left.id === rootId ? -1 : right.id === rootId ? 1 : left.spanPosition - right.spanPosition); }

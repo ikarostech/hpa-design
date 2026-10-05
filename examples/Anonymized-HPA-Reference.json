@@ -1,6 +1,13 @@
 {
   "schemaVersion": 6,
   "name": "匿名化 HPA 参照設計（保存済み解析結果）",
+  "conceptualDesign": {
+    "grossMass": 100,
+    "cruiseSpeed": 7.4,
+    "maximumWingspan": 30,
+    "groundHeight": 1,
+    "sustainablePower": 250
+  },
   "airfoils": [
     {
       "id": "af-reference-hpa-0a",
@@ -8681,6 +8688,421 @@
           "lower": 0
         }
       ]
+    },
+    {
+      "id": "af-reference-hpa-naca0042",
+      "name": "NACA0042",
+      "thicknessRatio": 42,
+      "maxCamber": 0,
+      "leadingEdgeRadius": 19.438,
+      "trailingEdgeThickness": 0,
+      "coordinates": [
+        {
+          "x": 0,
+          "upper": 0,
+          "lower": 0
+        },
+        {
+          "x": 0.0003854819,
+          "upper": 0.012139302933714591,
+          "lower": -0.012139302933714591
+        },
+        {
+          "x": 0.0015413331,
+          "upper": 0.024068513492749896,
+          "lower": -0.024068513492749896
+        },
+        {
+          "x": 0.0034657715,
+          "upper": 0.035779470044577925,
+          "lower": -0.035779470044577925
+        },
+        {
+          "x": 0.0061558297,
+          "upper": 0.04726178841223208,
+          "lower": -0.04726178841223208
+        },
+        {
+          "x": 0.0096073598,
+          "upper": 0.058502975367990644,
+          "lower": -0.058502975367990644
+        },
+        {
+          "x": 0.0138150398,
+          "upper": 0.06948857871765113,
+          "lower": -0.06948857871765113
+        },
+        {
+          "x": 0.0187723818,
+          "upper": 0.08020237556453075,
+          "lower": -0.08020237556453075
+        },
+        {
+          "x": 0.0244717419,
+          "upper": 0.09062659460519654,
+          "lower": -0.09062659460519654
+        },
+        {
+          "x": 0.030904332,
+          "upper": 0.10074216856730994,
+          "lower": -0.10074216856730994
+        },
+        {
+          "x": 0.0380602337,
+          "upper": 0.11052901214381723,
+          "lower": -0.11052901214381723
+        },
+        {
+          "x": 0.0459284131,
+          "upper": 0.11996631860483643,
+          "lower": -0.11996631860483643
+        },
+        {
+          "x": 0.0544967379,
+          "upper": 0.1290328718976496,
+          "lower": -0.1290328718976496
+        },
+        {
+          "x": 0.0637519965,
+          "upper": 0.13770736762146382,
+          "lower": -0.13770736762146382
+        },
+        {
+          "x": 0.0736799178,
+          "upper": 0.14596873585430797,
+          "lower": -0.14596873585430797
+        },
+        {
+          "x": 0.0842651938,
+          "upper": 0.1537964622114225,
+          "lower": -0.1537964622114225
+        },
+        {
+          "x": 0.0954915028,
+          "upper": 0.16117089939516177,
+          "lower": -0.16117089939516177
+        },
+        {
+          "x": 0.1073415346,
+          "upper": 0.16807356516130006,
+          "lower": -0.16807356516130006
+        },
+        {
+          "x": 0.1197970172,
+          "upper": 0.17448742124058098,
+          "lower": -0.17448742124058098
+        },
+        {
+          "x": 0.1328387453,
+          "upper": 0.18039712872645322,
+          "lower": -0.18039712872645322
+        },
+        {
+          "x": 0.1464466094,
+          "upper": 0.1857892754275144,
+          "lower": -0.1857892754275144
+        },
+        {
+          "x": 0.1605996272,
+          "upper": 0.1906525726077177,
+          "lower": -0.1906525726077177
+        },
+        {
+          "x": 0.1752759758,
+          "upper": 0.1949780177106996,
+          "lower": -0.1949780177106996
+        },
+        {
+          "x": 0.1904530253,
+          "upper": 0.19875902139972407,
+          "lower": -0.19875902139972407
+        },
+        {
+          "x": 0.2061073739,
+          "upper": 0.20199149770079777,
+          "lower": -0.20199149770079777
+        },
+        {
+          "x": 0.2222148835,
+          "upper": 0.20467391656757808,
+          "lower": -0.20467391656757808
+        },
+        {
+          "x": 0.2387507176,
+          "upper": 0.20680731957061246,
+          "lower": -0.20680731957061246
+        },
+        {
+          "x": 0.2556893793,
+          "upper": 0.20839529929668899,
+          "lower": -0.20839529929668899
+        },
+        {
+          "x": 0.2730047501,
+          "upper": 0.20944394446226902,
+          "lower": -0.20944394446226902
+        },
+        {
+          "x": 0.2906701312,
+          "upper": 0.20996175319972787,
+          "lower": -0.20996175319972787
+        },
+        {
+          "x": 0.3086582838,
+          "upper": 0.20995951718444017,
+          "lower": -0.20995951718444017
+        },
+        {
+          "x": 0.3269414715,
+          "upper": 0.2094501803095723,
+          "lower": -0.2094501803095723
+        },
+        {
+          "x": 0.3454915028,
+          "upper": 0.20844867563969813,
+          "lower": -0.20844867563969813
+        },
+        {
+          "x": 0.3642797751,
+          "upper": 0.2069717447766854,
+          "lower": -0.2069717447766854
+        },
+        {
+          "x": 0.3832773181,
+          "upper": 0.2050377441036668,
+          "lower": -0.2050377441036668
+        },
+        {
+          "x": 0.402454839,
+          "upper": 0.20266644221076,
+          "lower": -0.20266644221076
+        },
+        {
+          "x": 0.4217827675,
+          "upper": 0.19987881306231942,
+          "lower": -0.19987881306231942
+        },
+        {
+          "x": 0.4412313013,
+          "upper": 0.19669682920680176,
+          "lower": -0.19669682920680176
+        },
+        {
+          "x": 0.4607704521,
+          "upper": 0.1931432591216745,
+          "lower": -0.1931432591216745
+        },
+        {
+          "x": 0.4803700921,
+          "upper": 0.18924147248597817,
+          "lower": -0.18924147248597817
+        },
+        {
+          "x": 0.5,
+          "upper": 0.18501525700200055,
+          "lower": -0.18501525700200055
+        },
+        {
+          "x": 0.5196299079,
+          "upper": 0.18048864948449478,
+          "lower": -0.18048864948449478
+        },
+        {
+          "x": 0.5392295479,
+          "upper": 0.17568578389544673,
+          "lower": -0.17568578389544673
+        },
+        {
+          "x": 0.5587686987,
+          "upper": 0.17063075818494763,
+          "lower": -0.17063075818494763
+        },
+        {
+          "x": 0.5782172325,
+          "upper": 0.16534752117375007,
+          "lower": -0.16534752117375007
+        },
+        {
+          "x": 0.597545161,
+          "upper": 0.1598597805102037,
+          "lower": -0.1598597805102037
+        },
+        {
+          "x": 0.6167226819,
+          "upper": 0.15419093146157412,
+          "lower": -0.15419093146157412
+        },
+        {
+          "x": 0.6357202249,
+          "upper": 0.14836400632944124,
+          "lower": -0.14836400632944124
+        },
+        {
+          "x": 0.6545084972,
+          "upper": 0.1424016434881791,
+          "lower": -0.1424016434881791
+        },
+        {
+          "x": 0.6730585285,
+          "upper": 0.13632607453248116,
+          "lower": -0.13632607453248116
+        },
+        {
+          "x": 0.6913417162,
+          "upper": 0.1301591273195024,
+          "lower": -0.1301591273195024
+        },
+        {
+          "x": 0.7093298688,
+          "upper": 0.12392224319035872,
+          "lower": -0.12392224319035872
+        },
+        {
+          "x": 0.7269952499,
+          "upper": 0.11763650491394208,
+          "lower": -0.11763650491394208
+        },
+        {
+          "x": 0.7443106207,
+          "upper": 0.11132267313206537,
+          "lower": -0.11132267313206537
+        },
+        {
+          "x": 0.7612492824,
+          "upper": 0.10500122777676749,
+          "lower": -0.10500122777676749
+        },
+        {
+          "x": 0.7777851165,
+          "upper": 0.09869241207593246,
+          "lower": -0.09869241207593246
+        },
+        {
+          "x": 0.7938926261,
+          "upper": 0.0924162749208735,
+          "lower": -0.0924162749208735
+        },
+        {
+          "x": 0.8095469747,
+          "upper": 0.08619270993086908,
+          "lower": -0.08619270993086908
+        },
+        {
+          "x": 0.8247240242,
+          "upper": 0.08004148783694649,
+          "lower": -0.08004148783694649
+        },
+        {
+          "x": 0.8394003728,
+          "upper": 0.07398227939254197,
+          "lower": -0.07398227939254197
+        },
+        {
+          "x": 0.8535533906,
+          "upper": 0.06803466753771725,
+          "lower": -0.06803466753771725
+        },
+        {
+          "x": 0.8671612547,
+          "upper": 0.06221814634485141,
+          "lower": -0.06221814634485141
+        },
+        {
+          "x": 0.8802029828,
+          "upper": 0.05655210583421466,
+          "lower": -0.05655210583421466
+        },
+        {
+          "x": 0.8926584654,
+          "upper": 0.05105580178122958,
+          "lower": -0.05105580178122958
+        },
+        {
+          "x": 0.9045084972,
+          "upper": 0.04574830990198716,
+          "lower": -0.04574830990198716
+        },
+        {
+          "x": 0.9157348062,
+          "upper": 0.04064846521945103,
+          "lower": -0.04064846521945103
+        },
+        {
+          "x": 0.9263200822,
+          "upper": 0.035774786504690154,
+          "lower": -0.035774786504690154
+        },
+        {
+          "x": 0.9362480035,
+          "upper": 0.031145387417372026,
+          "lower": -0.031145387417372026
+        },
+        {
+          "x": 0.9455032621,
+          "upper": 0.026777875762009754,
+          "lower": -0.026777875762009754
+        },
+        {
+          "x": 0.9540715869,
+          "upper": 0.02268924302230029,
+          "lower": -0.02268924302230029
+        },
+        {
+          "x": 0.9619397663,
+          "upper": 0.018895745776287626,
+          "lower": -0.018895745776287626
+        },
+        {
+          "x": 0.969095668,
+          "upper": 0.015412782562739836,
+          "lower": -0.015412782562739836
+        },
+        {
+          "x": 0.9755282581,
+          "upper": 0.012254767931433527,
+          "lower": -0.012254767931433527
+        },
+        {
+          "x": 0.9812276182,
+          "upper": 0.009435007146071166,
+          "lower": -0.009435007146071166
+        },
+        {
+          "x": 0.9861849602,
+          "upper": 0.006965574592114039,
+          "lower": -0.006965574592114039
+        },
+        {
+          "x": 0.9903926402,
+          "upper": 0.004857198055856697,
+          "lower": -0.004857198055856697
+        },
+        {
+          "x": 0.9938441703,
+          "upper": 0.003119152201730237,
+          "lower": -0.003119152201730237
+        },
+        {
+          "x": 0.9965342285,
+          "upper": 0.0017591637024095682,
+          "lower": -0.0017591637024095682
+        },
+        {
+          "x": 0.9984586669,
+          "upper": 0.000783330208862215,
+          "lower": -0.000783330208862215
+        },
+        {
+          "x": 0.9996145181,
+          "upper": 0.00019605517206194964,
+          "lower": -0.00019605517206194964
+        },
+        {
+          "x": 1,
+          "upper": 0,
+          "lower": 0
+        }
+      ]
     }
   ],
   "polars": [
@@ -9687,6 +10109,382 @@
           "cm": -0.0518
         }
       ]
+    },
+    {
+      "id": "af-reference-hpa-naca0042-re200k-xfoil",
+      "airfoilId": "af-reference-hpa-naca0042",
+      "caseName": "NACA0042_Re200k_XFOIL",
+      "reynolds": 200000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "convergedPoints": 13,
+      "requestedPoints": 13,
+      "status": "complete",
+      "points": [
+        {
+          "alpha": -4,
+          "cl": -0.1048,
+          "cd": 0.0282,
+          "cm": -0.0519
+        },
+        {
+          "alpha": -3,
+          "cl": -0.0588,
+          "cd": 0.02749,
+          "cm": -0.0434
+        },
+        {
+          "alpha": -2,
+          "cl": -0.0254,
+          "cd": 0.02708,
+          "cm": -0.032
+        },
+        {
+          "alpha": -1,
+          "cl": -0.0066,
+          "cd": 0.02692,
+          "cm": -0.0173
+        },
+        {
+          "alpha": 0,
+          "cl": 0.0001,
+          "cd": 0.02695,
+          "cm": 0
+        },
+        {
+          "alpha": 1,
+          "cl": 0.0071,
+          "cd": 0.02692,
+          "cm": 0.0172
+        },
+        {
+          "alpha": 2,
+          "cl": 0.0258,
+          "cd": 0.02707,
+          "cm": 0.0319
+        },
+        {
+          "alpha": 3,
+          "cl": 0.0593,
+          "cd": 0.02749,
+          "cm": 0.0433
+        },
+        {
+          "alpha": 4,
+          "cl": 0.1056,
+          "cd": 0.02819,
+          "cm": 0.0518
+        },
+        {
+          "alpha": 5,
+          "cl": 0.1551,
+          "cd": 0.02923,
+          "cm": 0.059
+        },
+        {
+          "alpha": 6,
+          "cl": 0.202,
+          "cd": 0.03064,
+          "cm": 0.0658
+        },
+        {
+          "alpha": 7,
+          "cl": 0.2427,
+          "cd": 0.03255,
+          "cm": 0.0724
+        },
+        {
+          "alpha": 8,
+          "cl": 0.2773,
+          "cd": 0.03525,
+          "cm": 0.0784
+        }
+      ]
+    },
+    {
+      "id": "af-reference-hpa-naca0042-re300k-xfoil",
+      "airfoilId": "af-reference-hpa-naca0042",
+      "caseName": "NACA0042_Re300k_XFOIL",
+      "reynolds": 300000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "convergedPoints": 13,
+      "requestedPoints": 13,
+      "status": "complete",
+      "points": [
+        {
+          "alpha": -4,
+          "cl": -0.0871,
+          "cd": 0.02341,
+          "cm": -0.0554
+        },
+        {
+          "alpha": -3,
+          "cl": -0.0363,
+          "cd": 0.02282,
+          "cm": -0.0476
+        },
+        {
+          "alpha": -2,
+          "cl": 0.0047,
+          "cd": 0.02243,
+          "cm": -0.0375
+        },
+        {
+          "alpha": -1,
+          "cl": 0.0278,
+          "cd": 0.02222,
+          "cm": -0.0237
+        },
+        {
+          "alpha": 0,
+          "cl": -0.0001,
+          "cd": 0.02212,
+          "cm": 0
+        },
+        {
+          "alpha": 1,
+          "cl": -0.0279,
+          "cd": 0.02222,
+          "cm": 0.0237
+        },
+        {
+          "alpha": 2,
+          "cl": -0.0047,
+          "cd": 0.02243,
+          "cm": 0.0376
+        },
+        {
+          "alpha": 3,
+          "cl": 0.0364,
+          "cd": 0.02281,
+          "cm": 0.0476
+        },
+        {
+          "alpha": 4,
+          "cl": 0.0875,
+          "cd": 0.02341,
+          "cm": 0.0553
+        },
+        {
+          "alpha": 5,
+          "cl": 0.1444,
+          "cd": 0.02423,
+          "cm": 0.0614
+        },
+        {
+          "alpha": 6,
+          "cl": 0.2046,
+          "cd": 0.02531,
+          "cm": 0.0663
+        },
+        {
+          "alpha": 7,
+          "cl": 0.267,
+          "cd": 0.02666,
+          "cm": 0.0702
+        },
+        {
+          "alpha": 8,
+          "cl": 0.3283,
+          "cd": 0.02838,
+          "cm": 0.0735
+        }
+      ]
+    },
+    {
+      "id": "af-reference-hpa-naca0042-re450k-xfoil",
+      "airfoilId": "af-reference-hpa-naca0042",
+      "caseName": "NACA0042_Re450k_XFOIL",
+      "reynolds": 450000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "convergedPoints": 13,
+      "requestedPoints": 13,
+      "status": "complete",
+      "points": [
+        {
+          "alpha": -4,
+          "cl": -0.0493,
+          "cd": 0.02122,
+          "cm": -0.0612
+        },
+        {
+          "alpha": -3,
+          "cl": 0.0003,
+          "cd": 0.02048,
+          "cm": -0.0535
+        },
+        {
+          "alpha": -2,
+          "cl": 0.0345,
+          "cd": 0.01999,
+          "cm": -0.0424
+        },
+        {
+          "alpha": -1,
+          "cl": 0.0221,
+          "cd": 0.01969,
+          "cm": -0.0221
+        },
+        {
+          "alpha": 0,
+          "cl": 0,
+          "cd": 0.01959,
+          "cm": 0
+        },
+        {
+          "alpha": 1,
+          "cl": -0.022,
+          "cd": 0.01969,
+          "cm": 0.022
+        },
+        {
+          "alpha": 2,
+          "cl": -0.0344,
+          "cd": 0.01998,
+          "cm": 0.0424
+        },
+        {
+          "alpha": 3,
+          "cl": -0.0001,
+          "cd": 0.02048,
+          "cm": 0.0535
+        },
+        {
+          "alpha": 4,
+          "cl": 0.0498,
+          "cd": 0.02121,
+          "cm": 0.0611
+        },
+        {
+          "alpha": 5,
+          "cl": 0.1075,
+          "cd": 0.02218,
+          "cm": 0.0667
+        },
+        {
+          "alpha": 6,
+          "cl": 0.1695,
+          "cd": 0.02347,
+          "cm": 0.0709
+        },
+        {
+          "alpha": 7,
+          "cl": 0.2333,
+          "cd": 0.02513,
+          "cm": 0.0741
+        },
+        {
+          "alpha": 8,
+          "cl": 0.2968,
+          "cd": 0.02715,
+          "cm": 0.0765
+        }
+      ]
+    },
+    {
+      "id": "af-reference-hpa-naca0042-re600k-xfoil",
+      "airfoilId": "af-reference-hpa-naca0042",
+      "caseName": "NACA0042_Re600k_XFOIL",
+      "reynolds": 600000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "convergedPoints": 13,
+      "requestedPoints": 13,
+      "status": "complete",
+      "points": [
+        {
+          "alpha": -4,
+          "cl": -0.032,
+          "cd": 0.02021,
+          "cm": -0.0638
+        },
+        {
+          "alpha": -3,
+          "cl": 0.0195,
+          "cd": 0.01934,
+          "cm": -0.0566
+        },
+        {
+          "alpha": -2,
+          "cl": 0.0528,
+          "cd": 0.01875,
+          "cm": -0.0454
+        },
+        {
+          "alpha": -1,
+          "cl": 0.0233,
+          "cd": 0.01839,
+          "cm": -0.022
+        },
+        {
+          "alpha": 0,
+          "cl": -0.0001,
+          "cd": 0.01827,
+          "cm": 0
+        },
+        {
+          "alpha": 1,
+          "cl": -0.0232,
+          "cd": 0.01839,
+          "cm": 0.022
+        },
+        {
+          "alpha": 2,
+          "cl": -0.0527,
+          "cd": 0.01875,
+          "cm": 0.0454
+        },
+        {
+          "alpha": 3,
+          "cl": -0.0193,
+          "cd": 0.01934,
+          "cm": 0.0566
+        },
+        {
+          "alpha": 4,
+          "cl": 0.0324,
+          "cd": 0.0202,
+          "cm": 0.0637
+        },
+        {
+          "alpha": 5,
+          "cl": 0.0919,
+          "cd": 0.0213,
+          "cm": 0.0689
+        },
+        {
+          "alpha": 6,
+          "cl": 0.1564,
+          "cd": 0.02275,
+          "cm": 0.0724
+        },
+        {
+          "alpha": 7,
+          "cl": 0.2227,
+          "cd": 0.02459,
+          "cm": 0.075
+        },
+        {
+          "alpha": 8,
+          "cl": 0.2879,
+          "cd": 0.02682,
+          "cm": 0.0769
+        }
+      ]
     }
   ],
   "airfoilAnalysisRuns": [
@@ -9728,6 +10526,82 @@
       "ncrit": 9,
       "iterations": 200,
       "status": "needs-review"
+    },
+    {
+      "id": "reference-hpa-naca0042-re200k",
+      "name": "NACA0042 尾翼 Re=200k",
+      "airfoilIds": [
+        "af-reference-hpa-naca0042"
+      ],
+      "polarIds": [
+        "af-reference-hpa-naca0042-re200k-xfoil"
+      ],
+      "createdAt": "2026-10-02T15:08:59.205Z",
+      "reynolds": 200000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "iterations": 250,
+      "status": "complete"
+    },
+    {
+      "id": "reference-hpa-naca0042-re300k",
+      "name": "NACA0042 尾翼 Re=300k",
+      "airfoilIds": [
+        "af-reference-hpa-naca0042"
+      ],
+      "polarIds": [
+        "af-reference-hpa-naca0042-re300k-xfoil"
+      ],
+      "createdAt": "2026-10-02T15:08:59.205Z",
+      "reynolds": 300000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "iterations": 250,
+      "status": "complete"
+    },
+    {
+      "id": "reference-hpa-naca0042-re450k",
+      "name": "NACA0042 尾翼 Re=450k",
+      "airfoilIds": [
+        "af-reference-hpa-naca0042"
+      ],
+      "polarIds": [
+        "af-reference-hpa-naca0042-re450k-xfoil"
+      ],
+      "createdAt": "2026-10-02T15:08:59.205Z",
+      "reynolds": 450000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "iterations": 250,
+      "status": "complete"
+    },
+    {
+      "id": "reference-hpa-naca0042-re600k",
+      "name": "NACA0042 尾翼 Re=600k",
+      "airfoilIds": [
+        "af-reference-hpa-naca0042"
+      ],
+      "polarIds": [
+        "af-reference-hpa-naca0042-re600k-xfoil"
+      ],
+      "createdAt": "2026-10-02T15:08:59.205Z",
+      "reynolds": 600000,
+      "mach": 0.03,
+      "alphaStart": -4,
+      "alphaEnd": 8,
+      "alphaStep": 1,
+      "ncrit": 9,
+      "iterations": 250,
+      "status": "complete"
     }
   ],
   "aircraft": {
@@ -9927,7 +10801,268 @@
         "spanwiseDistribution": "uniform",
         "controlSurface": "none"
       }
-    ]
+    ],
+    "tailSurfaces": [
+      {
+        "id": "reference-hpa-elevator",
+        "name": "エレベーター",
+        "orientation": "horizontal",
+        "rootPosition": {
+          "x": 4.388388,
+          "y": 0,
+          "z": 0
+        },
+        "incidence": 0,
+        "symmetric": true,
+        "isDoubleFin": false,
+        "isSymmetricFin": false,
+        "sections": [
+          {
+            "id": "reference-hpa-elevator-section-01",
+            "spanPosition": 0,
+            "chord": 0.84,
+            "xOffset": 0,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-elevator-section-02",
+            "spanPosition": 0.3,
+            "chord": 0.84,
+            "xOffset": 0,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-elevator-section-03",
+            "spanPosition": 0.6,
+            "chord": 0.84,
+            "xOffset": 0,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-elevator-section-04",
+            "spanPosition": 0.9,
+            "chord": 0.72,
+            "xOffset": 0.03,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-elevator-section-05",
+            "spanPosition": 1.2,
+            "chord": 0.6,
+            "xOffset": 0.06,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-elevator-section-06",
+            "spanPosition": 1.5,
+            "chord": 0.48,
+            "xOffset": 0.09,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 1,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "uniform"
+          }
+        ],
+        "sparChordFraction": 0.25
+      },
+      {
+        "id": "reference-hpa-rudder",
+        "name": "ラダー",
+        "orientation": "vertical",
+        "rootPosition": {
+          "x": 5.278388,
+          "y": 0,
+          "z": -0.6
+        },
+        "incidence": 0,
+        "symmetric": false,
+        "isDoubleFin": false,
+        "isSymmetricFin": false,
+        "sections": [
+          {
+            "id": "reference-hpa-rudder-section-01",
+            "spanPosition": 0,
+            "chord": 0.68,
+            "xOffset": 0,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-02",
+            "spanPosition": 0.3,
+            "chord": 0.76,
+            "xOffset": -0.02,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-03",
+            "spanPosition": 0.6,
+            "chord": 0.84,
+            "xOffset": -0.04,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-04",
+            "spanPosition": 0.9,
+            "chord": 0.84,
+            "xOffset": -0.04,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-05",
+            "spanPosition": 1.2,
+            "chord": 0.84,
+            "xOffset": -0.04,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-06",
+            "spanPosition": 1.5,
+            "chord": 0.795,
+            "xOffset": -0.02875,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-07",
+            "spanPosition": 1.8,
+            "chord": 0.75,
+            "xOffset": -0.0175,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-08",
+            "spanPosition": 2.1,
+            "chord": 0.705,
+            "xOffset": -0.00625,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-09",
+            "spanPosition": 2.4,
+            "chord": 0.66,
+            "xOffset": 0.005,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 4,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine"
+          },
+          {
+            "id": "reference-hpa-rudder-section-10",
+            "spanPosition": 2.7,
+            "chord": 0.615,
+            "xOffset": 0.01625,
+            "dihedral": 0,
+            "twist": 0,
+            "leftAirfoilId": "af-reference-hpa-naca0042",
+            "rightAirfoilId": "af-reference-hpa-naca0042",
+            "chordwisePanels": 8,
+            "spanwisePanels": 1,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "uniform"
+          }
+        ],
+        "sparChordFraction": 0.25
+      }
+    ],
+    "sparChordFraction": 0.35
   },
   "analysisCases": [
     {
@@ -9953,6 +11088,21 @@
       "speed": 8.2689,
       "altitude": 0,
       "reynolds": 500000,
+      "geometryId": "reference-hpa-main-wing",
+      "status": "completed"
+    },
+    {
+      "id": "reference-hpa-whole-aircraft-tail-vlm",
+      "name": "主翼・尾翼 全機 VLM 7.4 m/s",
+      "method": "VLM",
+      "scope": "aircraft",
+      "beta": 0,
+      "alphaStart": 2,
+      "alphaEnd": 2,
+      "alphaStep": 1,
+      "speed": 7.4,
+      "altitude": 0,
+      "reynolds": 450000,
       "geometryId": "reference-hpa-main-wing",
       "status": "completed"
     }
@@ -23427,6 +24577,545 @@
           "cd": 0.016814,
           "cm": -0.011978,
           "ld": 51.3293089092423,
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "reference-hpa-whole-aircraft-tail-vlm-result",
+      "caseId": "reference-hpa-whole-aircraft-tail-vlm",
+      "clMax": 0.7184129044632718,
+      "cdMin": 0.005054117702462103,
+      "maxLD": 142.14,
+      "cm0": -0.07142492988340218,
+      "status": "completed",
+      "caseSnapshot": {
+        "id": "reference-hpa-whole-aircraft-tail-vlm",
+        "name": "主翼・尾翼 全機 VLM 7.4 m/s",
+        "method": "VLM",
+        "scope": "aircraft",
+        "beta": 0,
+        "alphaStart": 2,
+        "alphaEnd": 2,
+        "alphaStep": 1,
+        "speed": 7.4,
+        "altitude": 0,
+        "reynolds": 450000,
+        "geometryId": "reference-hpa-main-wing",
+        "status": "completed"
+      },
+      "aircraftSnapshot": {
+        "id": "reference-hpa-main-wing",
+        "span": 29.25,
+        "rootChord": 1.112,
+        "tipChord": 0.5595133333,
+        "taperRatio": 0.5031594723920862,
+        "twist": 0,
+        "dihedral": 0,
+        "sweep": 0.2164431635410327,
+        "incidence": 5,
+        "wingArea": 25.53437833338,
+        "aspectRatio": 33.50629840404455,
+        "mac": 0.9081202397090276,
+        "staticMargin": 33.64,
+        "sections": [
+          {
+            "id": "reference-hpa-wing-01",
+            "yPosition": 0,
+            "chord": 1.112,
+            "xOffset": 0,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-0a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-02",
+            "yPosition": 1.625,
+            "chord": 1.112,
+            "xOffset": 0,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-0a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-03",
+            "yPosition": 4.875,
+            "chord": 0.988,
+            "xOffset": 0.0434,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-1a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-04",
+            "yPosition": 6.15,
+            "chord": 0.9330769231,
+            "xOffset": 0.062623,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-2a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-05",
+            "yPosition": 7.125,
+            "chord": 0.8910769231,
+            "xOffset": 0.077323,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-2b",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-06",
+            "yPosition": 8.125,
+            "chord": 0.848,
+            "xOffset": 0.0924,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-2c",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-07",
+            "yPosition": 9.725,
+            "chord": 0.7780923077,
+            "xOffset": 0.116868,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-3a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-08",
+            "yPosition": 10.7,
+            "chord": 0.7354923077,
+            "xOffset": 0.131778,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-3b",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-09",
+            "yPosition": 11.375,
+            "chord": 0.706,
+            "xOffset": 0.1421,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-3c",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-10",
+            "yPosition": 12.975,
+            "chord": 0.6281333333,
+            "xOffset": 0.169353,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-4a",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-11",
+            "yPosition": 13.625,
+            "chord": 0.5965,
+            "xOffset": 0.180425,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-4b",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-12",
+            "yPosition": 14.375,
+            "chord": 0.56,
+            "xOffset": 0.1932,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-4b",
+            "chordwisePanels": 12,
+            "spanwisePanels": 8,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "cosine",
+            "controlSurface": "none"
+          },
+          {
+            "id": "reference-hpa-wing-13",
+            "yPosition": 14.625,
+            "chord": 0.5595133333,
+            "xOffset": 0.19337,
+            "twist": 0,
+            "dihedral": 0,
+            "airfoilId": "af-reference-hpa-4b",
+            "chordwisePanels": 12,
+            "spanwisePanels": 1,
+            "chordwiseDistribution": "cosine",
+            "spanwiseDistribution": "uniform",
+            "controlSurface": "none"
+          }
+        ],
+        "tailSurfaces": [
+          {
+            "id": "reference-hpa-elevator",
+            "name": "エレベーター",
+            "orientation": "horizontal",
+            "rootPosition": {
+              "x": 4.388388,
+              "y": 0,
+              "z": 0
+            },
+            "incidence": 0,
+            "symmetric": true,
+            "isDoubleFin": false,
+            "isSymmetricFin": false,
+            "sections": [
+              {
+                "id": "reference-hpa-elevator-section-01",
+                "spanPosition": 0,
+                "chord": 0.84,
+                "xOffset": 0,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-elevator-section-02",
+                "spanPosition": 0.3,
+                "chord": 0.84,
+                "xOffset": 0,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-elevator-section-03",
+                "spanPosition": 0.6,
+                "chord": 0.84,
+                "xOffset": 0,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-elevator-section-04",
+                "spanPosition": 0.9,
+                "chord": 0.72,
+                "xOffset": 0.03,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-elevator-section-05",
+                "spanPosition": 1.2,
+                "chord": 0.6,
+                "xOffset": 0.06,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-elevator-section-06",
+                "spanPosition": 1.5,
+                "chord": 0.48,
+                "xOffset": 0.09,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 1,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "uniform"
+              }
+            ],
+            "sparChordFraction": 0.25
+          },
+          {
+            "id": "reference-hpa-rudder",
+            "name": "ラダー",
+            "orientation": "vertical",
+            "rootPosition": {
+              "x": 5.278388,
+              "y": 0,
+              "z": -0.6
+            },
+            "incidence": 0,
+            "symmetric": false,
+            "isDoubleFin": false,
+            "isSymmetricFin": false,
+            "sections": [
+              {
+                "id": "reference-hpa-rudder-section-01",
+                "spanPosition": 0,
+                "chord": 0.68,
+                "xOffset": 0,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-02",
+                "spanPosition": 0.3,
+                "chord": 0.76,
+                "xOffset": -0.02,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-03",
+                "spanPosition": 0.6,
+                "chord": 0.84,
+                "xOffset": -0.04,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-04",
+                "spanPosition": 0.9,
+                "chord": 0.84,
+                "xOffset": -0.04,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-05",
+                "spanPosition": 1.2,
+                "chord": 0.84,
+                "xOffset": -0.04,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-06",
+                "spanPosition": 1.5,
+                "chord": 0.795,
+                "xOffset": -0.02875,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-07",
+                "spanPosition": 1.8,
+                "chord": 0.75,
+                "xOffset": -0.0175,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-08",
+                "spanPosition": 2.1,
+                "chord": 0.705,
+                "xOffset": -0.00625,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-09",
+                "spanPosition": 2.4,
+                "chord": 0.66,
+                "xOffset": 0.005,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 4,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "cosine"
+              },
+              {
+                "id": "reference-hpa-rudder-section-10",
+                "spanPosition": 2.7,
+                "chord": 0.615,
+                "xOffset": 0.01625,
+                "dihedral": 0,
+                "twist": 0,
+                "leftAirfoilId": "af-reference-hpa-naca0042",
+                "rightAirfoilId": "af-reference-hpa-naca0042",
+                "chordwisePanels": 8,
+                "spanwisePanels": 1,
+                "chordwiseDistribution": "cosine",
+                "spanwiseDistribution": "uniform"
+              }
+            ],
+            "sparChordFraction": 0.25
+          }
+        ],
+        "sparChordFraction": 0.35
+      },
+      "airfoilIds": [
+        "af-reference-hpa-0a",
+        "af-reference-hpa-1a",
+        "af-reference-hpa-2a",
+        "af-reference-hpa-2b",
+        "af-reference-hpa-2c",
+        "af-reference-hpa-3a",
+        "af-reference-hpa-3b",
+        "af-reference-hpa-3c",
+        "af-reference-hpa-4a",
+        "af-reference-hpa-4b",
+        "af-reference-hpa-naca0042"
+      ],
+      "polarIds": [],
+      "rows": [
+        {
+          "caseId": "reference-hpa-whole-aircraft-tail-vlm",
+          "alpha": 2,
+          "cl": 0.7184129044632718,
+          "cd": 0.005054117702462103,
+          "cm": -0.07142492988340218,
+          "cy": -2.659256187166594e-17,
+          "cr": -6.844246248383354e-17,
+          "cn": -7.267811366283954e-18,
+          "cdi": 0.005054117702462103,
+          "surfaceLoads": [
+            {
+              "surfaceId": "reference-hpa-main-wing",
+              "cl": 0.7147560200644009,
+              "cy": 2.6445488968477536e-19,
+              "cm": -0.05382694655812063,
+              "cr": -6.815459995671031e-17,
+              "cn": -2.4295156512490165e-18
+            },
+            {
+              "surfaceId": "reference-hpa-elevator",
+              "cl": 0.003656884398872286,
+              "cy": -2.7185571243165776e-20,
+              "cm": -0.017597983325281563,
+              "cr": -7.050516450343131e-19,
+              "cn": -2.8107940941214756e-20
+            },
+            {
+              "surfaceId": "reference-hpa-rudder",
+              "cl": 0,
+              "cy": -2.6829825529119442e-17,
+              "cm": 0,
+              "cr": 4.1653587962956217e-19,
+              "cn": -4.810201383224594e-18
+            }
+          ],
+          "ld": 142.14,
           "status": "completed"
         }
       ]
