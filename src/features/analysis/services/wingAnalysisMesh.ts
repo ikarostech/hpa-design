@@ -125,7 +125,7 @@ function createNode(
   };
 }
 
-function panelFractions(panelCount: number, distribution: PanelDistribution) {
+export function panelFractions(panelCount: number, distribution: PanelDistribution) {
   return Array.from({ length: panelCount + 1 }, (_, index) => distributionFraction(index / panelCount, distribution));
 }
 

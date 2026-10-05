@@ -19,6 +19,35 @@ const document = {
 };
 
 describe("design document transfer", () => {
+  it("rejects a spar position outside the local chord", async () => {
+    const invalid = { ...document, aircraft: { ...document.aircraft, sparChordFraction: 1.2,
+      tailSurfaces: [{ id: "tail-1", name: "Tail", orientation: "horizontal" as const, rootPosition: { x: 4, y: 0, z: 0 }, incidence: 0,
+        symmetric: true, isDoubleFin: false, isSymmetricFin: false, sparChordFraction: -0.1, sections: [] }] } };
+    const validation = await designDocumentImporter.validate(invalid);
+
+    expect(validation.valid).toBe(false);
+    expect((validation.issues ?? []).map((issue) => issue.path?.join("."))).toEqual(expect.arrayContaining([
+      "aircraft.sparChordFraction", "aircraft.tailSurfaces.0.sparChordFraction",
+    ]));
+  });
+  it("validates whole-aircraft case fields and per-surface result values", async () => {
+    const analysisCase = { id: "coupled", name: "Coupled", method: "VLM" as const, scope: "aircraft" as const,
+      beta: 3, alphaStart: 2, alphaEnd: 2, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      geometryId: document.aircraft.id, status: "completed" as const };
+    const result = { id: "coupled-result", caseId: analysisCase.id, clMax: 0.2, cdMin: 0.01, maxLD: 20, cm0: 0,
+      status: "completed" as const, rows: [{ caseId: analysisCase.id, alpha: 2, cl: 0.2, cd: 0.01, cm: 0, ld: 20,
+        cy: 0.01, cr: 0, cn: 0.02, cdi: 0.01, status: "completed" as const,
+        surfaceLoads: [{ surfaceId: document.aircraft.id, cl: 0.2, cy: 0.01, cm: 0, cr: 0, cn: 0.02 }] }] };
+    const input = { ...document, analysisCases: [analysisCase], analysisResults: [result] };
+    expect((await designDocumentImporter.validate(input)).valid).toBe(true);
+    const invalid = { ...input, analysisCases: [{ ...analysisCase, scope: "other", beta: Number.NaN }],
+      analysisResults: [{ ...result, rows: [{ ...result.rows[0], surfaceLoads: [{ ...result.rows[0].surfaceLoads[0], cl: Number.NaN }] }] }] };
+    const validation = await designDocumentImporter.validate(invalid as unknown as typeof input);
+    expect(validation.valid).toBe(false);
+    expect((validation.issues ?? []).map((issue) => issue.path?.join("."))).toEqual(expect.arrayContaining([
+      "analysisCases.0.scope", "analysisCases.0.beta", "analysisResults.0.rows.0.surfaceLoads.0.cl",
+    ]));
+  });
   it("migrates version 5 tail surfaces to the XFLR5 section schema", () => {
     const migrated = parseDesignDocument(JSON.stringify({
       ...document,

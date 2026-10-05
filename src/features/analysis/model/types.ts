@@ -8,6 +8,10 @@ export interface AnalysisCase {
   id: string;
   name: string;
   method: AnalysisMethod;
+  /** Older cases default to wing-only analysis. */
+  scope?: "wing" | "aircraft";
+  /** Sideslip in degrees; only used by whole-aircraft VLM. */
+  beta?: number;
   alphaStart: number;
   alphaEnd: number;
   alphaStep: number;
@@ -39,6 +43,11 @@ export interface AnalysisResultRow {
   cl: number;
   cd: number;
   cm: number;
+  cy?: number;
+  cr?: number;
+  cn?: number;
+  cdi?: number;
+  surfaceLoads?: Array<{ surfaceId: string; cl: number; cy: number; cm: number; cr: number; cn: number }>;
   ld: number;
   status: AnalysisCaseStatus;
   spanwise?: AerodynamicSpanDistribution;

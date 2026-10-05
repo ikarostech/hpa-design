@@ -18,6 +18,9 @@ export function validateAnalysisCaseDraft(
   const errors: Partial<Record<keyof AnalysisCaseDraft, string>> = {};
   if (!draft.name.trim()) errors.name = "Enter a case name.";
   if (!isAnalysisMethod(draft.method)) errors.method = "Choose LLT or VLM.";
+  if (draft.scope !== undefined && draft.scope !== "wing" && draft.scope !== "aircraft") errors.scope = "Choose wing or whole aircraft.";
+  if (draft.scope === "aircraft" && draft.method !== "VLM") errors.method = "Whole-aircraft analysis requires VLM.";
+  if (draft.beta !== undefined && !Number.isFinite(draft.beta)) errors.beta = "Enter a finite sideslip angle.";
   if (!Number.isFinite(draft.alphaStart)) errors.alphaStart = "Enter a finite start angle.";
   if (!Number.isFinite(draft.alphaEnd) || draft.alphaEnd < draft.alphaStart) errors.alphaEnd = "End angle must be at least the start angle.";
   if (!Number.isFinite(draft.alphaStep) || draft.alphaStep <= 0) errors.alphaStep = "Angle step must be positive.";

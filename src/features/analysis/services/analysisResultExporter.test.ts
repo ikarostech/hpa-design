@@ -15,6 +15,17 @@ const result = {
 };
 
 describe("analysisResultExporter", () => {
+  it("exports whole-aircraft force and per-surface contributions with an inviscid label", async () => {
+    const whole = { ...result, caseSnapshot: { id: "case-cruise", name: "Coupled", method: "VLM" as const, scope: "aircraft" as const,
+      beta: 3, alphaStart: 2, alphaEnd: 2, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000, geometryId: "aircraft", status: "completed" as const },
+      rows: [{ ...result.rows[0], cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.023456,
+        surfaceLoads: [{ surfaceId: "tail", cl: 0.1, cy: 0.01, cm: 0.02, cr: 0, cn: 0.03 }] }] };
+    const output = await analysisResultExporter.export({ results: [whole], selectedResultIds: [whole.id], designName: "Coupled" });
+    expect(output.content).toContain("[whole_aircraft_inviscid]");
+    expect(output.content).toContain("result-cruise,case-cruise,2,0.01,0.02,0.03,0.023456");
+    expect(output.content).toContain("[surface_contributions]");
+    expect(output.content).toContain("result-cruise,case-cruise,2,tail,0.1,0.01,0.02,0,0.03");
+  });
   it("exports only selected results as UTF-8 BOM CSV with fixed columns and precision", async () => {
     const output = await analysisResultExporter.export({
       results: [result, { ...result, id: "result-other", caseId: "case-other", rows: [] }],

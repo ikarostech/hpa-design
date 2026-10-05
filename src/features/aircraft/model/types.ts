@@ -48,6 +48,8 @@ export interface TailSurface {
   /** Root leading-edge position in aircraft axes, in metres. */
   rootPosition: AircraftPosition;
   incidence: number;
+  /** Spar position measured from the local leading edge as a chord fraction. */
+  sparChordFraction?: number;
   /** XFLR5 `Symetric` flag. Geometry remains mirrored; this controls left/right foil symmetry. */
   symmetric: boolean;
   /** XFLR5 fin arrangement flags; valid only for vertical surfaces. */
@@ -70,6 +72,8 @@ export interface AircraftGeometry {
   aspectRatio: number;
   mac: number;
   staticMargin: number;
+  /** Main-wing spar position measured from the local leading edge as a chord fraction. */
+  sparChordFraction?: number;
   sections: WingSection[];
   /** Optional for backward compatibility with projects created before tail modelling. */
   tailSurfaces?: TailSurface[];

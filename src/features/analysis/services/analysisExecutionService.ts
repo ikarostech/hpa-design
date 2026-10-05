@@ -4,6 +4,8 @@ import type { AnalysisCase, AnalysisResult } from "../model/types";
 import { calculateLltCoefficients } from "./lltSolver";
 import { airDensityAtAltitude, createLltSpanwiseDistribution, createVlmSpanwiseDistribution } from "./spanwiseDistribution";
 import { calculateVlmCoefficients } from "./vlmSolver";
+import { calculateAircraftVlmCoefficients } from "./vlmSolver";
+import { createAircraftAnalysisMesh } from "./aircraftAnalysisMesh";
 import { createWingAnalysisMesh, type WingAnalysisMesh } from "./wingAnalysisMesh";
 
 export interface ExecuteAnalysisCaseInput {
@@ -36,13 +38,18 @@ export async function executeAnalysisCase({
   const angles = createSweep(analysisCase.alphaStart, analysisCase.alphaEnd, analysisCase.alphaStep);
   const rows: AnalysisResult["rows"] = [];
   const mesh = createWingAnalysisMesh(aircraft.sections);
-  const selectedPolars = selectSectionPolars(aircraft, polars, analysisCase.reynolds);
+  const wholeAircraft = analysisCase.scope === "aircraft";
+  if (wholeAircraft && analysisCase.method !== "VLM") throw new Error("Whole-aircraft analysis requires VLM.");
+  const aircraftMesh = wholeAircraft ? createAircraftAnalysisMesh(aircraft) : null;
+  const selectedPolars = wholeAircraft ? new Map<string, AirfoilPolar>() : selectSectionPolars(aircraft, polars, analysisCase.reynolds);
   const density = airDensityAtAltitude(analysisCase.altitude);
 
   for (const alpha of angles) {
     throwIfCancelled(signal);
     await yieldToUserInput();
-    const coefficients = mesh.strips.length
+    const coefficients = aircraftMesh
+      ? calculateWholeAircraftCoefficients(aircraft, aircraftMesh, alpha, analysisCase.beta ?? 0)
+      : mesh.strips.length
       ? analysisCase.method === "VLM"
         ? calculateVlmWingCoefficients(alpha, aircraft, mesh, selectedPolars, analysisCase.speed, density)
         : calculateLltWingCoefficients(alpha, aircraft, mesh, selectedPolars, analysisCase.speed, density)
@@ -67,11 +74,33 @@ export async function executeAnalysisCase({
     cm0: rows.find((row) => row.alpha === 0)?.cm ?? interpolateCm0(rows),
     status: "completed",
     caseSnapshot: { ...analysisCase },
-    aircraftSnapshot: { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })) },
-    airfoilIds: Array.from(new Set(aircraft.sections.map((section) => section.airfoilId))),
-    polarIds: polarIds.length ? [...polarIds] : Array.from(new Set(Array.from(selectedPolars.values(), (polar) => polar.id))),
+    aircraftSnapshot: { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })),
+      tailSurfaces: aircraft.tailSurfaces?.map((surface) => ({ ...surface, rootPosition: { ...surface.rootPosition }, sections: surface.sections.map((section) => ({ ...section })) })) },
+    airfoilIds: Array.from(new Set([...aircraft.sections.map((section) => section.airfoilId),
+      ...(wholeAircraft ? (aircraft.tailSurfaces ?? []).flatMap((surface) => surface.sections.flatMap((section) => [section.leftAirfoilId, section.rightAirfoilId])) : [])])),
+    polarIds: wholeAircraft ? [] : polarIds.length ? [...polarIds] : Array.from(new Set(Array.from(selectedPolars.values(), (polar) => polar.id))),
     rows,
   };
+}
+
+function calculateWholeAircraftCoefficients(aircraft: AircraftGeometry, mesh: ReturnType<typeof createAircraftAnalysisMesh>, alpha: number, beta: number) {
+  const reference = { area: aircraft.wingArea, span: aircraft.span, chord: aircraft.mac, point: { x: aircraft.mac / 4, y: 0, z: 0 } };
+  const vlm = calculateAircraftVlmCoefficients(mesh, { alpha, beta, reference });
+  const liftAxis = { x: -Math.sin(alpha * Math.PI / 180), z: Math.cos(alpha * Math.PI / 180) };
+  const surfaceLoads = [...new Set(mesh.panels.map((panel) => panel.surfaceId))].map((surfaceId) => {
+    const loads = vlm.panelLoads.filter((load) => load.surfaceId === surfaceId);
+    const sum = (axis: "x" | "y" | "z", kind: "force" | "moment") => loads.reduce((total, load) => total + load[kind][axis], 0);
+    return {
+      surfaceId,
+      cl: (sum("x", "force") * liftAxis.x + sum("z", "force") * liftAxis.z) / reference.area,
+      cy: sum("y", "force") / reference.area,
+      cm: sum("y", "moment") / (reference.area * reference.chord),
+      cr: sum("x", "moment") / (reference.area * reference.span),
+      cn: sum("z", "moment") / (reference.area * reference.span),
+    };
+  });
+  return { cl: vlm.cl, cd: vlm.cdi, cm: vlm.cm,
+    cy: vlm.cy, cr: vlm.cr, cn: vlm.cn, cdi: vlm.cdi, surfaceLoads };
 }
 
 function calculateLltWingCoefficients(

@@ -7,6 +7,10 @@ const aircraft = { id: "aircraft-1", span: 4, wingArea: 3 } as AircraftGeometry;
 const result = { id: "aero-result-1", caseId: "case-1", clMax: 1, caseSnapshot: { speed: 10 }, rows: [] } as unknown as AnalysisResult;
 
 describe("structural load integration", () => {
+  it("does not turn whole-aircraft lift into a fabricated main-wing load", () => {
+    const coupled = { ...result, caseSnapshot: { ...result.caseSnapshot, scope: "aircraft" }, clMax: 1 } as AnalysisResult;
+    expect(() => createLoadCaseFromAerodynamicResult({ result: coupled, aircraft })).toThrow(/主翼|wing/i);
+  });
   it("creates an elliptical baseline load from the assumed aircraft weight", () => {
     const loadCase = createEllipticalLoadCase({ aircraft, grossMass: 100, pointCount: 101 });
     let integratedHalfWingLift = 0;

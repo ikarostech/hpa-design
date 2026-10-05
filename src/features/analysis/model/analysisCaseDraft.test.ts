@@ -40,4 +40,11 @@ describe("analysis case draft", () => {
       }),
     });
   });
+
+  it("allows whole-aircraft VLM with sideslip but rejects whole-aircraft LLT", () => {
+    const draft = { ...createAnalysisCaseDraft(analysisCase), method: "VLM" as const, scope: "aircraft" as const, beta: 3 };
+    expect(validateAnalysisCaseDraft(draft, new Set(["aircraft-1"]))).toMatchObject({ valid: true });
+    expect(validateAnalysisCaseDraft({ ...draft, method: "LLT" }, new Set(["aircraft-1"]))).toMatchObject({ valid: false, errors: { method: expect.any(String) } });
+    expect(validateAnalysisCaseDraft({ ...draft, beta: Number.NaN }, new Set(["aircraft-1"]))).toMatchObject({ valid: false, errors: { beta: expect.any(String) } });
+  });
 });

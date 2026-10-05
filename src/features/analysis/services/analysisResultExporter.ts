@@ -52,8 +52,16 @@ function createAnalysisCsv(results: readonly AnalysisResult[]) {
     sample.values.pitchingMomentPerLength, sample.values.torqueAboutElasticAxisPerLength,
   ].map(String).map(escapeCsv).join(",")) ?? []));
   const polarSection = `\uFEFFcase_id,result_id,status,alpha_deg,cl,cd,cm,ld\r\n${polarRows.join("\r\n")}${polarRows.length ? "\r\n" : ""}`;
-  if (!spanRows.length) return polarSection;
-  return `${polarSection}\r\n[spanwise]\r\nresult_id,case_id,alpha_deg,y_m,width_m,chord_m,circulation_m2_per_s,local_cl,lift_N_per_m,induced_drag_N_per_m,profile_drag_N_per_m,drag_N_per_m,pitching_moment_Nm_per_m,elastic_axis_torque_Nm_per_m\r\n${spanRows.join("\r\n")}\r\n`;
+  const spanSection = spanRows.length ? `\r\n[spanwise]\r\nresult_id,case_id,alpha_deg,y_m,width_m,chord_m,circulation_m2_per_s,local_cl,lift_N_per_m,induced_drag_N_per_m,profile_drag_N_per_m,drag_N_per_m,pitching_moment_Nm_per_m,elastic_axis_torque_Nm_per_m\r\n${spanRows.join("\r\n")}\r\n` : "";
+  const wholeRows = results.flatMap((result) => result.caseSnapshot?.scope === "aircraft" ? result.rows.map((row) => [
+    result.id, row.caseId, row.alpha, row.cy, row.cr, row.cn, row.cdi,
+  ].map(String).map(escapeCsv).join(",")) : []);
+  const contributionRows = results.flatMap((result) => result.caseSnapshot?.scope === "aircraft" ? result.rows.flatMap((row) => row.surfaceLoads?.map((load) => [
+    result.id, row.caseId, row.alpha, load.surfaceId, load.cl, load.cy, load.cm, load.cr, load.cn,
+  ].map(String).map(escapeCsv).join(",")) ?? []) : []);
+  const wholeSection = wholeRows.length ? `\r\n[whole_aircraft_inviscid]\r\nresult_id,case_id,alpha_deg,cy,cr,cn,cdi\r\n${wholeRows.join("\r\n")}\r\n` : "";
+  const contributionSection = contributionRows.length ? `\r\n[surface_contributions]\r\nresult_id,case_id,alpha_deg,surface_id,cl,cy,cm,cr,cn\r\n${contributionRows.join("\r\n")}\r\n` : "";
+  return `${polarSection}${spanSection}${wholeSection}${contributionSection}`;
 }
 
 export function createDesignSummary({ name, analysisCases, analysisResults }: DesignSummaryInput) {

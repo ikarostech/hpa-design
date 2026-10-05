@@ -1,7 +1,76 @@
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { WingAnalysisMesh, WingMeshNode } from "./wingAnalysisMesh";
+import type { AircraftAnalysisMesh } from "./aircraftAnalysisMesh";
 
 interface Vector { x: number; y: number; z: number }
+
+export interface AircraftVlmCondition {
+  alpha: number;
+  beta: number;
+  reference: { area: number; span: number; chord: number; point: Vector };
+}
+
+export interface AircraftVlmPanelLoad {
+  surfaceId: string;
+  side: "left" | "right";
+  stripIndex: number;
+  chordIndex: number;
+  applicationPoint: Vector;
+  circulation: number;
+  /** Force and moment divided by dynamic pressure, in m² and m³. */
+  force: Vector;
+  moment: Vector;
+}
+
+export interface AircraftVlmCoefficients {
+  cl: number;
+  cy: number;
+  cdi: number;
+  cm: number;
+  cr: number;
+  cn: number;
+  force: Vector;
+  moment: Vector;
+  panelLoads: AircraftVlmPanelLoad[];
+}
+
+/** Inviscid thin-surface solution. Incidence must already be encoded in mesh nodes. */
+export function calculateAircraftVlmCoefficients(mesh: AircraftAnalysisMesh, condition: AircraftVlmCondition): AircraftVlmCoefficients {
+  const { alpha: alphaDegrees, beta: betaDegrees, reference } = condition;
+  if (![reference.area, reference.span, reference.chord].every((value) => Number.isFinite(value) && value > 0)
+    || ![alphaDegrees, betaDegrees, reference.point.x, reference.point.y, reference.point.z].every(Number.isFinite)) {
+    throw new Error("VLM requires finite angles and positive reference dimensions with a finite reference point.");
+  }
+  const alpha = alphaDegrees * Math.PI / 180;
+  const beta = betaDegrees * Math.PI / 180;
+  const freestream = { x: Math.cos(alpha) * Math.cos(beta), y: Math.sin(beta), z: Math.sin(alpha) * Math.cos(beta) };
+  const liftAxis = { x: -Math.sin(alpha), y: 0, z: Math.cos(alpha) };
+  const panels = mesh.panels.map(createVortexPanel);
+  const extent = mesh.nodes.reduce((maximum, node) => Math.max(maximum, Math.abs(node.x), Math.abs(node.y), Math.abs(node.z)), reference.span);
+  const wakeLength = Math.max(1_000, extent * 1_000);
+  const circulation = solveCirculation(panels, freestream, wakeLength);
+  let inducedDrag = 0;
+  const panelLoads = panels.map((panel, index): AircraftVlmPanelLoad => {
+    const span = subtract(panel.end, panel.start);
+    const applicationPoint = scale(add(panel.start, panel.end), 0.5);
+    const force = scale(cross(freestream, span), 2 * circulation[index]);
+    const moment = cross(subtract(applicationPoint, reference.point), force);
+    const induced = panels.reduce<Vector>((velocity, source, sourceIndex) => add(velocity,
+      scale(wakeVelocity(applicationPoint, source.start, source.end, wakeLength), circulation[sourceIndex])), { x: 0, y: 0, z: 0 });
+    inducedDrag += dot(scale(cross(induced, span), 2 * circulation[index]), freestream);
+    const source = mesh.panels[index];
+    return { surfaceId: source.surfaceId, side: source.side, stripIndex: source.stripIndex, chordIndex: source.chordIndex, applicationPoint, circulation: circulation[index], force, moment };
+  });
+  const force = panelLoads.reduce((sum, load) => add(sum, load.force), { x: 0, y: 0, z: 0 });
+  const moment = panelLoads.reduce((sum, load) => add(sum, load.moment), { x: 0, y: 0, z: 0 });
+  return {
+    cl: dot(force, liftAxis) / reference.area, cy: force.y / reference.area,
+    cdi: Math.max(0, inducedDrag / reference.area),
+    cm: moment.y / (reference.area * reference.chord),
+    cr: moment.x / (reference.area * reference.span), cn: moment.z / (reference.area * reference.span),
+    force, moment, panelLoads,
+  };
+}
 
 interface VortexPanel {
   start: Vector;
@@ -39,12 +108,7 @@ export function calculateVlmCoefficients(
   const alpha = (alphaDegrees + aircraft.incidence) * Math.PI / 180;
   const freestream = { x: Math.cos(alpha), y: 0, z: Math.sin(alpha) };
   const wakeLength = Math.max(aircraft.span * 1_000, 1_000);
-  const matrix = panels.map((target) => panels.map((source) => dot(
-    horseshoeVelocity(target.control, source.start, source.end, wakeLength),
-    target.normal,
-  )));
-  const rhs = panels.map((panel) => -dot(freestream, panel.normal));
-  const circulation = solveLinearSystem(matrix, rhs);
+  const circulation = solveCirculation(panels, freestream, wakeLength);
 
   let lift = 0;
   let inducedDrag = 0;
@@ -87,6 +151,13 @@ export function calculateVlmCoefficients(
   };
 }
 
+function solveCirculation(panels: readonly VortexPanel[], freestream: Vector, wakeLength: number) {
+  const matrix = panels.map((target) => panels.map((source) => dot(
+    horseshoeVelocity(target.control, source.start, source.end, wakeLength), target.normal,
+  )));
+  return solveLinearSystem(matrix, panels.map((panel) => -dot(freestream, panel.normal)));
+}
+
 function wakeVelocity(point: Vector, start: Vector, end: Vector, wakeLength: number): Vector {
   const farStart = { ...start, x: start.x + wakeLength };
   const farEnd = { ...end, x: end.x + wakeLength };
@@ -99,7 +170,8 @@ function createVortexPanel(panel: WingAnalysisMesh["panels"][number]): VortexPan
   const quarterOutboard = interpolateNode(leadingOutboard, trailingOutboard, 0.25);
   const controlInboard = interpolateNode(leadingInboard, trailingInboard, 0.75);
   const controlOutboard = interpolateNode(leadingOutboard, trailingOutboard, 0.75);
-  const [start, end] = quarterInboard.y <= quarterOutboard.y
+  const spanAxis = Math.abs(quarterOutboard.z - quarterInboard.z) > Math.abs(quarterOutboard.y - quarterInboard.y) ? "z" : "y";
+  const [start, end] = quarterInboard[spanAxis] <= quarterOutboard[spanAxis]
     ? [quarterInboard, quarterOutboard]
     : [quarterOutboard, quarterInboard];
   const chord = scale(add(

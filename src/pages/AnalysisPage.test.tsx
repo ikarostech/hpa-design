@@ -1,4 +1,5 @@
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -64,6 +65,39 @@ const structuralResults = [{
 afterEach(cleanup);
 
 describe("AnalysisPage", () => {
+  it("shows a newly completed whole-aircraft run and its surface contributions", async () => {
+    const user = userEvent.setup();
+    const analysisCase = { ...cases[1], scope: "aircraft" as const, beta: 3 };
+    const coupledResult = { ...results[1], caseId: analysisCase.id, caseSnapshot: analysisCase, aircraftSnapshot: aircraft,
+      rows: [{ ...results[1].rows[0], cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.025,
+        surfaceLoads: [{ surfaceId: aircraft.id, cl: 0.3, cy: 0.01, cm: -0.03, cr: 0.02, cn: 0.03 }] }] };
+    function Harness() {
+      const [saved, setSaved] = useState<typeof coupledResult[]>([]);
+      return <MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={[analysisCase]} results={saved} polars={[]}
+        analysisRunner={{ run: async () => coupledResult }}
+        analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }}
+        saveAnalysisResult={(value) => setSaved([value as typeof coupledResult])} /></JobProvider></MemoryRouter>;
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Climbを詳細表示" }));
+    await user.click(screen.getByRole("button", { name: "Climbを解析" }));
+    expect(await screen.findByText(/全翼面VLMは非粘性/)).toBeTruthy();
+    expect(screen.getByText(/α 0° の翼面別寄与/)).toBeTruthy();
+  });
+  it("creates a whole-aircraft VLM case with a sideslip input", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn();
+    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={[]} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save, remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
+    const editor = screen.getByRole("dialog", { name: "解析ケースを新規作成" });
+    await user.type(within(editor).getByRole("textbox", { name: "ケース名" }), "Coupled VLM");
+    await user.selectOptions(within(editor).getByRole("combobox", { name: "解析対象" }), "aircraft");
+    await user.selectOptions(within(editor).getByRole("combobox", { name: "解析手法" }), "VLM");
+    await user.clear(within(editor).getByRole("spinbutton", { name: "横滑り角 β (°)" }));
+    await user.type(within(editor).getByRole("spinbutton", { name: "横滑り角 β (°)" }), "3");
+    await user.click(within(editor).getByRole("button", { name: "解析ケースを保存" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ scope: "aircraft", beta: 3, method: "VLM" })));
+  });
   it("presents aerodynamic analysis cases in the standard management layout", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);

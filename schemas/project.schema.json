@@ -438,6 +438,10 @@
         "staticMargin": {
           "type": "number"
         },
+        "sparChordFraction": {
+          "type": "number",
+          "description": "Main-wing spar position measured from the local leading edge as a chord fraction."
+        },
         "sections": {
           "type": "array",
           "items": {
@@ -557,6 +561,10 @@
         },
         "incidence": {
           "type": "number"
+        },
+        "sparChordFraction": {
+          "type": "number",
+          "description": "Spar position measured from the local leading edge as a chord fraction."
         },
         "symmetric": {
           "type": "boolean",
@@ -689,6 +697,18 @@
         },
         "method": {
           "$ref": "#/$defs/AnalysisMethod"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "wing",
+            "aircraft"
+          ],
+          "description": "Older cases default to wing-only analysis."
+        },
+        "beta": {
+          "type": "number",
+          "description": "Sideslip in degrees; only used by whole-aircraft VLM."
         },
         "alphaStart": {
           "type": "number"
@@ -824,6 +844,53 @@
         },
         "cm": {
           "type": "number"
+        },
+        "cy": {
+          "type": "number"
+        },
+        "cr": {
+          "type": "number"
+        },
+        "cn": {
+          "type": "number"
+        },
+        "cdi": {
+          "type": "number"
+        },
+        "surfaceLoads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "surfaceId": {
+                "type": "string"
+              },
+              "cl": {
+                "type": "number"
+              },
+              "cy": {
+                "type": "number"
+              },
+              "cm": {
+                "type": "number"
+              },
+              "cr": {
+                "type": "number"
+              },
+              "cn": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "surfaceId",
+              "cl",
+              "cy",
+              "cm",
+              "cr",
+              "cn"
+            ],
+            "additionalProperties": false
+          }
         },
         "ld": {
           "type": "number"

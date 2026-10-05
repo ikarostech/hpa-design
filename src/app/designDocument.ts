@@ -61,7 +61,7 @@ export class AirfoilReferenceError extends Error {
   }
 }
 
-type EditableAircraftGeometry = Pick<AircraftGeometry, "incidence" | "sections" | "staticMargin" | "tailSurfaces">;
+type EditableAircraftGeometry = Pick<AircraftGeometry, "incidence" | "sections" | "staticMargin" | "sparChordFraction" | "tailSurfaces">;
 
 export function createDesignDocumentStore(initialDocument: DesignDocument, { saved = true }: { saved?: boolean } = {}): DesignDocumentStore {
   let document = cloneDocument(initialDocument);
@@ -236,6 +236,7 @@ function cloneAnalysisResult(result: AnalysisResult): AnalysisResult {
     polarIds: result.polarIds ? [...result.polarIds] : undefined,
     rows: result.rows.map((row) => ({
       ...row,
+      surfaceLoads: row.surfaceLoads?.map((load) => ({ ...load })),
       spanwise: row.spanwise ? {
         axis: { ...row.spanwise.axis },
         reference: { ...row.spanwise.reference },
@@ -277,6 +278,8 @@ function cloneAeroelasticResult(result: StaticAeroelasticResult): StaticAeroelas
 function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
   return left.name !== right.name
     || left.method !== right.method
+    || (left.scope ?? "wing") !== (right.scope ?? "wing")
+    || (left.beta ?? 0) !== (right.beta ?? 0)
     || left.alphaStart !== right.alphaStart
     || left.alphaEnd !== right.alphaEnd
     || left.alphaStep !== right.alphaStep
@@ -289,7 +292,8 @@ function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
 function aircraftAnalysisInputsChanged(left: AircraftGeometry, right: AircraftGeometry) {
   return left.incidence !== right.incidence
     || JSON.stringify(left.sections) !== JSON.stringify(right.sections)
-    || JSON.stringify(left.tailSurfaces ?? []) !== JSON.stringify(right.tailSurfaces ?? []);
+    || JSON.stringify((left.tailSurfaces ?? []).map(({ sparChordFraction: _spar, ...surface }) => surface))
+      !== JSON.stringify((right.tailSurfaces ?? []).map(({ sparChordFraction: _spar, ...surface }) => surface));
 }
 
 function sameCoordinates(left: Airfoil, right: Airfoil) {

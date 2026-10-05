@@ -180,6 +180,24 @@ describe("createDesignDocumentStore", () => {
     });
   });
 
+  it("keeps aerodynamic results current when only the displayed spar position changes", () => {
+    const analysisCase = { id: "case-tail", name: "Cruise", method: "VLM" as const, alphaStart: 0, alphaEnd: 4, alphaStep: 2, speed: 20, altitude: 0, reynolds: 300000, geometryId: document.aircraft.id, status: "completed" as const };
+    const store = createDesignDocumentStore({
+      ...document,
+      aircraft: { ...document.aircraft, tailSurfaces: [horizontalTail] },
+      analysisCases: [analysisCase],
+      analysisResults: [{ id: "result-tail", caseId: analysisCase.id, clMax: 1, cdMin: 0.02, maxLD: 20, cm0: 0, status: "completed" as const, rows: [] }],
+    });
+
+    store.updateAircraft({ sparChordFraction: 0.3, tailSurfaces: [{ ...horizontalTail, sparChordFraction: 0.4 }] });
+
+    expect(store.getDocument()).toMatchObject({
+      aircraft: { sparChordFraction: 0.3, tailSurfaces: [{ sparChordFraction: 0.4 }] },
+      analysisCases: [{ status: "completed" }],
+      analysisResults: [{ status: "completed" }],
+    });
+  });
+
   it("persists analysis cases and removes their related results with the case", () => {
     const analysisCase = {
       id: "case-1", name: "Cruise", method: "LLT" as const,
@@ -266,6 +284,20 @@ describe("createDesignDocumentStore", () => {
       airfoilAnalysisRuns: [{ id: "run-1", status: "needs-review" }],
       analysisResults: [{ id: "result-1", status: "needs-review", rows: [{ status: "needs-review" }] }],
     });
+  });
+
+  it("marks a whole-aircraft result stale when scope or sideslip changes", () => {
+    const analysisCase = { id: "coupled", name: "Coupled", method: "VLM" as const, scope: "aircraft" as const,
+      beta: 2, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      geometryId: document.aircraft.id, status: "completed" as const };
+    const result = { id: "coupled-result", caseId: analysisCase.id, clMax: 0.2, cdMin: 0.01, maxLD: 20, cm0: 0,
+      status: "completed" as const, rows: [{ caseId: analysisCase.id, alpha: 0, cl: 0.2, cd: 0.01, cm: 0, ld: 20, status: "completed" as const }] };
+    const store = createDesignDocumentStore({ ...document, analysisCases: [analysisCase], analysisResults: [result] });
+    store.saveAnalysisCase({ ...analysisCase, beta: 3 });
+    expect(store.getDocument().analysisResults[0].status).toBe("needs-review");
+    store.saveAnalysisResult(result);
+    store.saveAnalysisCase({ ...analysisCase, beta: 3, scope: "wing" });
+    expect(store.getDocument().analysisResults[0].status).toBe("needs-review");
   });
 
   it("rejects deletion of an airfoil referenced by a tail section", () => {

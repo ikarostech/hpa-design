@@ -1,4 +1,5 @@
 import type { Exporter, Importer, ValidationIssue, ValidationResult } from "../shared/model/transfer";
+import { isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
 import type { DesignDocument } from "./designDocument";
 
 type JsonRecord = Record<string, unknown>;
@@ -34,7 +35,7 @@ export function validateDesignDocument(document: unknown): ValidationResult {
   const polarIds = validatePolars(arrays.polars, airfoilIds, issues);
   validateAnalysisRuns(arrays.airfoilAnalysisRuns, airfoilIds, polarIds, issues);
   const caseIds = validateAnalysisCases(arrays.analysisCases, aircraft?.id, issues);
-  validateAnalysisResults(arrays.analysisResults, caseIds, issues);
+  validateAnalysisResults(arrays.analysisResults, caseIds, new Set([aircraft?.id, ...(aircraft?.tailSurfaces ?? []).map((surface) => surface.id)].filter((id): id is string => typeof id === "string")), issues);
   const materialIds = validateCarbonMaterials(arrays.carbonMaterials, issues);
   const structuralDesignIds = validateStructuralDesigns(arrays.structuralDesigns, materialIds, issues);
   validateStructuralResults(arrays.structuralResults, structuralDesignIds, materialIds, issues);
@@ -453,6 +454,7 @@ function validateAircraft(value: unknown, issues: ValidationIssue[]) {
   for (const field of ["span", "rootChord", "tipChord", "taperRatio", "twist", "dihedral", "sweep", "incidence", "wingArea", "aspectRatio", "mac", "staticMargin"]) {
     validateFiniteNumber(value[field], [...path, field], issues);
   }
+  validateSparChordFraction(value.sparChordFraction, [...path, "sparChordFraction"], issues);
   return {
     id,
     sections: readArray(value.sections, [...path, "sections"], issues),
@@ -492,6 +494,7 @@ function validateTailSurfaces(items: readonly unknown[], airfoilIds: ReadonlySet
     if (!isRecord(item.rootPosition)) addIssue(issues, [...path, "rootPosition"], "Tail root position must be an object.");
     else for (const axis of ["x", "y", "z"]) validateFiniteNumber(item.rootPosition[axis], [...path, "rootPosition", axis], issues);
     validateFiniteNumber(item.incidence, [...path, "incidence"], issues);
+    validateSparChordFraction(item.sparChordFraction, [...path, "sparChordFraction"], issues);
     for (const field of ["symmetric", "isDoubleFin", "isSymmetricFin"]) validateBoolean(item[field], [...path, field], issues);
 
     const sectionIds = new Set<string>();
@@ -539,6 +542,9 @@ function validateAnalysisCases(items: readonly unknown[], aircraftId: string | n
     addUniqueId(item.id, path, ids, issues);
     validateNonEmptyString(item.name, [...path, "name"], issues);
     validateEnum(item.method, [...path, "method"], ["LLT", "VLM"], issues);
+    if (item.scope !== undefined) validateEnum(item.scope, [...path, "scope"], ["wing", "aircraft"], issues);
+    if (item.scope === "aircraft" && item.method !== "VLM") addIssue(issues, [...path, "method"], "全翼面解析にはVLMが必要です。");
+    if (item.beta !== undefined) validateFiniteNumber(item.beta, [...path, "beta"], issues);
     for (const field of ["alphaStart", "alphaEnd", "alphaStep", "speed", "altitude", "reynolds"]) validateFiniteNumber(item[field], [...path, field], issues);
     validateReference(item.geometryId, [...path, "geometryId"], aircraftId ? new Set([aircraftId]) : new Set(), "機体形状", issues);
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
@@ -546,7 +552,7 @@ function validateAnalysisCases(items: readonly unknown[], aircraftId: string | n
   return ids;
 }
 
-function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet<string>, issues: ValidationIssue[]) {
+function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet<string>, surfaceIds: ReadonlySet<string>, issues: ValidationIssue[]) {
   const ids = new Set<string>();
   items.forEach((item, index) => {
     const path = ["analysisResults", String(index)];
@@ -555,6 +561,9 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       return;
     }
     addUniqueId(item.id, path, ids, issues);
+    const resultSurfaceIds = isRecord(item.aircraftSnapshot)
+      ? new Set([item.aircraftSnapshot.id, ...(Array.isArray(item.aircraftSnapshot.tailSurfaces) ? item.aircraftSnapshot.tailSurfaces.filter(isRecord).map((surface) => surface.id) : [])].filter((id): id is string => typeof id === "string"))
+      : surfaceIds;
     const caseId = validateReference(item.caseId, [...path, "caseId"], caseIds, "解析ケース", issues);
     for (const field of ["clMax", "cdMin", "maxLD", "cm0"]) validateFiniteNumber(item[field], [...path, field], issues);
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
@@ -567,6 +576,13 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       const rowCaseId = validateReference(row.caseId, [...rowPath, "caseId"], caseIds, "解析ケース", issues);
       if (caseId && rowCaseId && caseId !== rowCaseId) addIssue(issues, [...rowPath, "caseId"], "解析結果の行は親の解析ケースを参照する必要があります。");
       for (const field of ["alpha", "cl", "cd", "cm", "ld"]) validateFiniteNumber(row[field], [...rowPath, field], issues);
+      for (const field of ["cy", "cr", "cn", "cdi"]) if (row[field] !== undefined) validateFiniteNumber(row[field], [...rowPath, field], issues);
+      if (row.surfaceLoads !== undefined) readArray(row.surfaceLoads, [...rowPath, "surfaceLoads"], issues).forEach((load, loadIndex) => {
+        const loadPath = [...rowPath, "surfaceLoads", String(loadIndex)];
+        if (!isRecord(load)) { addIssue(issues, loadPath, "翼面別荷重はオブジェクトである必要があります。"); return; }
+        validateReference(load.surfaceId, [...loadPath, "surfaceId"], resultSurfaceIds, "翼面", issues);
+        for (const field of ["cl", "cy", "cm", "cr", "cn"]) validateFiniteNumber(load[field], [...loadPath, field], issues);
+      });
       validateEnum(row.status, [...rowPath, "status"], ["completed", "not-run", "needs-review"], issues);
       if (row.spanwise !== undefined) validateAerodynamicSpanwise(row.spanwise, [...rowPath, "spanwise"], row.alpha, issues);
     });
@@ -622,6 +638,12 @@ function validateEnum(value: unknown, path: string[], values: readonly string[],
 
 function validateBoolean(value: unknown, path: string[], issues: ValidationIssue[]) {
   if (typeof value !== "boolean") addIssue(issues, path, "Value must be a boolean.");
+}
+
+function validateSparChordFraction(value: unknown, path: string[], issues: ValidationIssue[]) {
+  if (value !== undefined && (typeof value !== "number" || !isValidSparChordFraction(value))) {
+    addIssue(issues, path, "桁位置は翼弦の0～100%で指定してください。");
+  }
 }
 
 function validateFiniteNumber(value: unknown, path: string[], issues: ValidationIssue[]) {

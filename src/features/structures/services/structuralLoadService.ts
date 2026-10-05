@@ -45,6 +45,7 @@ export function createLoadCaseFromAerodynamicResult({
   safetyFactor?: number;
   alphaDegrees?: number;
 }): StructuralLoadCase {
+  if (result.caseSnapshot?.scope === "aircraft") throw new Error("全翼面解析の揚力は主翼荷重ではありません。主翼のみの解析結果を選択してください。");
   const semiSpan = aircraft.span / 2;
   const speed = result.caseSnapshot?.speed ?? 0;
   if (semiSpan <= 0 || speed <= 0 || aircraft.wingArea <= 0) throw new Error("空力荷重の生成には翼幅、翼面積、解析速度が必要です。");

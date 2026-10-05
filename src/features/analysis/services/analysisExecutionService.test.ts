@@ -41,6 +41,33 @@ const createPolar = (id: string, airfoilId: string, liftOffset: number): Airfoil
 const polars = [createPolar("polar-1", "af-1", 0), createPolar("polar-2", "af-2", 0.2)];
 
 describe("executeAnalysisCase", () => {
+  it("solves the complete aircraft and stores per-surface loads with the geometry snapshot", async () => {
+    const tail = {
+      id: "tail-1", name: "Tail", orientation: "horizontal" as const,
+      rootPosition: { x: 4, y: 0, z: 0 }, incidence: 0, symmetric: true, isDoubleFin: false, isSymmetricFin: false,
+      sections: [0, 1].map((spanPosition, index) => ({
+        id: `tail-${index}`, spanPosition, chord: 0.7, xOffset: 0, dihedral: 0, twist: 0,
+        leftAirfoilId: "af-1", rightAirfoilId: "af-1", chordwisePanels: 1, spanwisePanels: 2,
+        chordwiseDistribution: "uniform" as const, spanwiseDistribution: "uniform" as const,
+      })),
+    };
+    const geometry = { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section, chordwisePanels: 1, spanwisePanels: 2 })), tailSurfaces: [tail] };
+    const result = await executeAnalysisCase({
+      analysisCase: { ...analysisCase, method: "VLM", scope: "aircraft", beta: 3, alphaStart: 5, alphaEnd: 5 },
+      aircraft: geometry, polars: [], createId: () => "whole-aircraft", onProgress: () => undefined,
+    });
+    const row = result.rows[0];
+    expect(result.caseSnapshot).toMatchObject({ scope: "aircraft", beta: 3 });
+    expect(result.aircraftSnapshot?.tailSurfaces).toEqual([tail]);
+    expect(result.airfoilIds).toEqual(["af-1", "af-2"]);
+    expect(result.polarIds).toEqual([]);
+    expect(row.surfaceLoads?.map((load) => load.surfaceId)).toEqual(["aircraft-1", "tail-1"]);
+    expect(row.surfaceLoads!.reduce((sum, load) => sum + load.cl, 0)).toBeCloseTo(row.cl, 4);
+    expect(row.cy).toBeTypeOf("number");
+    expect(row.cd).toBeCloseTo(row.cdi!, 8);
+    expect(row.spanwise).toBeUndefined();
+  });
+
   it("runs both supported methods with the section mesh and reports incremental progress", async () => {
     const progress: number[] = [];
 

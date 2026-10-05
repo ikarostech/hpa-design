@@ -120,7 +120,7 @@ export function StructuresPage(props: StructuresPageProps) {
         : activeTab === "構造案"
           ? <StructuralDesignTab design={design} designs={designs} materials={materials} selectedSectionId={selectedSectionId} onSelectSection={setSelectedSectionId} onSaveDesign={saveDesign} onSaveMaterial={onSaveMaterial} onRemoveMaterial={onRemoveMaterial} />
           : activeTab === "基準荷重"
-            ? <StructuralLoadsTab design={design} aircraft={aircraft} grossMass={grossMass} aerodynamicResults={aerodynamicResults} onSaveDesign={saveDesign} onRun={(loadCase) => void run(loadCase)} runningLoadCaseIds={runningJobs.map((job) => job.settings.loadCaseId)} onCancel={(loadCaseId) => { const job = runningJobs.find((item) => item.settings.loadCaseId === loadCaseId); if (job) controllers.current.get(job.id)?.abort(); }} />
+            ? <StructuralLoadsTab design={design} aircraft={aircraft} grossMass={grossMass} aerodynamicResults={aerodynamicResults.filter((result) => result.caseSnapshot?.scope !== "aircraft")} onSaveDesign={saveDesign} onRun={(loadCase) => void run(loadCase)} runningLoadCaseIds={runningJobs.map((job) => job.settings.loadCaseId)} onCancel={(loadCaseId) => { const job = runningJobs.find((item) => item.settings.loadCaseId === loadCaseId); if (job) controllers.current.get(job.id)?.abort(); }} />
             : <StructuralResultsTab results={designResults} result={result} onSelectResult={setSelectedResultId} />}
     </PageTemplate>
     <DeleteConfirmationDialog
