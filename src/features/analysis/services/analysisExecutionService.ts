@@ -7,6 +7,8 @@ import { calculateVlmCoefficients } from "./vlmSolver";
 import { calculateAircraftVlmCoefficients } from "./vlmSolver";
 import { createAircraftAnalysisMesh } from "./aircraftAnalysisMesh";
 import { createWingAnalysisMesh, type WingAnalysisMesh } from "./wingAnalysisMesh";
+import { createStabilityWingMesh } from "./stabilityShape";
+import { stabilityShapeErrors } from "../model/stabilityShape";
 
 export interface ExecuteAnalysisCaseInput {
   analysisCase: AnalysisCase;
@@ -40,7 +42,11 @@ export async function executeAnalysisCase({
   const mesh = createWingAnalysisMesh(aircraft.sections);
   const wholeAircraft = analysisCase.scope === "aircraft";
   if (wholeAircraft && analysisCase.method !== "VLM") throw new Error("Whole-aircraft analysis requires VLM.");
-  const aircraftMesh = wholeAircraft ? createAircraftAnalysisMesh(aircraft) : null;
+  const shapeErrors = stabilityShapeErrors(analysisCase.stabilityShape, aircraft.span / 2);
+  if (shapeErrors.length) throw new Error(shapeErrors.join(" "));
+  if (!wholeAircraft && analysisCase.stabilityShape && analysisCase.stabilityShape.kind !== "rigid") throw new Error("変形形状は全機安定性解析で使用してください。");
+  if (analysisCase.stabilityShape?.kind === "fsi" && Math.abs(analysisCase.speed - analysisCase.stabilityShape.speed) > 1e-6) throw new Error("FSI形状と解析速度を一致させてください。");
+  const aircraftMesh = wholeAircraft ? createAircraftAnalysisMesh(aircraft, createStabilityWingMesh(aircraft, analysisCase.stabilityShape)) : null;
   const selectedPolars = wholeAircraft ? new Map<string, AirfoilPolar>() : selectSectionPolars(aircraft, polars, analysisCase.reynolds);
   const density = airDensityAtAltitude(analysisCase.altitude);
 
@@ -48,7 +54,7 @@ export async function executeAnalysisCase({
     throwIfCancelled(signal);
     await yieldToUserInput();
     const coefficients = aircraftMesh
-      ? calculateWholeAircraftCoefficients(aircraft, aircraftMesh, alpha, analysisCase.beta ?? 0)
+      ? calculateWholeAircraftCoefficients(aircraft, aircraftMesh, alpha, analysisCase.beta ?? 0, analysisCase.cgX ?? aircraft.mac / 4, analysisCase.cgZ ?? 0)
       : mesh.strips.length
       ? analysisCase.method === "VLM"
         ? calculateVlmWingCoefficients(alpha, aircraft, mesh, selectedPolars, analysisCase.speed, density)
@@ -73,7 +79,7 @@ export async function executeAnalysisCase({
     maxLD: Math.max(...rows.map((row) => row.ld)),
     cm0: rows.find((row) => row.alpha === 0)?.cm ?? interpolateCm0(rows),
     status: "completed",
-    caseSnapshot: { ...analysisCase },
+    caseSnapshot: structuredClone(analysisCase),
     aircraftSnapshot: { ...aircraft, sections: aircraft.sections.map((section) => ({ ...section })),
       tailSurfaces: aircraft.tailSurfaces?.map((surface) => ({ ...surface, rootPosition: { ...surface.rootPosition }, sections: surface.sections.map((section) => ({ ...section })) })) },
     airfoilIds: Array.from(new Set([...aircraft.sections.map((section) => section.airfoilId),
@@ -83,9 +89,15 @@ export async function executeAnalysisCase({
   };
 }
 
-function calculateWholeAircraftCoefficients(aircraft: AircraftGeometry, mesh: ReturnType<typeof createAircraftAnalysisMesh>, alpha: number, beta: number) {
-  const reference = { area: aircraft.wingArea, span: aircraft.span, chord: aircraft.mac, point: { x: aircraft.mac / 4, y: 0, z: 0 } };
+function calculateWholeAircraftCoefficients(aircraft: AircraftGeometry, mesh: ReturnType<typeof createAircraftAnalysisMesh>, alpha: number, beta: number, cgX: number, cgZ: number) {
+  const reference = { area: aircraft.wingArea, span: aircraft.span, chord: aircraft.mac, point: { x: cgX, y: 0, z: cgZ } };
   const vlm = calculateAircraftVlmCoefficients(mesh, { alpha, beta, reference });
+  const deltaBeta = 1;
+  const plus = calculateAircraftVlmCoefficients(mesh, { alpha, beta: beta + deltaBeta, reference });
+  const minus = calculateAircraftVlmCoefficients(mesh, { alpha, beta: beta - deltaBeta, reference });
+  const cnBeta = (plus.cn - minus.cn) / (2 * deltaBeta * Math.PI / 180);
+  const crBeta = (plus.cr - minus.cr) / (2 * deltaBeta * Math.PI / 180);
+  const cyBeta = (plus.cy - minus.cy) / (2 * deltaBeta * Math.PI / 180);
   const liftAxis = { x: -Math.sin(alpha * Math.PI / 180), z: Math.cos(alpha * Math.PI / 180) };
   const surfaceLoads = [...new Set(mesh.panels.map((panel) => panel.surfaceId))].map((surfaceId) => {
     const loads = vlm.panelLoads.filter((load) => load.surfaceId === surfaceId);
@@ -100,7 +112,7 @@ function calculateWholeAircraftCoefficients(aircraft: AircraftGeometry, mesh: Re
     };
   });
   return { cl: vlm.cl, cd: vlm.cdi, cm: vlm.cm,
-    cy: vlm.cy, cr: vlm.cr, cn: vlm.cn, cdi: vlm.cdi, surfaceLoads };
+    cy: vlm.cy, cr: vlm.cr, cn: vlm.cn, cdi: vlm.cdi, cgX, cgZ, cnBeta, crBeta, cyBeta, surfaceLoads };
 }
 
 function calculateLltWingCoefficients(

@@ -31,6 +31,8 @@ describe("TailDesignPage", () => {
     expect(screen.getAllByText("1.800 m²")).toHaveLength(2);
     expect(screen.getByText("3.000 m")).toBeTruthy();
     expect(screen.getByText("ELEVATOR")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "安定性設計に進む" })).toBeTruthy();
+    expect(screen.getByText(/桁軸まわりに尾翼全体を回転/)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "水平尾翼の単体解析" })).toBeNull();
     expect(screen.queryByRole("button", { name: "水平尾翼を単体解析" })).toBeNull();
   });

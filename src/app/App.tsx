@@ -11,6 +11,7 @@ const AirfoilPage = lazy(async () => ({ default: (await import("../pages/Airfoil
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
 const TailDesignPage = lazy(async () => ({ default: (await import("../pages/TailDesignPage")).TailDesignPage }));
 const AnalysisPage = lazy(async () => ({ default: (await import("../pages/AnalysisPage")).AnalysisPage }));
+const StabilityDesignPage = lazy(async () => ({ default: (await import("../pages/StabilityDesignPage")).StabilityDesignPage }));
 const FsiPage = lazy(async () => ({ default: (await import("../pages/FsiPage")).FsiPage }));
 const DashboardPage = lazy(async () => ({ default: (await import("../pages/DashboardPage")).DashboardPage }));
 const ExportPage = lazy(async () => ({ default: (await import("../pages/ExportPage")).ExportPage }));
@@ -26,6 +27,8 @@ export default function App() {
     <Route path="/aerodynamics/geometry" element={<AircraftRoute />} />
     <Route path="/aerodynamics/tails" element={<TailRoute />} />
     <Route path="/aerodynamics/analysis" element={<AnalysisRoute />} />
+    <Route path="/aerodynamics/stability" element={<Navigate to="/stability" replace />} />
+    <Route path="/stability" element={<StabilityRoute />} />
     <Route path="/fsi" element={<FsiRoute />} />
     <Route path="/structures" element={<StructuresRoute />} />
     <Route path="/export" element={<ExportRoute />} />
@@ -75,9 +78,15 @@ function AnalysisRoute() {
   return <AnalysisPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
 }
 
+function StabilityRoute() {
+  const { document, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
+  return <StabilityDesignPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
+}
+
 function FsiRoute() {
-  const { document, saveAeroelasticResult } = useDesignDocument();
-  return <FsiPage aircraft={document.aircraft} polars={document.polars} materials={document.carbonMaterials} structuralDesigns={document.structuralDesigns} results={document.aeroelasticResults ?? []} onSaveResult={saveAeroelasticResult} />;
+  const { document, saveAeroelasticResult, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
+  return <FsiPage aircraft={document.aircraft} polars={document.polars} materials={document.carbonMaterials} structuralDesigns={document.structuralDesigns} results={document.aeroelasticResults ?? []} onSaveResult={saveAeroelasticResult}
+    stability={{ cases: document.analysisCases, results: document.analysisResults, analysisCaseRepository, saveAnalysisResult }} />;
 }
 
 function StructuresRoute() {

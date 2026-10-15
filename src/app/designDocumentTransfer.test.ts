@@ -19,6 +19,38 @@ const document = {
 };
 
 describe("design document transfer", () => {
+  it("round-trips manual shapes and rejects malformed shapes in cases and result snapshots", async () => {
+    const analysisCase = { id: "manual", name: "Manual", method: "VLM" as const, scope: "aircraft" as const,
+      geometryId: document.aircraft.id, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      status: "completed" as const, stabilityShape: { kind: "manual" as const, elasticAxisChordFraction: 0.35,
+        points: [{ yPosition: 0, deflection: 0, twist: 0 }, { yPosition: 2, deflection: 0.2, twist: -2 }] } };
+    const input = { ...document, analysisCases: [analysisCase] };
+    const restored = await designDocumentImporter.parse(await designDocumentExporter.export(input));
+    expect(restored.analysisCases[0].stabilityShape).toEqual(analysisCase.stabilityShape);
+    expect((await designDocumentImporter.validate(restored)).valid).toBe(true);
+    const invalidShape = { kind: "manual", elasticAxisChordFraction: 2, points: [null, { yPosition: 0, deflection: Infinity, twist: 0 }] };
+    const invalid = { ...input, analysisCases: [{ ...analysisCase, stabilityShape: invalidShape }],
+      analysisResults: [{ id: "r", caseId: analysisCase.id, clMax: 0, cdMin: 0, maxLD: 0, cm0: 0, status: "completed",
+        rows: [], caseSnapshot: { ...analysisCase, stabilityShape: { kind: "fsi", wingMesh: {} } } }] };
+    const validation = await designDocumentImporter.validate(invalid as unknown as typeof restored);
+    expect(validation.valid).toBe(false);
+    expect(validation.issues?.map((i) => i.path?.join("."))).toEqual(expect.arrayContaining([
+      "analysisCases.0.stabilityShape", "analysisResults.0.caseSnapshot.stabilityShape",
+    ]));
+  });
+  it("rejects nonfinite lateral stability derivatives and vertical CG inputs", async () => {
+    const analysisCase = { id: "stability", name: "Stability", method: "VLM" as const, scope: "aircraft" as const,
+      cgZ: Number.NaN, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      geometryId: document.aircraft.id, status: "completed" as const };
+    const result = { id: "stability-result", caseId: analysisCase.id, clMax: 0, cdMin: 0, maxLD: 0, cm0: 0,
+      status: "completed" as const, rows: [{ caseId: analysisCase.id, alpha: 0, cl: 0, cd: 0, cm: 0, ld: 0,
+        cgZ: Infinity, crBeta: Number.NaN, cyBeta: Infinity, status: "completed" as const }] };
+    const validation = await designDocumentImporter.validate({ ...document, analysisCases: [analysisCase], analysisResults: [result] });
+    expect(validation.valid).toBe(false);
+    expect((validation.issues ?? []).map((issue) => issue.path?.join("."))).toEqual(expect.arrayContaining([
+      "analysisCases.0.cgZ", "analysisResults.0.rows.0.cgZ", "analysisResults.0.rows.0.crBeta", "analysisResults.0.rows.0.cyBeta",
+    ]));
+  });
   it("rejects a spar position outside the local chord", async () => {
     const invalid = { ...document, aircraft: { ...document.aircraft, sparChordFraction: 1.2,
       tailSurfaces: [{ id: "tail-1", name: "Tail", orientation: "horizontal" as const, rootPosition: { x: 4, y: 0, z: 0 }, incidence: 0,

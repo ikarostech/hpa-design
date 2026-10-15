@@ -1,5 +1,6 @@
 import type { AircraftGeometry, AircraftPosition, TailSurface } from "../../aircraft/model/types";
 import { validateTailSurface } from "../../aircraft/model/tailGeometry";
+import { DEFAULT_SPAR_CHORD_FRACTION } from "../../aircraft/model/sparGeometry";
 import { createWingAnalysisMesh, panelFractions, type WingMeshNode, type WingMeshPanel } from "./wingAnalysisMesh";
 
 export interface AircraftMeshPanel extends WingMeshPanel {
@@ -12,8 +13,7 @@ export interface AircraftAnalysisMesh {
   panels: AircraftMeshPanel[];
 }
 
-export function createAircraftAnalysisMesh(aircraft: AircraftGeometry): AircraftAnalysisMesh {
-  const wing = createWingAnalysisMesh(aircraft.sections);
+export function createAircraftAnalysisMesh(aircraft: AircraftGeometry, wing = createWingAnalysisMesh(aircraft.sections)): AircraftAnalysisMesh {
   const transform = (node: WingMeshNode): WingMeshNode => ({ ...node, ...rotateIncidence(node, aircraft.incidence) });
   const meshes: AircraftAnalysisMesh[] = [{
     nodes: wing.nodes.map(transform),
@@ -33,6 +33,8 @@ export function createTailAnalysisMesh(surface: TailSurface): AircraftAnalysisMe
   const nodes: WingMeshNode[] = [];
   const panels: AircraftMeshPanel[] = [];
   const vertical = surface.orientation === "vertical";
+  const root = surface.sections[0];
+  const sparAxisX = root.xOffset + root.chord * (surface.sparChordFraction ?? DEFAULT_SPAR_CHORD_FRACTION);
   const sides: WingMeshNode["side"][] = vertical && !surface.isDoubleFin ? ["right"] : ["right", "left"];
   let span = 0;
   let height = 0;
@@ -56,7 +58,7 @@ export function createTailAnalysisMesh(surface: TailSurface): AircraftAnalysisMe
         x: lerp(root.xOffset, tip.xOffset, fraction) + chord / 4 + distance * Math.cos(twist),
         y: lerp(span, spanEnd, fraction) + distance * Math.sin(twist) * Math.sin(angle),
         z: lerp(height, heightEnd, fraction) - distance * Math.sin(twist) * Math.cos(angle),
-      }, surface.incidence);
+      }, surface.incidence, sparAxisX);
       return {
         x: surface.rootPosition.x + local.x,
         y: vertical ? (surface.isDoubleFin ? sign * surface.rootPosition.y : surface.rootPosition.y) - sign * local.z : surface.rootPosition.y + sign * local.y,
@@ -87,9 +89,10 @@ export function createTailAnalysisMesh(surface: TailSurface): AircraftAnalysisMe
   return { nodes, panels };
 }
 
-function rotateIncidence(point: AircraftPosition, degrees: number): AircraftPosition {
+function rotateIncidence(point: AircraftPosition, degrees: number, pivotX = 0): AircraftPosition {
   const radians = degrees * Math.PI / 180;
-  return { x: point.x * Math.cos(radians) + point.z * Math.sin(radians), y: point.y, z: point.z * Math.cos(radians) - point.x * Math.sin(radians) };
+  const x = point.x - pivotX;
+  return { x: pivotX + x * Math.cos(radians) + point.z * Math.sin(radians), y: point.y, z: point.z * Math.cos(radians) - x * Math.sin(radians) };
 }
 
 function lerp(start: number, end: number, fraction: number) { return start + (end - start) * fraction; }

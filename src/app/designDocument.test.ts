@@ -53,6 +53,24 @@ const document = {
 };
 
 describe("createDesignDocumentStore", () => {
+  it("isolates saved stability shapes and invalidates results when deformation changes", () => {
+    const store = createDesignDocumentStore(document);
+    const analysisCase = { id: "stability", name: "Manual", method: "VLM" as const, scope: "aircraft" as const,
+      geometryId: document.aircraft.id, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      status: "completed" as const, stabilityShape: { kind: "manual" as const, elasticAxisChordFraction: 0.35,
+        points: [{ yPosition: 0, deflection: 0, twist: 0 }, { yPosition: 2, deflection: 0.2, twist: 0 }] } };
+    store.saveAnalysisCase(analysisCase);
+    store.saveAnalysisResult({ id: "r", caseId: analysisCase.id, status: "completed", clMax: 0, cdMin: 0, maxLD: 0, cm0: 0,
+      caseSnapshot: analysisCase, rows: [] });
+    analysisCase.stabilityShape.points[1].deflection = 0.4;
+    const saved = store.getDocument().analysisCases[0];
+    expect(saved.stabilityShape).not.toEqual(analysisCase.stabilityShape);
+    expect(store.getDocument().analysisResults[0].caseSnapshot?.stabilityShape).not.toEqual(analysisCase.stabilityShape);
+    store.saveAnalysisCase(analysisCase);
+    expect(store.getDocument().analysisResults[0].status).toBe("needs-review");
+    const roundTrip = createDesignDocumentStore(store.getDocument());
+    expect(roundTrip.getDocument().analysisCases[0].stabilityShape).toEqual(analysisCase.stabilityShape);
+  });
   it("persists conceptual design requirements and marks the document unsaved", () => {
     const store = createDesignDocumentStore(document);
     const conceptualDesign = { ...createDefaultConceptualDesign(), cruiseSpeed: 9.5 };

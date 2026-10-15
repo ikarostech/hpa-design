@@ -12,9 +12,9 @@ describe("AerodynamicDesignTabs", () => {
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => [tab.textContent, tab.getAttribute("href")])).toEqual([
       ["翼型", "/aerodynamics/airfoils"],
-      ["主翼形状", "/aerodynamics/geometry"],
+      ["主翼設計", "/aerodynamics/geometry"],
+      ["主翼解析", "/aerodynamics/analysis"],
       ["尾翼設計", "/aerodynamics/tails"],
-      ["空力解析", "/aerodynamics/analysis"],
     ]);
     expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("aria-selected")).toBe("true");
   });

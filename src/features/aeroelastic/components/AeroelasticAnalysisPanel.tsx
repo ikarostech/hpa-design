@@ -1,5 +1,5 @@
 import { Download, Play } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import type { CarbonMaterial, StructuralDesign } from "../../structures/model/types";
 import type { AirfoilPolar } from "../../airfoils/model/types";
@@ -25,6 +25,7 @@ export function AeroelasticAnalysisPanel({
   onSaveResult,
   polars = [],
   analysisRunner = webAeroelasticAnalysisRunner,
+  renderResultExtension,
 }: {
   aircraft: AircraftGeometry;
   materials: readonly CarbonMaterial[];
@@ -33,6 +34,7 @@ export function AeroelasticAnalysisPanel({
   onSaveResult: (result: StaticAeroelasticResult) => void;
   polars?: readonly AirfoilPolar[];
   analysisRunner?: AeroelasticAnalysisRunner;
+  renderResultExtension?: (result: StaticAeroelasticResult | undefined) => ReactNode;
 }) {
   const jobs = useJobs();
   const controller = useRef<AbortController | null>(null);
@@ -125,11 +127,11 @@ export function AeroelasticAnalysisPanel({
       </CardBody>
     </Card>
 
-    {result ? <AeroelasticResultView result={result} polars={polars} /> : <Card><CardBody><p className="py-8 text-center text-sm text-slate-500">連成解析結果はまだありません。</p></CardBody></Card>}
+    {result ? <AeroelasticResultView result={result} polars={polars} extension={renderResultExtension?.(result)} /> : <><Card><CardBody><p className="py-8 text-center text-sm text-slate-500">連成解析結果はまだありません。</p></CardBody></Card>{renderResultExtension?.(undefined)}</>}
   </div>;
 }
 
-function AeroelasticResultView({ result, polars }: { result: StaticAeroelasticResult; polars: readonly AirfoilPolar[] }) {
+function AeroelasticResultView({ result, polars, extension }: { result: StaticAeroelasticResult; polars: readonly AirfoilPolar[]; extension?: ReactNode }) {
   const performance = estimateAeroelasticPerformance(result, polars);
   return <div className="space-y-5">
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -156,6 +158,7 @@ function AeroelasticResultView({ result, polars }: { result: StaticAeroelasticRe
         <AeroelasticSpanwiseCharts result={result} profileDragPerLength={performance.available ? performance.profileDragPerLength : undefined} />
       </CardBody>
     </Card>
+    {extension}
     <Card><CardHeader><h3 className="font-semibold text-slate-950">反復履歴</h3></CardHeader><CardBody><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr>{["反復", "迎角", "CL", "総揚力", "変位残差", "荷重残差"].map((item) => <th className="px-2 py-2" key={item}>{item}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{result.iterations.map((iteration) => <tr key={iteration.iteration}><td className="px-2 py-2">{iteration.iteration}</td><td className="px-2 py-2">{iteration.alphaDegrees.toFixed(3)}°</td><td className="px-2 py-2">{iteration.cl.toFixed(4)}</td><td className="px-2 py-2">{iteration.totalLift.toFixed(2)} N</td><td className="px-2 py-2">{iteration.displacementResidual.toExponential(2)}</td><td className="px-2 py-2">{iteration.loadResidual === null ? "-" : iteration.loadResidual.toExponential(2)}</td></tr>)}</tbody></table></div></CardBody></Card>
   </div>;
 }

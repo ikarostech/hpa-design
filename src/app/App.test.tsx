@@ -13,6 +13,17 @@ afterEach(() => {
 });
 
 describe("App routes", () => {
+  it.each(["/stability", "/aerodynamics/stability"])("opens standalone stability design from %s and retains aircraft cases", async (path) => {
+    window.location.hash = `#${path}`;
+    render(<ApplicationRouter><App /></ApplicationRouter>);
+    expect(await screen.findByRole("heading", { name: "安定性設計" }, { timeout: 10_000 })).toBeTruthy();
+    expect(screen.queryByRole("tablist", { name: "空力設計" })).toBeNull();
+    expect(window.location.hash).toBe("#/stability");
+    expect(screen.getByRole("link", { name: "安定性設計" }).getAttribute("aria-current")).toBe("page");
+    const savedCase = createDefaultDesignDocument().analysisCases.find((item) => item.scope === "aircraft")!;
+    expect(screen.getByRole("button", { name: `${savedCase.name}を詳細表示` })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "尾翼設計に戻る" }).getAttribute("href")).toContain("/aerodynamics/tails");
+  }, 15_000);
   it("opens the coupled FSI workspace at its dedicated route", async () => {
     window.location.hash = "#/fsi";
 

@@ -15,16 +15,31 @@ const result = {
 };
 
 describe("analysisResultExporter", () => {
+  it("exports the selected stability shape and manual deformation alongside the coefficients", async () => {
+    const manual = { ...result, caseSnapshot: { id: result.caseId, name: "Manual", scope: "aircraft" as const, method: "VLM" as const,
+      geometryId: "wing", speed: 10, altitude: 0, reynolds: 100000, alphaStart: 2, alphaEnd: 2, alphaStep: 1, status: "completed" as const,
+      stabilityShape: { kind: "manual" as const, elasticAxisChordFraction: 0.35,
+        points: [{ yPosition: 0, deflection: 0, twist: 0 }, { yPosition: 2, deflection: 0.3, twist: -2 }] } } };
+    const csv = await analysisResultExporter.export({ results: [manual], selectedResultIds: [manual.id], designName: "Shapes" });
+    expect(csv.content).toContain("[stability_shapes]");
+    expect(csv.content).toContain("result_id,shape_kind,fsi_result_id,fsi_created_at,fsi_speed_m_per_s,fsi_alpha_deg");
+    expect(csv.content).toContain("result-cruise,manual");
+    expect(csv.content).toContain("[manual_deformation]");
+    expect(csv.content).toContain("result-cruise,2,0.3,-2,0.35");
+  });
   it("exports whole-aircraft force and per-surface contributions with an inviscid label", async () => {
     const whole = { ...result, caseSnapshot: { id: "case-cruise", name: "Coupled", method: "VLM" as const, scope: "aircraft" as const,
       beta: 3, alphaStart: 2, alphaEnd: 2, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000, geometryId: "aircraft", status: "completed" as const },
-      rows: [{ ...result.rows[0], cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.023456,
+      rows: [{ ...result.rows[0], cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.023456, crBeta: -0.15, cyBeta: 0.3, cnBeta: 0.09, cgX: 0.4, cgZ: -0.2,
         surfaceLoads: [{ surfaceId: "tail", cl: 0.1, cy: 0.01, cm: 0.02, cr: 0, cn: 0.03 }] }] };
     const output = await analysisResultExporter.export({ results: [whole], selectedResultIds: [whole.id], designName: "Coupled" });
     expect(output.content).toContain("[whole_aircraft_inviscid]");
     expect(output.content).toContain("result-cruise,case-cruise,2,0.01,0.02,0.03,0.023456");
     expect(output.content).toContain("[surface_contributions]");
     expect(output.content).toContain("result-cruise,case-cruise,2,tail,0.1,0.01,0.02,0,0.03");
+    expect(output.content).toContain("[static_stability]");
+    expect(output.content).toContain("result_id,case_id,alpha_deg,cg_x_m,cg_z_m,cr_beta_per_rad,cy_beta_per_rad,cn_beta_per_rad");
+    expect(output.content).toContain("result-cruise,case-cruise,2,0.4,-0.2,-0.15,0.3,0.09");
   });
   it("exports only selected results as UTF-8 BOM CSV with fixed columns and precision", async () => {
     const output = await analysisResultExporter.export({

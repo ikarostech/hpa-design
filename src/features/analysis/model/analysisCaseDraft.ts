@@ -1,4 +1,5 @@
 import type { AnalysisCase, AnalysisMethod } from "./types";
+import { stabilityShapeErrors } from "./stabilityShape";
 
 export type AnalysisCaseDraft = Omit<AnalysisCase, "id" | "status">;
 
@@ -8,7 +9,7 @@ export type AnalysisCaseDraftValidation =
 
 export function createAnalysisCaseDraft(analysisCase: AnalysisCase): AnalysisCaseDraft {
   const { id: _id, status: _status, ...draft } = analysisCase;
-  return { ...draft };
+  return structuredClone(draft);
 }
 
 export function validateAnalysisCaseDraft(
@@ -21,6 +22,12 @@ export function validateAnalysisCaseDraft(
   if (draft.scope !== undefined && draft.scope !== "wing" && draft.scope !== "aircraft") errors.scope = "Choose wing or whole aircraft.";
   if (draft.scope === "aircraft" && draft.method !== "VLM") errors.method = "Whole-aircraft analysis requires VLM.";
   if (draft.beta !== undefined && !Number.isFinite(draft.beta)) errors.beta = "Enter a finite sideslip angle.";
+  if (draft.cgX !== undefined && !Number.isFinite(draft.cgX)) errors.cgX = "Enter a finite center-of-gravity position.";
+  if (draft.cgZ !== undefined && !Number.isFinite(draft.cgZ)) errors.cgZ = "Enter a finite vertical center-of-gravity position.";
+  const shapeErrors = stabilityShapeErrors(draft.stabilityShape);
+  if (draft.scope !== "aircraft" && draft.stabilityShape && draft.stabilityShape.kind !== "rigid") shapeErrors.push("変形形状は全機安定性解析で使用してください。");
+  if (shapeErrors.length) errors.stabilityShape = shapeErrors.join(" ");
+  if (draft.stabilityShape?.kind === "fsi" && Math.abs(draft.speed - draft.stabilityShape.speed) > 1e-6) errors.speed = "FSI形状と解析速度を一致させてください。";
   if (!Number.isFinite(draft.alphaStart)) errors.alphaStart = "Enter a finite start angle.";
   if (!Number.isFinite(draft.alphaEnd) || draft.alphaEnd < draft.alphaStart) errors.alphaEnd = "End angle must be at least the start angle.";
   if (!Number.isFinite(draft.alphaStep) || draft.alphaStep <= 0) errors.alphaStep = "Angle step must be positive.";
@@ -32,17 +39,17 @@ export function validateAnalysisCaseDraft(
 }
 
 export function createAnalysisCase(id: string, draft: AnalysisCaseDraft): AnalysisCase {
-  return { id, ...draft, name: draft.name.trim(), status: "not-run" };
+  return { id, ...structuredClone(draft), name: draft.name.trim(), status: "not-run" };
 }
 
 export function updateAnalysisCase(current: AnalysisCase, draft: AnalysisCaseDraft): AnalysisCase {
-  const next = { ...current, ...draft, name: draft.name.trim() };
+  const next = { ...current, ...structuredClone(draft), name: draft.name.trim() };
   return hasAnalysisInputsChanged(current, next) ? { ...next, status: "needs-review" } : next;
 }
 
 function hasAnalysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
   return (Object.keys(createAnalysisCaseDraft(left)) as Array<keyof AnalysisCaseDraft>)
-    .some((key) => left[key] !== right[key]);
+    .some((key) => JSON.stringify(left[key]) !== JSON.stringify(right[key]));
 }
 
 function isAnalysisMethod(method: string): method is AnalysisMethod {

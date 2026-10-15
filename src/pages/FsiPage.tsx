@@ -5,6 +5,8 @@ import type { AirfoilPolar } from "../features/airfoils/model/types";
 import type { CarbonMaterial, StructuralDesign } from "../features/structures/model/types";
 import { Card, CardBody } from "../shared/ui/Card";
 import { PageTemplate } from "../shared/ui/layout/PageTemplate";
+import { Link } from "react-router-dom";
+import { FsiStabilityWorkspace, type FsiStabilityInputs } from "./FsiStabilityWorkspace";
 
 interface FsiPageProps {
   aircraft: AircraftGeometry;
@@ -13,12 +15,14 @@ interface FsiPageProps {
   structuralDesigns: readonly StructuralDesign[];
   results: readonly StaticAeroelasticResult[];
   onSaveResult: (result: StaticAeroelasticResult) => void;
+  stability?: FsiStabilityInputs;
 }
 
-export function FsiPage({ aircraft, polars, materials, structuralDesigns, results, onSaveResult }: FsiPageProps) {
+export function FsiPage({ aircraft, polars, materials, structuralDesigns, results, onSaveResult, stability }: FsiPageProps) {
   return <PageTemplate
     title="空力・構造連成（FSI）"
     description="空力設計と構造設計を組み合わせ、変形後の主翼形状で空力荷重を再計算して収束状態を評価します。"
+    actions={<Link className="text-sm font-medium text-blue-700 underline" to="/stability">安定性設計へ</Link>}
   >
     <div className="grid gap-4 lg:grid-cols-3">
       <InputSummary
@@ -44,6 +48,7 @@ export function FsiPage({ aircraft, polars, materials, structuralDesigns, result
       structuralDesigns={structuralDesigns}
       results={results}
       onSaveResult={onSaveResult}
+      renderResultExtension={stability ? (result) => <FsiStabilityWorkspace {...stability} aircraft={aircraft} polars={polars} fsiResult={result} /> : undefined}
     />
   </PageTemplate>;
 }

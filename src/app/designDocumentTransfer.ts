@@ -1,6 +1,7 @@
 import type { Exporter, Importer, ValidationIssue, ValidationResult } from "../shared/model/transfer";
 import { isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
 import type { DesignDocument } from "./designDocument";
+import { stabilityShapeErrors } from "../features/analysis/model/stabilityShape";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -545,6 +546,10 @@ function validateAnalysisCases(items: readonly unknown[], aircraftId: string | n
     if (item.scope !== undefined) validateEnum(item.scope, [...path, "scope"], ["wing", "aircraft"], issues);
     if (item.scope === "aircraft" && item.method !== "VLM") addIssue(issues, [...path, "method"], "全翼面解析にはVLMが必要です。");
     if (item.beta !== undefined) validateFiniteNumber(item.beta, [...path, "beta"], issues);
+    if (item.cgX !== undefined) validateFiniteNumber(item.cgX, [...path, "cgX"], issues);
+    if (item.cgZ !== undefined) validateFiniteNumber(item.cgZ, [...path, "cgZ"], issues);
+    for (const message of stabilityShapeErrors(item.stabilityShape)) addIssue(issues, [...path, "stabilityShape"], message);
+    if (item.stabilityShape !== undefined && isRecord(item.stabilityShape) && item.stabilityShape.kind !== "rigid" && item.scope !== "aircraft") addIssue(issues, [...path, "stabilityShape"], "変形形状には全機安定性解析が必要です。");
     for (const field of ["alphaStart", "alphaEnd", "alphaStep", "speed", "altitude", "reynolds"]) validateFiniteNumber(item[field], [...path, field], issues);
     validateReference(item.geometryId, [...path, "geometryId"], aircraftId ? new Set([aircraftId]) : new Set(), "機体形状", issues);
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
@@ -565,6 +570,7 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       ? new Set([item.aircraftSnapshot.id, ...(Array.isArray(item.aircraftSnapshot.tailSurfaces) ? item.aircraftSnapshot.tailSurfaces.filter(isRecord).map((surface) => surface.id) : [])].filter((id): id is string => typeof id === "string"))
       : surfaceIds;
     const caseId = validateReference(item.caseId, [...path, "caseId"], caseIds, "解析ケース", issues);
+    if (isRecord(item.caseSnapshot)) for (const message of stabilityShapeErrors(item.caseSnapshot.stabilityShape)) addIssue(issues, [...path, "caseSnapshot", "stabilityShape"], message);
     for (const field of ["clMax", "cdMin", "maxLD", "cm0"]) validateFiniteNumber(item[field], [...path, field], issues);
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
     readArray(item.rows, [...path, "rows"], issues).forEach((row, rowIndex) => {
@@ -576,7 +582,7 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       const rowCaseId = validateReference(row.caseId, [...rowPath, "caseId"], caseIds, "解析ケース", issues);
       if (caseId && rowCaseId && caseId !== rowCaseId) addIssue(issues, [...rowPath, "caseId"], "解析結果の行は親の解析ケースを参照する必要があります。");
       for (const field of ["alpha", "cl", "cd", "cm", "ld"]) validateFiniteNumber(row[field], [...rowPath, field], issues);
-      for (const field of ["cy", "cr", "cn", "cdi"]) if (row[field] !== undefined) validateFiniteNumber(row[field], [...rowPath, field], issues);
+      for (const field of ["cy", "cr", "cn", "cdi", "cgX", "cgZ", "cnBeta", "crBeta", "cyBeta"]) if (row[field] !== undefined) validateFiniteNumber(row[field], [...rowPath, field], issues);
       if (row.surfaceLoads !== undefined) readArray(row.surfaceLoads, [...rowPath, "surfaceLoads"], issues).forEach((load, loadIndex) => {
         const loadPath = [...rowPath, "surfaceLoads", String(loadIndex)];
         if (!isRecord(load)) { addIssue(issues, loadPath, "翼面別荷重はオブジェクトである必要があります。"); return; }

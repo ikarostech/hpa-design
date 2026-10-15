@@ -23,6 +23,14 @@ const aircraft: AircraftGeometry = {
 };
 
 describe("aircraft analysis mesh", () => {
+  it.each(["horizontal", "vertical"] as const)("rotates an all-moving %s tail about its fixed spar axis", (orientation) => {
+    const surface = { ...tail, orientation, rootPosition: { x: 4, y: 2, z: 1 }, sparChordFraction: 0.5, incidence: 12 };
+    const mesh = createTailAnalysisMesh(surface);
+    const sparNodes = mesh.nodes.filter((node) => node.chordFraction === 0.5);
+    expect(sparNodes.length).toBeGreaterThan(0);
+    expect(sparNodes.every((node) => Math.abs(node.x - 4.5) < 1e-10)).toBe(true);
+    expect(sparNodes.every((node) => Math.abs((orientation === "horizontal" ? node.z - 1 : node.y - 2)) < 1e-10)).toBe(true);
+  });
   it("places both tail halves in aircraft axes and retains their foil references", () => {
     const mesh = createTailAnalysisMesh(tail);
     expect(mesh.panels).toHaveLength(16);
@@ -36,11 +44,11 @@ describe("aircraft analysis mesh", () => {
     expect(createTailAnalysisMesh({ ...tail, symmetric: true }).panels.every((panel) => panel.airfoilRootId === "right")).toBe(true);
   });
 
-  it("projects span length with dihedral and rotates incidence about the root leading edge", () => {
+  it("projects span length with dihedral and rotates incidence about the root spar", () => {
     const mesh = createTailAnalysisMesh({ ...tail, incidence: 10, sections: tail.sections.map((section) => ({ ...section, dihedral: 30 })) });
     const tip = mesh.nodes.find((node) => node.side === "right" && node.chordFraction === 0 && Math.abs(node.y - Math.sqrt(3)) < 1e-8)!;
-    expect(tip.x).toBeCloseTo(4 + Math.sin(Math.PI / 18), 8);
-    expect(tip.z).toBeCloseTo(1 + Math.cos(Math.PI / 18), 8);
+    expect(tip.x).toBeCloseTo(4 + 0.25 * (1 - Math.cos(Math.PI / 18)) + Math.sin(Math.PI / 18), 8);
+    expect(tip.z).toBeCloseTo(1 + 0.25 * Math.sin(Math.PI / 18) + Math.cos(Math.PI / 18), 8);
   });
 
   it("creates a single upright fin and two laterally mirrored fins", () => {

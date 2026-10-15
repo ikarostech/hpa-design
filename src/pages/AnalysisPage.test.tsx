@@ -65,15 +65,63 @@ const structuralResults = [{
 afterEach(cleanup);
 
 describe("AnalysisPage", () => {
-  it("shows a newly completed whole-aircraft run and its surface contributions", async () => {
+  it("keeps FSI cases out of initial stability design and offers only rigid/manual shapes", async () => {
+    const user = userEvent.setup();
+    const post = { ...cases[1], name: "After FSI", scope: "aircraft" as const, stabilityShape: { kind: "fsi" as const,
+      resultId: "fsi", createdAt: "2026-10-16T00:00:00Z", speed: 18, alphaDegrees: 2, aircraftSnapshot: aircraft,
+      wingMesh: { nodes: [], panels: [], strips: [] } } };
+    render(<MemoryRouter><JobProvider><AnalysisPage scope="aircraft" stabilityPhase="pre-fsi" aircraft={aircraft} cases={[post]} results={[]} polars={[]}
+      analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    expect(screen.queryByRole("button", { name: "After FSIを詳細表示" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
+    expect(screen.queryByRole("option", { name: "FSI後評価（固定形状）" })).toBeNull();
+    expect(screen.getByRole("option", { name: "簡易評価（仮のたわみ）" })).toBeTruthy();
+  });
+  it("saves a manual stability shape with its case", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn();
+    render(<MemoryRouter><JobProvider><AnalysisPage scope="aircraft" aircraft={aircraft} cases={[]} results={[]} polars={[]}
+      analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save, remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
+    await user.type(screen.getByRole("textbox", { name: "ケース名" }), "Quick stability");
+    await user.selectOptions(screen.getByRole("combobox", { name: "評価形状" }), "manual");
+    await user.clear(screen.getByRole("spinbutton", { name: "点2 たわみ (m)" }));
+    await user.type(screen.getByRole("spinbutton", { name: "点2 たわみ (m)" }), "0.3");
+    await user.click(screen.getByRole("button", { name: "解析ケースを保存" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ stabilityShape: {
+      kind: "manual", elasticAxisChordFraction: 0.35,
+      points: [{ yPosition: 0, deflection: 0, twist: 0 }, { yPosition: 2, deflection: 0.3, twist: 0 }],
+    } })));
+  });
+  it("separates wing and aircraft cases and defaults new stability cases to VLM", async () => {
+    const user = userEvent.setup();
+    const save = vi.fn();
+    const wholeCase = { ...cases[1], scope: "aircraft" as const };
+    render(<MemoryRouter initialEntries={["/aerodynamics/stability"]}><JobProvider><AnalysisPage scope="aircraft" aircraft={aircraft} cases={[cases[0], wholeCase]} results={results} polars={[]}
+      analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save, remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "安定性設計" })).toBeTruthy();
+    expect(screen.queryByRole("tablist", { name: "空力設計" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cruiseを詳細表示" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Climbを詳細表示" })).toBeTruthy();
+    expect(within(screen.getByTestId("polar-charts")).queryByText("Cruise")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
+    const editor = screen.getByRole("dialog", { name: "解析ケースを新規作成" });
+    expect((within(editor).getByRole("combobox", { name: "解析対象" }) as HTMLSelectElement).value).toBe("aircraft");
+    expect((within(editor).getByRole("combobox", { name: "解析手法" }) as HTMLSelectElement).value).toBe("VLM");
+    await user.type(within(editor).getByRole("textbox", { name: "ケース名" }), "Stability");
+    await user.click(within(editor).getByRole("button", { name: "解析ケースを保存" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ scope: "aircraft", method: "VLM" })));
+  });
+  it("shows whole-aircraft trim and stability without a per-surface contribution table", async () => {
     const user = userEvent.setup();
     const analysisCase = { ...cases[1], scope: "aircraft" as const, beta: 3 };
     const coupledResult = { ...results[1], caseId: analysisCase.id, caseSnapshot: analysisCase, aircraftSnapshot: aircraft,
-      rows: [{ ...results[1].rows[0], cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.025,
-        surfaceLoads: [{ surfaceId: aircraft.id, cl: 0.3, cy: 0.01, cm: -0.03, cr: 0.02, cn: 0.03 }] }] };
+      rows: [{ ...results[1].rows[0], cl: 0.2, cm: 0.04, cy: 0.01, cr: 0.02, cn: 0.03, cdi: 0.025, cgX: 0.4, cnBeta: 0.08, crBeta: -0.1, cyBeta: 0.2,
+        surfaceLoads: [{ surfaceId: aircraft.id, cl: 0.2, cy: 0.01, cm: 0.04, cr: 0.02, cn: 0.03 }] },
+      { ...results[1].rows[1], cl: 0.6, cm: -0.04, cgX: 0.4, cnBeta: 0.1, crBeta: -0.2, cyBeta: 0.4 }] };
     function Harness() {
       const [saved, setSaved] = useState<typeof coupledResult[]>([]);
-      return <MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={[analysisCase]} results={saved} polars={[]}
+      return <MemoryRouter><JobProvider><AnalysisPage scope="aircraft" aircraft={aircraft} cases={[analysisCase]} results={saved} polars={[]}
         analysisRunner={{ run: async () => coupledResult }}
         analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }}
         saveAnalysisResult={(value) => setSaved([value as typeof coupledResult])} /></JobProvider></MemoryRouter>;
@@ -82,27 +130,41 @@ describe("AnalysisPage", () => {
     await user.click(screen.getByRole("button", { name: "Climbを詳細表示" }));
     await user.click(screen.getByRole("button", { name: "Climbを解析" }));
     expect(await screen.findByText(/全翼面VLMは非粘性/)).toBeTruthy();
-    expect(screen.getByText(/α 0° の翼面別寄与/)).toBeTruthy();
+    expect(screen.queryByText(/翼面別寄与/)).toBeNull();
+    expect(screen.getByText(/全機の力・モーメント係数/)).toBeTruthy();
+    expect(screen.getByText(/トリム迎角/)).toBeTruthy();
+    expect(screen.getByText("2.00°")).toBeTruthy();
+    expect(screen.getByText("静安定余裕 (−dCm/dCL)")).toBeTruthy();
+    expect(screen.getByText("20.0%")).toBeTruthy();
+    expect(screen.getByText("上反角効果 Crβ")).toBeTruthy();
+    expect(screen.getByText("−0.150 /rad")).toBeTruthy();
+    expect(screen.getByText("横力微係数 CYβ")).toBeTruthy();
+    expect(screen.getByText(/動安定性は未評価/)).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Crβ (/rad)" })).toBeTruthy();
   });
   it("creates a whole-aircraft VLM case with a sideslip input", async () => {
     const user = userEvent.setup();
     const save = vi.fn();
-    render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={[]} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save, remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
+    render(<MemoryRouter><JobProvider><AnalysisPage scope="aircraft" aircraft={aircraft} cases={[]} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save, remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
     await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
     const editor = screen.getByRole("dialog", { name: "解析ケースを新規作成" });
     await user.type(within(editor).getByRole("textbox", { name: "ケース名" }), "Coupled VLM");
-    await user.selectOptions(within(editor).getByRole("combobox", { name: "解析対象" }), "aircraft");
+    expect((within(editor).getByRole("combobox", { name: "解析対象" }) as HTMLSelectElement).disabled).toBe(true);
     await user.selectOptions(within(editor).getByRole("combobox", { name: "解析手法" }), "VLM");
     await user.clear(within(editor).getByRole("spinbutton", { name: "横滑り角 β (°)" }));
     await user.type(within(editor).getByRole("spinbutton", { name: "横滑り角 β (°)" }), "3");
+    await user.clear(within(editor).getByRole("spinbutton", { name: "重心位置 X (m)" }));
+    await user.type(within(editor).getByRole("spinbutton", { name: "重心位置 X (m)" }), "0.4");
+    await user.clear(within(editor).getByRole("spinbutton", { name: "重心位置 Z (m)" }));
+    await user.type(within(editor).getByRole("spinbutton", { name: "重心位置 Z (m)" }), "-0.2");
     await user.click(within(editor).getByRole("button", { name: "解析ケースを保存" }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ scope: "aircraft", beta: 3, method: "VLM" })));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ scope: "aircraft", beta: 3, cgX: 0.4, cgZ: -0.2, method: "VLM" })));
   });
   it("presents aerodynamic analysis cases in the standard management layout", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { name: "空力設計" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "主翼解析" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "解析ケース" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "操作" })).toBeTruthy();
 
@@ -126,9 +188,9 @@ describe("AnalysisPage", () => {
   it("presents rigid-wing analysis as a tab of aerodynamic design", () => {
     render(<MemoryRouter initialEntries={["/aerodynamics/analysis"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { name: "空力設計" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼形状", "尾翼設計", "空力解析"]);
-    expect(screen.getByRole("tab", { name: "空力解析" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("heading", { name: "主翼解析" })).toBeTruthy();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼設計", "主翼解析", "尾翼設計"]);
+    expect(screen.getByRole("tab", { name: "主翼解析" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
   });
 

@@ -1,5 +1,6 @@
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { TailPreview } from "../features/aircraft/components/TailPreview";
 import { deriveTailGeometry, validateTailSurface } from "../features/aircraft/model/tailGeometry";
 import { alignSectionsToStraightSpar, DEFAULT_SPAR_CHORD_FRACTION, isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
@@ -21,6 +22,7 @@ interface TailDesignPageProps {
 }
 
 export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDesignPageProps) {
+  const navigate = useNavigate();
   const initialSurfaces = useMemo(() => (aircraft.tailSurfaces ?? []).map(cloneTail), [aircraft.tailSurfaces]);
   const [drafts, setDrafts] = useState<TailSurface[]>(initialSurfaces);
   const [selectedSections, setSelectedSections] = useState<Record<string, string | null>>(() => initialSelection(initialSurfaces));
@@ -64,6 +66,7 @@ export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDes
     actions={<>
       <Button variant="secondary" disabled={!dirty} onClick={reset}>キャンセル</Button>
       <Button aria-label="尾翼設計を保存" disabled={!dirty || !valid} onClick={save}><Save size={16} />保存</Button>
+      <Button disabled={dirty || !valid} title={dirty ? "変更を保存してから解析へ進んでください" : undefined} onClick={() => navigate("/stability")}>安定性設計に進む</Button>
     </>}
     tabs={<AerodynamicDesignTabs />}
     notices={!valid ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから尾翼設計を保存してください。</div> : null}
@@ -191,7 +194,7 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
       </CardBody>
     </Card>
 
-    <OrderedEntityTable title={`${surface.name}セクション`} description="翼根から翼端へ、XFLR5 Wing Editionと同じ列で定義します。" itemLabel="セクション" items={surface.sections} columns={columns} getKey={(section) => section.id} getRowLabel={(_, index) => `${surface.name} Section ${index + 1}`} selectedKey={selectedSectionId} onSelect={onSelectSection} insertBefore={{ onAction: insertBefore }} insertAfter={{ onAction: insertAfter }} renderActions={(section, index) => <RowActions entityLabel={`${surface.name} Section ${index + 1}`} delete={{ disabled: index === 0 || surface.sections.length <= 2, disabledReason: index === 0 ? "ルート断面は削除できません" : surface.sections.length <= 2 ? "尾翼には2断面以上必要です" : undefined, onAction: () => setPendingSectionDeleteId(section.id) }} />} minWidthClassName="min-w-[1420px]" footer={<>{errors.length ? <ul role="alert" className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}<p className="mt-3 text-sm text-blue-800">エレベーターやラダーのヒンジは、XFLR5と同様にフラップ付き翼型側で定義します。</p></>} />
+    <OrderedEntityTable title={`${surface.name}セクション`} description="翼根から翼端へ、XFLR5 Wing Editionと同じ列で定義します。" itemLabel="セクション" items={surface.sections} columns={columns} getKey={(section) => section.id} getRowLabel={(_, index) => `${surface.name} Section ${index + 1}`} selectedKey={selectedSectionId} onSelect={onSelectSection} insertBefore={{ onAction: insertBefore }} insertAfter={{ onAction: insertAfter }} renderActions={(section, index) => <RowActions entityLabel={`${surface.name} Section ${index + 1}`} delete={{ disabled: index === 0 || surface.sections.length <= 2, disabledReason: index === 0 ? "ルート断面は削除できません" : surface.sections.length <= 2 ? "尾翼には2断面以上必要です" : undefined, onAction: () => setPendingSectionDeleteId(section.id) }} />} minWidthClassName="min-w-[1420px]" footer={<>{errors.length ? <ul role="alert" className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">{errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}<p className="mt-3 text-sm text-blue-800">エレベーター・ラダーは桁軸まわりに尾翼全体を回転する全遊動モデルです。取付角を変更して評価します。回転軸は翼根の桁位置を通るスパン軸で固定し、空力中心と一致する前提です。</p></>} />
 
     <DeleteConfirmationDialog open={pendingSectionDeleteId !== null} title="尾翼セクションを削除しますか？" description="隣接するセクション同士が新しい翼パネルとして接続されます。" onCancel={() => setPendingSectionDeleteId(null)} onConfirm={removeSection} />
   </section>;

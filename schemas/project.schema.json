@@ -710,6 +710,95 @@
           "type": "number",
           "description": "Sideslip in degrees; only used by whole-aircraft VLM."
         },
+        "cgX": {
+          "type": "number",
+          "description": "Longitudinal center-of-gravity position aft of the wing root leading edge, m."
+        },
+        "cgZ": {
+          "type": "number",
+          "description": "Vertical center-of-gravity position above the wing root, m; Y is assumed zero."
+        },
+        "stabilityShape": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "rigid"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "manual"
+                },
+                "elasticAxisChordFraction": {
+                  "type": "number"
+                },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/StabilityDeformationPoint"
+                  }
+                }
+              },
+              "required": [
+                "kind",
+                "elasticAxisChordFraction",
+                "points"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "fsi"
+                },
+                "resultId": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "speed": {
+                  "type": "number"
+                },
+                "alphaDegrees": {
+                  "type": "number"
+                },
+                "aircraftSnapshot": {
+                  "$ref": "#/$defs/AircraftGeometry"
+                },
+                "wingMesh": {
+                  "$ref": "#/$defs/WingAnalysisMesh",
+                  "description": "Frozen mesh before applying main-wing incidence, as stored by FSI."
+                }
+              },
+              "required": [
+                "kind",
+                "resultId",
+                "createdAt",
+                "speed",
+                "alphaDegrees",
+                "aircraftSnapshot",
+                "wingMesh"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "description": "Omitted legacy cases use the rigid shape."
+        },
         "alphaStart": {
           "type": "number"
         },
@@ -756,6 +845,192 @@
         "LLT",
         "VLM"
       ]
+    },
+    "StabilityDeformationPoint": {
+      "type": "object",
+      "properties": {
+        "yPosition": {
+          "type": "number"
+        },
+        "deflection": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "yPosition",
+        "deflection",
+        "twist"
+      ],
+      "additionalProperties": false
+    },
+    "WingAnalysisMesh": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshNode"
+          }
+        },
+        "panels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshPanel"
+          }
+        },
+        "strips": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WingMeshStrip"
+          }
+        }
+      },
+      "required": [
+        "nodes",
+        "panels",
+        "strips"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshNode": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        },
+        "chordFraction": {
+          "type": "number"
+        },
+        "side": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "z",
+        "chordFraction",
+        "side"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshPanel": {
+      "type": "object",
+      "properties": {
+        "side": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "stripIndex": {
+          "type": "number"
+        },
+        "chordIndex": {
+          "type": "number"
+        },
+        "airfoilRootId": {
+          "type": "string"
+        },
+        "airfoilTipId": {
+          "type": "string"
+        },
+        "corners": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            },
+            {
+              "$ref": "#/$defs/WingMeshNode"
+            }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "side",
+        "stripIndex",
+        "chordIndex",
+        "airfoilRootId",
+        "airfoilTipId",
+        "corners"
+      ],
+      "additionalProperties": false
+    },
+    "WingMeshStrip": {
+      "type": "object",
+      "properties": {
+        "yStart": {
+          "type": "number"
+        },
+        "yEnd": {
+          "type": "number"
+        },
+        "centerY": {
+          "type": "number"
+        },
+        "chord": {
+          "type": "number"
+        },
+        "twist": {
+          "type": "number"
+        },
+        "quarterChordSweep": {
+          "type": "number"
+        },
+        "dihedral": {
+          "type": "number"
+        },
+        "halfArea": {
+          "type": "number"
+        },
+        "airfoilRootId": {
+          "type": "string"
+        },
+        "airfoilTipId": {
+          "type": "string"
+        },
+        "airfoilInterpolation": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "yStart",
+        "yEnd",
+        "centerY",
+        "chord",
+        "twist",
+        "quarterChordSweep",
+        "dihedral",
+        "halfArea",
+        "airfoilRootId",
+        "airfoilTipId",
+        "airfoilInterpolation"
+      ],
+      "additionalProperties": false
     },
     "AnalysisCaseStatus": {
       "type": "string",
@@ -856,6 +1131,24 @@
         },
         "cdi": {
           "type": "number"
+        },
+        "cgX": {
+          "type": "number"
+        },
+        "cgZ": {
+          "type": "number"
+        },
+        "cnBeta": {
+          "type": "number",
+          "description": "dCn/dBeta, per radian, from a central VLM difference."
+        },
+        "crBeta": {
+          "type": "number",
+          "description": "dCr/dBeta about the aft-pointing X axis, per radian (dihedral effect)."
+        },
+        "cyBeta": {
+          "type": "number",
+          "description": "dCY/dBeta in aircraft axes, per radian."
         },
         "surfaceLoads": {
           "type": "array",
@@ -1308,9 +1601,9 @@
     "StructuralLoadSource": {
       "type": "string",
       "enum": [
+        "manual",
         "aerodynamic",
-        "elliptical",
-        "manual"
+        "elliptical"
       ]
     },
     "DistributedStructuralLoad": {
@@ -1898,172 +2191,6 @@
         "liftPerLength",
         "dragPerLength",
         "torquePerLength"
-      ],
-      "additionalProperties": false
-    },
-    "WingAnalysisMesh": {
-      "type": "object",
-      "properties": {
-        "nodes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/WingMeshNode"
-          }
-        },
-        "panels": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/WingMeshPanel"
-          }
-        },
-        "strips": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/WingMeshStrip"
-          }
-        }
-      },
-      "required": [
-        "nodes",
-        "panels",
-        "strips"
-      ],
-      "additionalProperties": false
-    },
-    "WingMeshNode": {
-      "type": "object",
-      "properties": {
-        "x": {
-          "type": "number"
-        },
-        "y": {
-          "type": "number"
-        },
-        "z": {
-          "type": "number"
-        },
-        "chordFraction": {
-          "type": "number"
-        },
-        "side": {
-          "type": "string",
-          "enum": [
-            "right",
-            "left"
-          ]
-        }
-      },
-      "required": [
-        "x",
-        "y",
-        "z",
-        "chordFraction",
-        "side"
-      ],
-      "additionalProperties": false
-    },
-    "WingMeshPanel": {
-      "type": "object",
-      "properties": {
-        "side": {
-          "type": "string",
-          "enum": [
-            "right",
-            "left"
-          ]
-        },
-        "stripIndex": {
-          "type": "number"
-        },
-        "chordIndex": {
-          "type": "number"
-        },
-        "airfoilRootId": {
-          "type": "string"
-        },
-        "airfoilTipId": {
-          "type": "string"
-        },
-        "corners": {
-          "type": "array",
-          "prefixItems": [
-            {
-              "$ref": "#/$defs/WingMeshNode"
-            },
-            {
-              "$ref": "#/$defs/WingMeshNode"
-            },
-            {
-              "$ref": "#/$defs/WingMeshNode"
-            },
-            {
-              "$ref": "#/$defs/WingMeshNode"
-            }
-          ],
-          "items": false,
-          "minItems": 4,
-          "maxItems": 4
-        }
-      },
-      "required": [
-        "side",
-        "stripIndex",
-        "chordIndex",
-        "airfoilRootId",
-        "airfoilTipId",
-        "corners"
-      ],
-      "additionalProperties": false
-    },
-    "WingMeshStrip": {
-      "type": "object",
-      "properties": {
-        "yStart": {
-          "type": "number"
-        },
-        "yEnd": {
-          "type": "number"
-        },
-        "centerY": {
-          "type": "number"
-        },
-        "chord": {
-          "type": "number"
-        },
-        "twist": {
-          "type": "number"
-        },
-        "quarterChordSweep": {
-          "type": "number"
-        },
-        "dihedral": {
-          "type": "number"
-        },
-        "halfArea": {
-          "type": "number"
-        },
-        "airfoilRootId": {
-          "type": "string"
-        },
-        "airfoilTipId": {
-          "type": "string"
-        },
-        "airfoilInterpolation": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "yStart",
-        "yEnd",
-        "centerY",
-        "chord",
-        "twist",
-        "quarterChordSweep",
-        "dihedral",
-        "halfArea",
-        "airfoilRootId",
-        "airfoilTipId",
-        "airfoilInterpolation"
       ],
       "additionalProperties": false
     },

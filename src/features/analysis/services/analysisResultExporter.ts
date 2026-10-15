@@ -61,7 +61,21 @@ function createAnalysisCsv(results: readonly AnalysisResult[]) {
   ].map(String).map(escapeCsv).join(",")) ?? []) : []);
   const wholeSection = wholeRows.length ? `\r\n[whole_aircraft_inviscid]\r\nresult_id,case_id,alpha_deg,cy,cr,cn,cdi\r\n${wholeRows.join("\r\n")}\r\n` : "";
   const contributionSection = contributionRows.length ? `\r\n[surface_contributions]\r\nresult_id,case_id,alpha_deg,surface_id,cl,cy,cm,cr,cn\r\n${contributionRows.join("\r\n")}\r\n` : "";
-  return `${polarSection}${spanSection}${wholeSection}${contributionSection}`;
+  const stabilityRows = results.flatMap((result) => result.caseSnapshot?.scope === "aircraft" ? result.rows.map((row) => [
+    result.id, row.caseId, row.alpha, row.cgX, row.cgZ, row.crBeta, row.cyBeta, row.cnBeta,
+  ].map((value) => value === undefined ? "" : String(value)).map(escapeCsv).join(",")) : []);
+  const stabilitySection = stabilityRows.length ? `\r\n[static_stability]\r\nresult_id,case_id,alpha_deg,cg_x_m,cg_z_m,cr_beta_per_rad,cy_beta_per_rad,cn_beta_per_rad\r\n${stabilityRows.join("\r\n")}\r\n` : "";
+  const shapeRows = results.filter((r) => r.caseSnapshot?.scope === "aircraft").map((result) => {
+    const shape = result.caseSnapshot?.stabilityShape;
+    return [result.id, shape?.kind ?? "rigid", ...(shape?.kind === "fsi" ? [shape.resultId, shape.createdAt, shape.speed, shape.alphaDegrees] : ["", "", "", ""])].map(String).map(escapeCsv).join(",");
+  });
+  const deformationRows = results.flatMap((result) => {
+    const shape = result.caseSnapshot?.stabilityShape;
+    return shape?.kind === "manual" ? shape.points.map((p) => [result.id, p.yPosition, p.deflection, p.twist, shape.elasticAxisChordFraction].map(String).map(escapeCsv).join(",")) : [];
+  });
+  const shapeSection = shapeRows.length ? `\r\n[stability_shapes]\r\nresult_id,shape_kind,fsi_result_id,fsi_created_at,fsi_speed_m_per_s,fsi_alpha_deg\r\n${shapeRows.join("\r\n")}\r\n` : "";
+  const deformationSection = deformationRows.length ? `\r\n[manual_deformation]\r\nresult_id,y_m,deflection_m,twist_deg,elastic_axis_chord_fraction\r\n${deformationRows.join("\r\n")}\r\n` : "";
+  return `${polarSection}${spanSection}${wholeSection}${contributionSection}${stabilitySection}${shapeSection}${deformationSection}`;
 }
 
 export function createDesignSummary({ name, analysisCases, analysisResults }: DesignSummaryInput) {

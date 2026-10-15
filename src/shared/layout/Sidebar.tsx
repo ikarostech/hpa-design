@@ -1,4 +1,4 @@
-import { Download, Hammer, Home, Plane, Ruler, Workflow } from "lucide-react";
+import { Download, Hammer, Home, Plane, Ruler, Scale, Workflow } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 interface SidebarProps {
@@ -13,6 +13,7 @@ export function Sidebar({ variant = "desktop", onNavigate }: SidebarProps) {
     { label: "概要設計", path: "/conceptual-design", icon: Ruler },
     { label: "空力設計", path: "/aerodynamics/airfoils", matchPrefix: "/aerodynamics", icon: Plane },
     { label: "構造設計", path: "/structures", icon: Hammer },
+    { label: "安定性設計", path: "/stability", icon: Scale },
     { label: "空力・構造連成（FSI）", path: "/fsi", icon: Workflow },
     { label: "入出力", path: "/export", icon: Download },
   ];

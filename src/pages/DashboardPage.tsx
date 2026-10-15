@@ -65,10 +65,11 @@ export function DashboardPage({ document, isDirty, onImportFile, onExport }: Das
         <MetricCard label="機体" value={`${document.aircraft.wingArea.toFixed(2)} m²`} detail={`翼幅 ${document.aircraft.span.toFixed(2)} m`} icon={<Plane size={18} />} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         <ActionCard title="1. 空力設計" detail="翼型、主翼形状、剛体翼の空力解析をまとめて進めます。" action="空力設計へ" onClick={() => navigate("/aerodynamics/airfoils")} />
         <ActionCard title="2. 構造設計" detail="想定荷重から構造案を作成し、強度と変形を評価します。" action="構造設計へ" onClick={() => navigate("/structures")} />
-        <ActionCard title="3. FSI" detail="空力設計と構造設計を連成し、変形後の性能を確認します。" action="FSIへ" onClick={() => navigate("/fsi")} />
+        <ActionCard title="3. 安定性設計" detail="仮のたわみで素早く検討し、FSI後は収束した形状で静安定性を比較します。" action="安定性設計へ" onClick={() => navigate("/stability")} />
+        <ActionCard title="4. FSI" detail="空力設計と構造設計を連成し、変形後の性能を確認します。" action="FSIへ" onClick={() => navigate("/fsi")} />
       </div>
     </PageTemplate>
   );

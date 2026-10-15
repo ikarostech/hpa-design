@@ -25,6 +25,17 @@ const design: StructuralDesign = { id: "spar", name: "Main spar", sections: [{ i
 afterEach(cleanup);
 
 describe("AeroelasticAnalysisPanel", () => {
+  it("passes the displayed saved or newly computed result to the result extension", async () => {
+    const user = userEvent.setup();
+    const saved = executeStaticAeroelasticAnalysis({ resultId: "saved-source", aircraft, structuralDesign: design, materials: [material], density: 1.225, speed: 7.4, elasticAxisChordFraction: 0.4, condition: { mode: "fixed-alpha", alphaDegrees: 5 } });
+    const next = { ...saved, id: "new-source" };
+    render(<AeroelasticAnalysisPanel aircraft={aircraft} materials={[material]} structuralDesigns={[design]} results={[saved]}
+      analysisRunner={{ run: async () => next }} onSaveResult={vi.fn()}
+      renderResultExtension={(result) => <output aria-label="評価元の連成結果">{result?.id}</output>} />);
+    expect(screen.getByLabelText("評価元の連成結果").textContent).toBe("saved-source");
+    await user.click(screen.getByRole("button", { name: "連成解析を実行" }));
+    await waitFor(() => expect(screen.getByLabelText("評価元の連成結果").textContent).toBe("new-source"));
+  });
   it("shows estimated L/D and spanwise graphs for a saved coupled result", () => {
     const result = executeStaticAeroelasticAnalysis({ resultId: "saved", aircraft, structuralDesign: design, materials: [material], density: 1.225, speed: 7.4, elasticAxisChordFraction: 0.4, condition: { mode: "fixed-alpha", alphaDegrees: 5 } });
     const polar: AirfoilPolar = { id: "polar-af", airfoilId: "af", caseName: "test", reynolds: 400_000, mach: 0, alphaStart: -10, alphaEnd: 20, alphaStep: 30, ncrit: 9, convergedPoints: 2, requestedPoints: 2, status: "complete", points: [{ alpha: -10, cl: 0, cd: 0.02, cm: 0 }, { alpha: 20, cl: 1, cd: 0.04, cm: 0 }] };

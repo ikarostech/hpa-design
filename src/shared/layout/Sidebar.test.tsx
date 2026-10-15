@@ -25,11 +25,19 @@ describe("Sidebar", () => {
       ["概要設計", "/conceptual-design"],
       ["空力設計", "/aerodynamics/airfoils"],
       ["構造設計", "/structures"],
+      ["安定性設計", "/stability"],
       ["空力・構造連成（FSI）", "/fsi"],
       ["入出力", "/export"],
     ]);
     expect(screen.getByRole("link", { name: "空力・構造連成（FSI）" }).className).toContain("bg-blue-50");
     expect(screen.getByRole("link", { name: "空力設計" }).className).not.toContain("bg-blue-50");
+  });
+
+  it("selects stability independently from the aerodynamic and FSI pages", () => {
+    render(<MemoryRouter initialEntries={["/stability"]}><Sidebar /></MemoryRouter>);
+    expect(screen.getByRole("link", { name: "安定性設計" }).className).toContain("bg-blue-50");
+    expect(screen.getByRole("link", { name: "空力設計" }).className).not.toContain("bg-blue-50");
+    expect(screen.getByRole("link", { name: "空力・構造連成（FSI）" }).className).not.toContain("bg-blue-50");
   });
 
   it("places conceptual design between the dashboard and aerodynamic design", () => {

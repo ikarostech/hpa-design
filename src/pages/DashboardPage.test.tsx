@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 
 const document = {
@@ -12,6 +12,17 @@ const document = {
 };
 
 describe("DashboardPage", () => {
+  afterEach(cleanup);
+  it("offers stability design before FSI and navigates to the standalone page", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><Routes>
+      <Route path="/" element={<DashboardPage document={document} isDirty={false} onExport={vi.fn()} onImportFile={vi.fn()} />} />
+      <Route path="/stability" element={<h1>安定性設計の移動先</h1>} />
+    </Routes></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "3. 安定性設計" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "安定性設計へ" }));
+    expect(screen.getByRole("heading", { name: "安定性設計の移動先" })).toBeTruthy();
+  });
   it("shows a readable import error and keeps the editing routes available", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><DashboardPage document={document} isDirty={false} onExport={vi.fn()} onImportFile={async () => { throw new Error("JSON schema is invalid"); }} /></MemoryRouter>);
