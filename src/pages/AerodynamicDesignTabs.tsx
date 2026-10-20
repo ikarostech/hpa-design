@@ -4,7 +4,6 @@ const tabs = [
   { label: "翼型", path: "/aerodynamics/airfoils" },
   { label: "主翼設計", path: "/aerodynamics/geometry" },
   { label: "主翼解析", path: "/aerodynamics/analysis" },
-  { label: "尾翼設計", path: "/aerodynamics/tails" },
 ] as const;
 
 export function AerodynamicDesignTabs() {

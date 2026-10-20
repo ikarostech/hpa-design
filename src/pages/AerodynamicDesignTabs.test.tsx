@@ -6,7 +6,7 @@ import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 afterEach(cleanup);
 
 describe("AerodynamicDesignTabs", () => {
-  it("provides tail design as a separate aerodynamic-design tab", () => {
+  it("keeps aerodynamic tabs focused on airfoils and the main wing", () => {
     render(<MemoryRouter initialEntries={["/aerodynamics/tails"]}><AerodynamicDesignTabs /></MemoryRouter>);
 
     const tabs = screen.getAllByRole("tab");
@@ -14,8 +14,7 @@ describe("AerodynamicDesignTabs", () => {
       ["翼型", "/aerodynamics/airfoils"],
       ["主翼設計", "/aerodynamics/geometry"],
       ["主翼解析", "/aerodynamics/analysis"],
-      ["尾翼設計", "/aerodynamics/tails"],
     ]);
-    expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("tab", { name: "尾翼設計" })).toBeNull();
   });
 });

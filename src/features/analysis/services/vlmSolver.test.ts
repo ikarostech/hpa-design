@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AircraftGeometry } from "../../aircraft/model/types";
 import { createWingAnalysisMesh } from "./wingAnalysisMesh";
-import { calculateVlmCoefficients } from "./vlmSolver";
+import { calculateVlmCoefficients, calculateAircraftVlmCoefficients, prepareAircraftVlmSolver } from "./vlmSolver";
+import { createAircraftAnalysisMesh } from "./aircraftAnalysisMesh";
 
 // Reference input, commands, raw AVL output, and provenance are committed under
 // fixtures/avl-3.52-simple-wing/. Values below are copied from total-forces.txt.
@@ -25,6 +26,42 @@ const avlWing: AircraftGeometry = {
     { id: "tip", yPosition: 7.5, chord: 1.8, xOffset: 0.4, twist: 0, dihedral: 0, airfoilId: "symmetric", chordwisePanels: 8, spanwisePanels: 12, chordwiseDistribution: "cosine", spanwiseDistribution: "cosine" },
   ],
 };
+
+describe("prepareAircraftVlmSolver", () => {
+  const reference = { area: 30, span: 15, chord: 2, point: { x: 0.7, y: 0, z: -0.3 } };
+
+  it("reuses one prepared geometry for different inflow angles without retaining previous loads", () => {
+    const mesh = createAircraftAnalysisMesh(avlWing);
+    const solve = prepareAircraftVlmSolver(mesh, reference);
+    for (const condition of [{ alpha: -4, beta: 3 }, { alpha: 7, beta: -2 }, { alpha: 0, beta: 0 }]) {
+      const expected = calculateAircraftVlmCoefficients(mesh, { ...condition, reference });
+      const result = solve(condition);
+      for (const key of ["cl", "cy", "cdi", "cm", "cr", "cn"] as const) {
+        expect(result[key]).toBeCloseTo(expected[key], 10);
+      }
+      result.panelLoads.forEach((load, index) => {
+        expect(load.circulation).toBeCloseTo(expected.panelLoads[index].circulation, 10);
+        for (const key of ["force", "moment"] as const) {
+          for (const axis of ["x", "y", "z"] as const) {
+            expect(load[key][axis]).toBeCloseTo(expected.panelLoads[index][key][axis], 10);
+          }
+        }
+      });
+    }
+    const first = solve({ alpha: 3, beta: 1 });
+    first.panelLoads[0].applicationPoint.x = 999;
+    first.panelLoads[0].force.z = 999;
+    expect(solve({ alpha: 3, beta: 1 })).toEqual(calculateAircraftVlmCoefficients(mesh, { alpha: 3, beta: 1, reference }));
+  });
+
+  it("validates the reference and every angle supplied to a prepared solver", () => {
+    const mesh = createAircraftAnalysisMesh(avlWing);
+    expect(() => prepareAircraftVlmSolver(mesh, { ...reference, span: 0 })).toThrow(/positive reference/);
+    const solve = prepareAircraftVlmSolver(mesh, reference);
+    expect(() => solve({ alpha: NaN, beta: 0 })).toThrow(/finite angles/);
+    expect(() => solve({ alpha: 0, beta: Infinity })).toThrow(/finite angles/);
+  });
+});
 
 describe("calculateVlmCoefficients", () => {
   it.each([

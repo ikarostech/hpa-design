@@ -497,6 +497,8 @@ function validateTailSurfaces(items: readonly unknown[], airfoilIds: ReadonlySet
     validateFiniteNumber(item.incidence, [...path, "incidence"], issues);
     validateSparChordFraction(item.sparChordFraction, [...path, "sparChordFraction"], issues);
     for (const field of ["symmetric", "isDoubleFin", "isSymmetricFin"]) validateBoolean(item[field], [...path, field], issues);
+    if (item.isDoubleFin === true) addIssue(issues, [...path, "isDoubleFin"], "Double Finには対応していません。単一の垂直尾翼を使用してください。");
+    if (item.isSymmetricFin === true) addIssue(issues, [...path, "isSymmetricFin"], "Symmetric Finには対応していません。単一の垂直尾翼を使用してください。");
 
     const sectionIds = new Set<string>();
     readArray(item.sections, [...path, "sections"], issues).forEach((section, sectionIndex) => {
@@ -548,6 +550,7 @@ function validateAnalysisCases(items: readonly unknown[], aircraftId: string | n
     if (item.beta !== undefined) validateFiniteNumber(item.beta, [...path, "beta"], issues);
     if (item.cgX !== undefined) validateFiniteNumber(item.cgX, [...path, "cgX"], issues);
     if (item.cgZ !== undefined) validateFiniteNumber(item.cgZ, [...path, "cgZ"], issues);
+    validateStabilityGeometry(item, path, issues);
     for (const message of stabilityShapeErrors(item.stabilityShape)) addIssue(issues, [...path, "stabilityShape"], message);
     if (item.stabilityShape !== undefined && isRecord(item.stabilityShape) && item.stabilityShape.kind !== "rigid" && item.scope !== "aircraft") addIssue(issues, [...path, "stabilityShape"], "変形形状には全機安定性解析が必要です。");
     for (const field of ["alphaStart", "alphaEnd", "alphaStep", "speed", "altitude", "reynolds"]) validateFiniteNumber(item[field], [...path, field], issues);
@@ -555,6 +558,26 @@ function validateAnalysisCases(items: readonly unknown[], aircraftId: string | n
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
   });
   return ids;
+}
+
+function validateStabilityGeometry(item: JsonRecord, path: string[], issues: ValidationIssue[]) {
+  if (item.stabilityGeometry === undefined) return;
+  const snapshotIssues: ValidationIssue[] = [];
+  const snapshot = validateAircraft(item.stabilityGeometry, snapshotIssues);
+  // Archived designs may refer to foils no longer used by the current aircraft.
+  const foilIds = new Set<string>();
+  for (const section of snapshot?.sections ?? []) if (isRecord(section) && typeof section.airfoilId === "string") foilIds.add(section.airfoilId);
+  for (const tail of snapshot?.tailSurfaces ?? []) if (isRecord(tail) && Array.isArray(tail.sections)) {
+    for (const section of tail.sections) if (isRecord(section)) {
+      if (typeof section.leftAirfoilId === "string") foilIds.add(section.leftAirfoilId);
+      if (typeof section.rightAirfoilId === "string") foilIds.add(section.rightAirfoilId);
+    }
+  }
+  validateWingSections(snapshot?.sections ?? [], foilIds, snapshotIssues);
+  validateTailSurfaces(snapshot?.tailSurfaces ?? [], foilIds, snapshotIssues);
+  issues.push(...snapshotIssues.map((issue) => ({ ...issue, path: [...path, "stabilityGeometry", ...(issue.path?.slice(1) ?? [])] })));
+  if (item.scope !== "aircraft") addIssue(issues, [...path, "stabilityGeometry"], "選択した設計は全機安定性解析で使用してください。");
+  if (snapshot && snapshot.id !== item.geometryId) addIssue(issues, [...path, "stabilityGeometry", "id"], "ケースと選択した機体形状が一致しません。");
 }
 
 function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet<string>, surfaceIds: ReadonlySet<string>, issues: ValidationIssue[]) {
@@ -570,7 +593,10 @@ function validateAnalysisResults(items: readonly unknown[], caseIds: ReadonlySet
       ? new Set([item.aircraftSnapshot.id, ...(Array.isArray(item.aircraftSnapshot.tailSurfaces) ? item.aircraftSnapshot.tailSurfaces.filter(isRecord).map((surface) => surface.id) : [])].filter((id): id is string => typeof id === "string"))
       : surfaceIds;
     const caseId = validateReference(item.caseId, [...path, "caseId"], caseIds, "解析ケース", issues);
-    if (isRecord(item.caseSnapshot)) for (const message of stabilityShapeErrors(item.caseSnapshot.stabilityShape)) addIssue(issues, [...path, "caseSnapshot", "stabilityShape"], message);
+    if (isRecord(item.caseSnapshot)) {
+      for (const message of stabilityShapeErrors(item.caseSnapshot.stabilityShape)) addIssue(issues, [...path, "caseSnapshot", "stabilityShape"], message);
+      validateStabilityGeometry(item.caseSnapshot, [...path, "caseSnapshot"], issues);
+    }
     for (const field of ["clMax", "cdMin", "maxLD", "cm0"]) validateFiniteNumber(item[field], [...path, field], issues);
     validateEnum(item.status, [...path, "status"], ["completed", "not-run", "needs-review"], issues);
     readArray(item.rows, [...path, "rows"], issues).forEach((row, rowIndex) => {

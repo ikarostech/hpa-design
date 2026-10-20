@@ -19,6 +19,28 @@ const document = {
 };
 
 describe("design document transfer", () => {
+  it("rejects removed fin arrangements in imported projects", async () => {
+    const input = { ...document, aircraft: { ...document.aircraft, tailSurfaces: [{
+      id: "legacy-fin", name: "Legacy fin", orientation: "vertical" as const,
+      rootPosition: { x: 4, y: 1, z: 0 }, incidence: 0, symmetric: false,
+      isDoubleFin: true, isSymmetricFin: false, sections: [],
+    }] } };
+    const validation = await designDocumentImporter.validate(input);
+    expect(validation.valid).toBe(false);
+    expect(validation.issues?.some((issue) => issue.message.includes("Double Fin"))).toBe(true);
+  });
+  it("round-trips selected stability geometry and rejects malformed saved designs", async () => {
+    const analysisCase = { id: "selected", name: "Selected design", method: "VLM" as const, scope: "aircraft" as const,
+      geometryId: document.aircraft.id, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      status: "not-run" as const, stabilityGeometry: { ...document.aircraft, tailSurfaces: [] } };
+    const restored = await designDocumentImporter.parse(await designDocumentExporter.export({ ...document, analysisCases: [analysisCase] }));
+    expect(restored.analysisCases[0].stabilityGeometry).toEqual(analysisCase.stabilityGeometry);
+    expect((await designDocumentImporter.validate(restored)).valid).toBe(true);
+    const invalid = { ...restored, analysisCases: [{ ...analysisCase, stabilityGeometry: { ...document.aircraft, span: NaN } }] };
+    const validation = await designDocumentImporter.validate(invalid);
+    expect(validation.valid).toBe(false);
+    expect(validation.issues?.map((issue) => issue.path?.join("."))).toContain("analysisCases.0.stabilityGeometry.span");
+  });
   it("round-trips manual shapes and rejects malformed shapes in cases and result snapshots", async () => {
     const analysisCase = { id: "manual", name: "Manual", method: "VLM" as const, scope: "aircraft" as const,
       geometryId: document.aircraft.id, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,

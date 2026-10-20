@@ -6,6 +6,7 @@ import { createAnalysisCase, createAnalysisCaseDraft, type AnalysisCaseDraft, up
 import type { AnalysisCase, AnalysisResult } from "../features/analysis/model/types";
 import { summarizeAircraftStability } from "../features/analysis/model/aircraftStability";
 import { stabilityShapeErrors, stabilityShapeLabel, type StabilityFsiShapeOption } from "../features/analysis/model/stabilityShape";
+import { StabilityCharts } from "../features/analysis/components/StabilityCharts";
 import { StabilityComparison } from "../features/analysis/components/StabilityComparison";
 import { StabilityShapeEditor } from "../features/analysis/components/StabilityShapeEditor";
 import { AnalysisExecutionCancelledError } from "../features/analysis/services/analysisExecutionService";
@@ -25,6 +26,8 @@ import { TableActionCell, TableActionHeader } from "../shared/ui/table/TableActi
 import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
 
 export interface AnalysisPageProps {
+  renderCaseDesignInputs?: (draft: AnalysisCaseDraft, onChange: (draft: AnalysisCaseDraft) => void) => ReactNode;
+  initialStabilityInputs?: Pick<AnalysisCase, "stabilityShape" | "stabilityGeometry">;
   fixedFsiShape?: StabilityFsiShapeOption["shape"];
   creationDisabledReason?: string;
   comparisonResults?: readonly AnalysisResult[];
@@ -51,7 +54,7 @@ export function AnalysisPage(props: AnalysisPageProps) {
       title={scope === "aircraft" ? "安定性設計" : "主翼解析"}
       description={scope === "aircraft" ? "主翼と尾翼を同時に解き、縦・横・方向の静安定性を確認します。" : "主翼単体の LLT / VLM 解析で性能と荷重分布を確認し、設計迎角を選びます。"}
       tabs={scope === "wing" ? <AerodynamicDesignTabs /> : undefined}
-      actions={<Link className="text-sm font-medium text-blue-700 underline" to="/aerodynamics/tails">{scope === "aircraft" ? "尾翼設計に戻る" : "尾翼設計に進む"}</Link>}
+      actions={<Link className="text-sm font-medium text-blue-700 underline" to="/stability/tails">{scope === "aircraft" ? "尾翼設計に戻る" : "尾翼設計に進む"}</Link>}
     >
 
       <AnalysisWorkspace {...props} />
@@ -59,7 +62,7 @@ export function AnalysisPage(props: AnalysisPageProps) {
   );
 }
 
-export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, comparisonResults = [], stabilityPhase, stabilityFsiShapes = [], introduction, scope = "wing", aircraft, cases: allCases, results: allResults, polars, analysisCaseRepository, saveAnalysisResult, analysisRunner = webAircraftAnalysisRunner }: AnalysisPageProps) {
+export function AnalysisWorkspace({ renderCaseDesignInputs, initialStabilityInputs, fixedFsiShape, creationDisabledReason, comparisonResults = [], stabilityPhase, stabilityFsiShapes = [], introduction, scope = "wing", aircraft, cases: allCases, results: allResults, polars, analysisCaseRepository, saveAnalysisResult, analysisRunner = webAircraftAnalysisRunner }: AnalysisPageProps) {
   const cases = useMemo(() => allCases.filter((item) => (item.scope ?? "wing") === scope
     && (!stabilityPhase || (stabilityPhase === "post-fsi") === (item.stabilityShape?.kind === "fsi"))), [allCases, scope, stabilityPhase]);
   const results = useMemo(() => allResults.filter((result) => cases.some((item) => item.id === result.caseId)), [allResults, cases]);
@@ -102,7 +105,7 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
 
   const openCreate = () => {
     if (creationDisabledReason) return;
-    setDraft(createNewDraft(aircraft.id, aircraft.mac / 4, scope, fixedFsiShape));
+    setDraft({ ...createNewDraft(aircraft.id, aircraft.mac / 4, scope, fixedFsiShape), ...structuredClone(initialStabilityInputs) });
     setErrors({});
     setEditorMode("create");
   };
@@ -117,7 +120,7 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
       setErrors(validation.errors);
       return;
     }
-    const shapeErrors = stabilityShapeErrors(draft.stabilityShape, aircraft.span / 2);
+    const shapeErrors = stabilityShapeErrors(draft.stabilityShape, (draft.stabilityGeometry ?? aircraft).span / 2);
     if (shapeErrors.length) { setErrors({ stabilityShape: shapeErrors.join(" ") }); return; }
     const next = editorMode === "edit" && selected
       ? updateAnalysisCase(selected, draft)
@@ -155,7 +158,7 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
     try {
       const result = await analysisRunner.run({
         analysisCase,
-        aircraft,
+        aircraft: analysisCase.stabilityGeometry ?? aircraft,
         polars,
         resultId: createId("analysis-result"),
       }, controller.signal, (progress) => jobs.updateJob<AnalysisJob>(jobId, { progress }));
@@ -177,7 +180,7 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
     <>
       <div className="space-y-5">
         {introduction}
-        <Card><CardHeader className="flex items-center justify-between gap-3"><div><h2 className="font-semibold text-slate-950">選択ケースの解析結果</h2><p className="mt-1 text-sm text-slate-500">解析ケース表の「表示」で選んだ結果を同じグラフ上で比較します。</p></div><Badge tone={displayedResults.length ? "green" : "slate"}>{displayedResults.length}件表示</Badge></CardHeader><CardBody>{displayedResults.length ? <div className="space-y-4">{resultForView?.caseSnapshot?.scope === "aircraft" ? <WholeAircraftResults result={resultForView} /> : null}{scope === "aircraft" ? <StabilityComparison results={displayedResults} /> : null}<PolarCharts data={chartData} series={chartSeries} mode="analysis" /></div> : <p className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">解析済みケースの「表示」を選ぶと、結果グラフがここに表示されます。</p>}</CardBody></Card>
+        <Card><CardHeader className="flex items-center justify-between gap-3"><div><h2 className="font-semibold text-slate-950">選択ケースの解析結果</h2><p className="mt-1 text-sm text-slate-500">解析ケース表の「表示」で選んだ結果を同じグラフ上で比較します。</p></div><Badge tone={displayedResults.length ? "green" : "slate"}>{displayedResults.length}件表示</Badge></CardHeader><CardBody>{displayedResults.length ? <div className="space-y-4">{scope === "aircraft" ? <>{resultForView ? <WholeAircraftResults result={resultForView} /> : null}<StabilityComparison results={displayedResults} /><StabilityCharts results={displayedResults} /></> : <PolarCharts data={chartData} series={chartSeries} mode="analysis" />}</div> : <p className="rounded-md border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500">解析済みケースの「表示」を選ぶと、結果グラフがここに表示されます。</p>}</CardBody></Card>
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="font-semibold text-slate-950">解析ケース</h2><p className="mt-1 text-sm text-slate-500">条件の確認、編集、再実行、複製、削除を行います。</p></div>
@@ -200,7 +203,7 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
         </Card>
       </div>
 
-      {editorMode ? <CaseEditor stabilityPhase={stabilityPhase} aircraft={aircraft} fsiShapes={stabilityFsiShapes} draft={draft} errors={errors} title={editorMode === "create" ? "解析ケースを新規作成" : "解析ケースを編集"} onChange={setDraft} onSave={() => void saveCase()} onClose={() => setEditorMode(null)} /> : null}
+      {editorMode ? <CaseEditor designInputs={draft.scope === "aircraft" && stabilityPhase !== "post-fsi" ? renderCaseDesignInputs?.(draft, setDraft) : undefined} stabilityPhase={stabilityPhase} aircraft={draft.stabilityGeometry ?? aircraft} fsiShapes={stabilityFsiShapes} draft={draft} errors={errors} title={editorMode === "create" ? "解析ケースを新規作成" : "解析ケースを編集"} onChange={setDraft} onSave={() => void saveCase()} onClose={() => setEditorMode(null)} /> : null}
       <InspectorDrawer open={Boolean(detailCaseId && selected)} title="解析ケース詳細" subtitle={selected?.name} closeLabel="解析ケース詳細を閉じる" width="wide" onClose={() => setDetailCaseId(null)} footer={selected ? <div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => openEdit(selected)}>編集</Button>{selectedJob ? <Button variant="destructive" onClick={() => controllers.current.get(selectedJob.id)?.abort()}><X size={16} />解析をキャンセル</Button> : <Button aria-label={`${selected.name}を解析`} onClick={() => void runAnalysis(selected)}><Play size={16} />{hasRun ? "再解析" : "解析を実行"}</Button>}</div> : null}>
         {selected ? <div className="space-y-5"><Card><CardHeader className="flex items-center justify-between"><h3 className="font-semibold text-slate-950">解析設定</h3><Badge tone={hasRun ? "green" : "slate"}>{selectedJob ? "実行中" : hasRun ? "結果あり" : analysisStatusLabel(selected.status)}</Badge></CardHeader><CardBody className="grid gap-3 sm:grid-cols-2"><Setting label="解析手法" value={selected.method} /><Setting label="解析対象" value={selected.scope === "aircraft" ? "全翼面" : "主翼のみ"} /><Setting label="α sweep" value={formatAlphaRange(selected.alphaStart, selected.alphaEnd, selected.alphaStep)} />{selected.scope === "aircraft" ? <><Setting label="横滑り角 β" value={`${selected.beta ?? 0}°`} /><Setting label="重心位置 X" value={`${selected.cgX ?? aircraft.mac / 4} m`} /><Setting label="重心位置 Z" value={`${selected.cgZ ?? 0} m`} /></> : null}<Setting label="速度" value={`${selected.speed} m/s`} /><Setting label="高度" value={`${selected.altitude} m`} /><Setting label="Re" value={selected.reynolds.toLocaleString()} /><Setting label="使用ジオメトリ" value={selected.geometryId} /></CardBody></Card>{selectedJob ? <p className="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-700">{selectedJob.progress?.message ?? "解析を開始しています…"} ({selectedJob.progress?.completed ?? 0}/{selectedJob.progress?.total ?? 0})</p> : null}</div> : null}
       </InspectorDrawer>
@@ -215,11 +218,12 @@ export function AnalysisWorkspace({ fixedFsiShape, creationDisabledReason, compa
   );
 }
 
-function CaseEditor({ stabilityPhase, aircraft, fsiShapes, draft, errors, title, onChange, onSave, onClose }: { stabilityPhase?: "pre-fsi" | "post-fsi"; aircraft: AircraftGeometry; fsiShapes: readonly StabilityFsiShapeOption[]; draft: AnalysisCaseDraft; errors: Partial<Record<keyof AnalysisCaseDraft, string>>; title: string; onChange: (draft: AnalysisCaseDraft) => void; onSave: () => void; onClose: () => void }) {
+function CaseEditor({ designInputs, stabilityPhase, aircraft, fsiShapes, draft, errors, title, onChange, onSave, onClose }: { designInputs?: ReactNode; stabilityPhase?: "pre-fsi" | "post-fsi"; aircraft: AircraftGeometry; fsiShapes: readonly StabilityFsiShapeOption[]; draft: AnalysisCaseDraft; errors: Partial<Record<keyof AnalysisCaseDraft, string>>; title: string; onChange: (draft: AnalysisCaseDraft) => void; onSave: () => void; onClose: () => void }) {
   const update = <K extends keyof AnalysisCaseDraft>(field: K, value: AnalysisCaseDraft[K]) => onChange({ ...draft, [field]: value });
   const numberInput = (field: "alphaStart" | "alphaEnd" | "alphaStep" | "speed" | "altitude" | "reynolds", label: string) => <label className="grid gap-1 text-sm text-slate-700"><span>{label}</span><input className="rounded-md border border-slate-300 px-3 py-2" type="number" readOnly={field === "speed" && draft.stabilityShape?.kind === "fsi"} value={draft[field]} onChange={(event) => update(field, Number(event.target.value))} />{errors[field] ? <span className="text-xs text-red-600">{errors[field]}</span> : null}</label>;
   return <InspectorDrawer open title={title} subtitle="LLT / VLM 解析条件" closeLabel="解析ケース編集を閉じる" width="wide" onClose={onClose} footer={<div className="flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>キャンセル</Button><Button aria-label="解析ケースを保存" onClick={onSave}>保存</Button></div>}><div className="grid gap-4 sm:grid-cols-2">
     <label className="grid gap-1 text-sm text-slate-700 md:col-span-2"><span>ケース名</span><input className="rounded-md border border-slate-300 px-3 py-2" value={draft.name} onChange={(event) => update("name", event.target.value)} />{errors.name ? <span className="text-xs text-red-600">{errors.name}</span> : null}</label>
+    {designInputs}
     <label className="grid gap-1 text-sm text-slate-700"><span>解析対象</span><select disabled className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2" value={draft.scope ?? "wing"}><option value="wing">主翼のみ</option><option value="aircraft">全翼面</option></select></label>
     <label className="grid gap-1 text-sm text-slate-700"><span>解析手法</span><select className="rounded-md border border-slate-300 px-3 py-2" value={draft.method} onChange={(event) => update("method", event.target.value as AnalysisCase["method"])}><option value="LLT" disabled={draft.scope === "aircraft"}>LLT</option><option value="VLM">VLM</option></select></label>
     <label className="grid gap-1 text-sm text-slate-700"><span>使用ジオメトリ</span><input className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2" value={draft.geometryId} readOnly />{errors.geometryId ? <span className="text-xs text-red-600">{errors.geometryId}</span> : null}</label>
@@ -236,12 +240,12 @@ function WholeAircraftResults({ result }: { result: AnalysisResult }) {
   const cgX = result.caseSnapshot?.cgX ?? (result.aircraftSnapshot ? result.aircraftSnapshot.mac / 4 : undefined);
   return <div className="space-y-3">
     <p className="text-sm font-medium">評価形状: {stabilityShapeLabel(result.caseSnapshot?.stabilityShape)}</p>
-    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">全翼面VLMは非粘性の薄翼推定です。CDは誘導抵抗のみです。トリムはCm=0の迎角、安定性は静微係数の目安です。主翼の上反角、後退角、尾翼配置と相互誘導流を含みます。翼型Polar、失速、胴体、質量・必要揚力、操舵余裕は反映しません。ダッチロール・スパイラルなどの動安定性は未評価です。</p>
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Setting label="トリム迎角 (Cm=0)" value={summary.trimAlpha === null ? "掃引範囲外" : `${summary.trimAlpha.toFixed(2)}°`} /><Setting label="トリム時 CL" value={summary.trimCl === null ? "—" : summary.trimCl.toFixed(3)} /><Setting label="静安定余裕 (−dCm/dCL)" value={summary.staticMarginPercent === null ? "算出不可" : `${summary.staticMarginPercent.toFixed(1)}%`} /><Setting label="方向安定微係数 Cnβ" value={summary.cnBetaPerRadian === null ? "算出不可" : `${summary.cnBetaPerRadian.toFixed(3)} /rad`} /></div>
+    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">全翼面VLMは非粘性の薄翼推定です。トリムはCm=0の迎角、安定性は静微係数の目安です。主翼の上反角、後退角、尾翼配置と相互誘導流を含みます。翼型Polar、失速、胴体、質量・必要揚力、操舵余裕は反映しません。ダッチロール・スパイラルなどの動安定性は未評価です。</p>
+    <div className="grid gap-3 sm:grid-cols-3"><Setting label="トリム迎角 (Cm=0)" value={summary.trimAlpha === null ? "掃引範囲外" : `${summary.trimAlpha.toFixed(2)}°`} /><Setting label="静安定余裕 (−dCm/dCL)" value={summary.staticMarginPercent === null ? "算出不可" : `${summary.staticMarginPercent.toFixed(1)}%`} /><Setting label="方向安定微係数 Cnβ" value={summary.cnBetaPerRadian === null ? "算出不可" : `${summary.cnBetaPerRadian.toFixed(3)} /rad`} /></div>
     <div className="grid gap-3 sm:grid-cols-3"><Setting label="縦安定微係数 Cmα" value={summary.cmAlphaPerDegree === null ? "算出不可" : `${summary.cmAlphaPerDegree.toFixed(4)} /deg`} /><Setting label="上反角効果 Crβ" value={perRadian(summary.crBetaPerRadian)} /><Setting label="横力微係数 CYβ" value={perRadian(summary.cyBetaPerRadian)} /></div>
     <p className="text-xs text-slate-500">横・方向微係数の評価迎角: {summary.derivativeAlpha?.toFixed(2) ?? "—"}°（トリム点で補間、トリムがない場合は0°に最も近い解析点）。βは右向きの流入を正、Crは後方を向くX軸まわりの右手系です。通常の前方X軸のClとは符号が逆になります。</p>
     <p className="text-xs text-slate-500">重心位置 X: {typeof cgX === "number" ? cgX.toFixed(3) : "—"} m（主翼根元前縁から後方）、Z: {(result.caseSnapshot?.cgZ ?? 0).toFixed(3)} m（上方）、Y: 0 m。静安定余裕は正なら縦静安定の傾向、Cnβ は正なら方向静安定の傾向を示します。</p>
-    <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><caption className="mb-2 text-left font-medium">全機の力・モーメント係数（主翼面積・スパン・MAC基準、指定重心基準点）</caption><thead className="border-b border-slate-200 text-slate-600"><tr>{["α (°)", "CL", "CY", "CDi", "Cm", "Cr", "Cn", "Crβ (/rad)", "CYβ (/rad)", "Cnβ (/rad)"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.alpha} className="border-b border-slate-100">{[row.alpha, row.cl, row.cy, row.cdi, row.cm, row.cr, row.cn, row.crBeta, row.cyBeta, row.cnBeta].map((value, index) => <td key={index} className="px-2 py-2">{value?.toFixed(index === 0 ? 1 : 4) ?? "—"}</td>)}</tr>)}</tbody></table></div>
+    <div className="overflow-x-auto"><table className="w-full min-w-[580px] text-left text-sm"><caption className="mb-2 text-left font-medium">迎角別の静安定性（主翼面積・スパン・MAC基準、指定重心基準点）</caption><thead className="border-b border-slate-200 text-slate-600"><tr>{["α (°)", "Cm", "Crβ (/rad)", "CYβ (/rad)", "Cnβ (/rad)"].map((label) => <th key={label} className="px-2 py-2">{label}</th>)}</tr></thead><tbody>{result.rows.map((row) => <tr key={row.alpha} className="border-b border-slate-100">{[row.alpha, row.cm, row.crBeta, row.cyBeta, row.cnBeta].map((value, index) => <td key={index} className="px-2 py-2">{value?.toFixed(index === 0 ? 1 : 4) ?? "—"}</td>)}</tr>)}</tbody></table></div>
   </div>;
 }
 function createNewDraft(geometryId: string, cgX: number, scope: "wing" | "aircraft", shape?: StabilityFsiShapeOption["shape"]): AnalysisCaseDraft { return { name: "", method: scope === "aircraft" ? "VLM" : "LLT", scope, beta: 0, cgX, cgZ: 0, stabilityShape: shape ? structuredClone(shape) : undefined, alphaStart: shape ? shape.alphaDegrees - 2 : -4, alphaEnd: shape ? shape.alphaDegrees + 2 : 12, alphaStep: 2, speed: shape?.speed ?? 20, altitude: 0, reynolds: 300000, geometryId }; }

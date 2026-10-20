@@ -283,6 +283,7 @@ function analysisInputsChanged(left: AnalysisCase, right: AnalysisCase) {
     || left.cgX !== right.cgX
     || left.cgZ !== right.cgZ
     || JSON.stringify(left.stabilityShape ?? { kind: "rigid" }) !== JSON.stringify(right.stabilityShape ?? { kind: "rigid" })
+    || JSON.stringify(left.stabilityGeometry) !== JSON.stringify(right.stabilityGeometry)
     || left.alphaStart !== right.alphaStart
     || left.alphaEnd !== right.alphaEnd
     || left.alphaStep !== right.alphaStep

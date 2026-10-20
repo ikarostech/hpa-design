@@ -51,17 +51,14 @@ describe("aircraft analysis mesh", () => {
     expect(tip.z).toBeCloseTo(1 + 0.25 * Math.sin(Math.PI / 18) + Math.cos(Math.PI / 18), 8);
   });
 
-  it("creates a single upright fin and two laterally mirrored fins", () => {
+  it("creates a single upright fin and rejects removed fin arrangements", () => {
     const fin = { ...tail, orientation: "vertical" as const, rootPosition: { x: 4, y: 2, z: 1 } };
     const single = createTailAnalysisMesh(fin);
     expect(single.panels).toHaveLength(8);
     expect(single.nodes.every((node) => node.y === 2)).toBe(true);
     expect(Math.max(...single.nodes.map((node) => node.z))).toBe(3);
-    const double = createTailAnalysisMesh({ ...fin, isDoubleFin: true });
-    expect(double.panels).toHaveLength(16);
-    expect(new Set(double.nodes.map((node) => node.y))).toEqual(new Set([-2, 2]));
-    expect(Math.min(...double.nodes.map((node) => node.z))).toBe(1);
-    expect(() => createTailAnalysisMesh({ ...fin, isDoubleFin: true, isSymmetricFin: true })).toThrow(/symmetric fin/i);
+    expect(() => createTailAnalysisMesh({ ...fin, isDoubleFin: true })).toThrow(/Double Fin.*対応/);
+    expect(() => createTailAnalysisMesh({ ...fin, isDoubleFin: true, isSymmetricFin: true })).toThrow(/Symmetric Fin.*対応/);
   });
 
   it("combines surfaces without losing identity or applying wing incidence to the tail", () => {

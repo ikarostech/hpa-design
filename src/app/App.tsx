@@ -6,6 +6,7 @@ import { DesignDocumentProvider, useDesignDocument } from "./DesignDocumentProvi
 import { listAirfoilReferences } from "./designDocument";
 import { designDocumentExporter, designDocumentImporter, formatValidationIssues } from "./designDocumentTransfer";
 import { createDefaultConceptualDesign } from "../features/conceptual-design/model/conceptualDesign";
+import { TailDesignDraftProvider } from "../features/aircraft/model/TailDesignDraft";
 
 const AirfoilPage = lazy(async () => ({ default: (await import("../pages/AirfoilPage")).AirfoilPage }));
 const AircraftWorkspacePage = lazy(async () => ({ default: (await import("../pages/AircraftWorkspacePage")).AircraftWorkspacePage }));
@@ -19,13 +20,19 @@ const StructuresPage = lazy(async () => ({ default: (await import("../pages/Stru
 const ConceptualDesignPage = lazy(async () => ({ default: (await import("../pages/ConceptualDesignPage")).ConceptualDesignPage }));
 
 export default function App() {
-  return <DesignDocumentProvider><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
+  return <DesignDocumentProvider><DesignWorkspace /></DesignDocumentProvider>;
+}
+
+function DesignWorkspace() {
+  const { document } = useDesignDocument();
+  return <TailDesignDraftProvider key={`${document.name}:${document.aircraft.id}`} savedSurfaces={document.aircraft.tailSurfaces ?? []}><JobProvider><AppLayout><Suspense fallback={<div className="p-4 text-sm text-slate-500" role="status">画面を読み込んでいます…</div>}><Routes>
     <Route path="/" element={<DashboardRoute />} />
     <Route path="/conceptual-design" element={<ConceptualDesignRoute />} />
     <Route path="/aerodynamics" element={<Navigate to="/aerodynamics/airfoils" replace />} />
     <Route path="/aerodynamics/airfoils" element={<AirfoilRoute />} />
     <Route path="/aerodynamics/geometry" element={<AircraftRoute />} />
-    <Route path="/aerodynamics/tails" element={<TailRoute />} />
+    <Route path="/aerodynamics/tails" element={<Navigate to="/stability/tails" replace />} />
+    <Route path="/stability/tails" element={<TailRoute />} />
     <Route path="/aerodynamics/analysis" element={<AnalysisRoute />} />
     <Route path="/aerodynamics/stability" element={<Navigate to="/stability" replace />} />
     <Route path="/stability" element={<StabilityRoute />} />
@@ -38,7 +45,7 @@ export default function App() {
     <Route path="/results" element={<Navigate to="/fsi" replace />} />
     <Route path="/projects/*" element={<Navigate to="/" replace />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></Suspense></AppLayout></JobProvider></DesignDocumentProvider>;
+  </Routes></Suspense></AppLayout></JobProvider></TailDesignDraftProvider>;
 }
 
 function ConceptualDesignRoute() {
@@ -80,7 +87,7 @@ function AnalysisRoute() {
 
 function StabilityRoute() {
   const { document, analysisCaseRepository, saveAnalysisResult } = useDesignDocument();
-  return <StabilityDesignPage aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
+  return <StabilityDesignPage structuralResults={document.structuralResults} aircraft={document.aircraft} cases={document.analysisCases} results={document.analysisResults} polars={document.polars} analysisCaseRepository={analysisCaseRepository} saveAnalysisResult={saveAnalysisResult} />;
 }
 
 function FsiRoute() {

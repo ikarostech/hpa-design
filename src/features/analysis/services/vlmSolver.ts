@@ -36,39 +36,73 @@ export interface AircraftVlmCoefficients {
 
 /** Inviscid thin-surface solution. Incidence must already be encoded in mesh nodes. */
 export function calculateAircraftVlmCoefficients(mesh: AircraftAnalysisMesh, condition: AircraftVlmCondition): AircraftVlmCoefficients {
-  const { alpha: alphaDegrees, beta: betaDegrees, reference } = condition;
+  validateAircraftVlmCondition(condition);
+  return prepareAircraftVlmSolver(mesh, condition.reference)(condition);
+}
+
+function validateAircraftVlmCondition({ alpha, beta, reference }: AircraftVlmCondition) {
   if (![reference.area, reference.span, reference.chord].every((value) => Number.isFinite(value) && value > 0)
-    || ![alphaDegrees, betaDegrees, reference.point.x, reference.point.y, reference.point.z].every(Number.isFinite)) {
+    || ![alpha, beta, reference.point.x, reference.point.y, reference.point.z].every(Number.isFinite)) {
     throw new Error("VLM requires finite angles and positive reference dimensions with a finite reference point.");
   }
-  const alpha = alphaDegrees * Math.PI / 180;
-  const beta = betaDegrees * Math.PI / 180;
-  const freestream = { x: Math.cos(alpha) * Math.cos(beta), y: Math.sin(beta), z: Math.sin(alpha) * Math.cos(beta) };
-  const liftAxis = { x: -Math.sin(alpha), y: 0, z: Math.cos(alpha) };
+}
+
+/** Prepare one fixed shape/reference for a sweep. No global cache: a new shape gets a new solver. */
+export function prepareAircraftVlmSolver(mesh: AircraftAnalysisMesh, inputReference: AircraftVlmCondition["reference"]) {
+  const reference = { ...inputReference, point: { ...inputReference.point } };
+  validateAircraftVlmCondition({ alpha: 0, beta: 0, reference });
   const panels = mesh.panels.map(createVortexPanel);
   const extent = mesh.nodes.reduce((maximum, node) => Math.max(maximum, Math.abs(node.x), Math.abs(node.y), Math.abs(node.z)), reference.span);
   const wakeLength = Math.max(1_000, extent * 1_000);
-  const circulation = solveCirculation(panels, freestream, wakeLength);
-  let inducedDrag = 0;
-  const panelLoads = panels.map((panel, index): AircraftVlmPanelLoad => {
-    const span = subtract(panel.end, panel.start);
+
+  // The wake stays aligned with X in this model, so A is independent of alpha/beta.
+  // Solve A * gamma = -normal dot U for the three unit inflows in one elimination.
+  const matrix = createInfluenceMatrix(panels, wakeLength);
+  const [gammaX, gammaY, gammaZ] = solveLinearSystems(matrix,
+    (["x", "y", "z"] as const).map((axis) => panels.map((panel) => -panel.normal[axis])));
+  const preparedPanels = panels.map((panel, index) => {
     const applicationPoint = scale(add(panel.start, panel.end), 0.5);
-    const force = scale(cross(freestream, span), 2 * circulation[index]);
-    const moment = cross(subtract(applicationPoint, reference.point), force);
-    const induced = panels.reduce<Vector>((velocity, source, sourceIndex) => add(velocity,
-      scale(wakeVelocity(applicationPoint, source.start, source.end, wakeLength), circulation[sourceIndex])), { x: 0, y: 0, z: 0 });
-    inducedDrag += dot(scale(cross(induced, span), 2 * circulation[index]), freestream);
+    const inducedX = { x: 0, y: 0, z: 0 };
+    const inducedY = { x: 0, y: 0, z: 0 };
+    const inducedZ = { x: 0, y: 0, z: 0 };
+    panels.forEach((source, sourceIndex) => {
+      const velocity = wakeVelocity(applicationPoint, source.start, source.end, wakeLength);
+      for (const axis of ["x", "y", "z"] as const) {
+        inducedX[axis] += velocity[axis] * gammaX[sourceIndex];
+        inducedY[axis] += velocity[axis] * gammaY[sourceIndex];
+        inducedZ[axis] += velocity[axis] * gammaZ[sourceIndex];
+      }
+    });
     const source = mesh.panels[index];
-    return { surfaceId: source.surfaceId, side: source.side, stripIndex: source.stripIndex, chordIndex: source.chordIndex, applicationPoint, circulation: circulation[index], force, moment };
+    return { surfaceId: source.surfaceId, side: source.side, stripIndex: source.stripIndex, chordIndex: source.chordIndex,
+      applicationPoint, span: subtract(panel.end, panel.start), inducedX, inducedY, inducedZ };
   });
-  const force = panelLoads.reduce((sum, load) => add(sum, load.force), { x: 0, y: 0, z: 0 });
-  const moment = panelLoads.reduce((sum, load) => add(sum, load.moment), { x: 0, y: 0, z: 0 });
-  return {
-    cl: dot(force, liftAxis) / reference.area, cy: force.y / reference.area,
-    cdi: Math.max(0, inducedDrag / reference.area),
-    cm: moment.y / (reference.area * reference.chord),
-    cr: moment.x / (reference.area * reference.span), cn: moment.z / (reference.area * reference.span),
-    force, moment, panelLoads,
+
+  return ({ alpha: alphaDegrees, beta: betaDegrees }: Pick<AircraftVlmCondition, "alpha" | "beta">): AircraftVlmCoefficients => {
+    validateAircraftVlmCondition({ alpha: alphaDegrees, beta: betaDegrees, reference });
+    const alpha = alphaDegrees * Math.PI / 180;
+    const beta = betaDegrees * Math.PI / 180;
+    const freestream = { x: Math.cos(alpha) * Math.cos(beta), y: Math.sin(beta), z: Math.sin(alpha) * Math.cos(beta) };
+    const liftAxis = { x: -Math.sin(alpha), y: 0, z: Math.cos(alpha) };
+    let inducedDrag = 0;
+    const panelLoads = preparedPanels.map((panel, index): AircraftVlmPanelLoad => {
+      const circulation = gammaX[index] * freestream.x + gammaY[index] * freestream.y + gammaZ[index] * freestream.z;
+      const force = scale(cross(freestream, panel.span), 2 * circulation);
+      const moment = cross(subtract(panel.applicationPoint, reference.point), force);
+      const induced = add(add(scale(panel.inducedX, freestream.x), scale(panel.inducedY, freestream.y)), scale(panel.inducedZ, freestream.z));
+      inducedDrag += dot(scale(cross(induced, panel.span), 2 * circulation), freestream);
+      return { surfaceId: panel.surfaceId, side: panel.side, stripIndex: panel.stripIndex, chordIndex: panel.chordIndex,
+        applicationPoint: { ...panel.applicationPoint }, circulation, force, moment };
+    });
+    const force = panelLoads.reduce((sum, load) => add(sum, load.force), { x: 0, y: 0, z: 0 });
+    const moment = panelLoads.reduce((sum, load) => add(sum, load.moment), { x: 0, y: 0, z: 0 });
+    return {
+      cl: dot(force, liftAxis) / reference.area, cy: force.y / reference.area,
+      cdi: Math.max(0, inducedDrag / reference.area),
+      cm: moment.y / (reference.area * reference.chord),
+      cr: moment.x / (reference.area * reference.span), cn: moment.z / (reference.area * reference.span),
+      force, moment, panelLoads,
+    };
   };
 }
 
@@ -152,10 +186,14 @@ export function calculateVlmCoefficients(
 }
 
 function solveCirculation(panels: readonly VortexPanel[], freestream: Vector, wakeLength: number) {
-  const matrix = panels.map((target) => panels.map((source) => dot(
+  return solveLinearSystems(createInfluenceMatrix(panels, wakeLength),
+    [panels.map((panel) => -dot(freestream, panel.normal))])[0];
+}
+
+function createInfluenceMatrix(panels: readonly VortexPanel[], wakeLength: number) {
+  return panels.map((target) => panels.map((source) => dot(
     horseshoeVelocity(target.control, source.start, source.end, wakeLength), target.normal,
   )));
-  return solveLinearSystem(matrix, panels.map((panel) => -dot(freestream, panel.normal)));
 }
 
 function wakeVelocity(point: Vector, start: Vector, end: Vector, wakeLength: number): Vector {
@@ -209,9 +247,10 @@ function segmentVelocity(point: Vector, start: Vector, end: Vector): Vector {
   return scale(crossProduct, factor);
 }
 
-function solveLinearSystem(matrix: number[][], values: number[]): number[] {
-  const size = values.length;
-  const rows = matrix.map((row, index) => [...row, values[index]]);
+function solveLinearSystems(matrix: number[][], rightHandSides: number[][]): number[][] {
+  const size = matrix.length;
+  const width = size + rightHandSides.length;
+  const rows = matrix.map((row, index) => [...row, ...rightHandSides.map((values) => values[index])]);
   for (let column = 0; column < size; column += 1) {
     let pivot = column;
     for (let row = column + 1; row < size; row += 1) {
@@ -220,14 +259,14 @@ function solveLinearSystem(matrix: number[][], values: number[]): number[] {
     if (Math.abs(rows[pivot][column]) < 1e-12) throw new Error("VLM influence matrix is singular.");
     [rows[column], rows[pivot]] = [rows[pivot], rows[column]];
     const divisor = rows[column][column];
-    for (let entry = column; entry <= size; entry += 1) rows[column][entry] /= divisor;
+    for (let entry = column; entry < width; entry += 1) rows[column][entry] /= divisor;
     for (let row = 0; row < size; row += 1) {
       if (row === column) continue;
       const factor = rows[row][column];
-      for (let entry = column; entry <= size; entry += 1) rows[row][entry] -= factor * rows[column][entry];
+      for (let entry = column; entry < width; entry += 1) rows[row][entry] -= factor * rows[column][entry];
     }
   }
-  return rows.map((row) => row[size]);
+  return rightHandSides.map((_, index) => rows.map((row) => row[size + index]));
 }
 
 function interpolateNode(start: WingMeshNode, end: WingMeshNode, ratio: number): Vector {

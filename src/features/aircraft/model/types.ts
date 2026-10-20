@@ -52,7 +52,7 @@ export interface TailSurface {
   sparChordFraction?: number;
   /** XFLR5 `Symetric` flag. Geometry remains mirrored; this controls left/right foil symmetry. */
   symmetric: boolean;
-  /** XFLR5 fin arrangement flags; valid only for vertical surfaces. */
+  /** Legacy file fields. Only false is supported; fin arrangements have been removed. */
   isDoubleFin: boolean;
   isSymmetricFin: boolean;
   sections: TailSurfaceSection[];

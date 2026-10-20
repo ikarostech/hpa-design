@@ -40,6 +40,8 @@ export interface AnalysisCase {
   cgZ?: number;
   /** Omitted legacy cases use the rigid shape. */
   stabilityShape?: StabilityShape;
+  /** Selected main-wing/tail design frozen when creating an initial stability case. */
+  stabilityGeometry?: AircraftGeometry;
   alphaStart: number;
   alphaEnd: number;
   alphaStep: number;

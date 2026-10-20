@@ -1,5 +1,11 @@
 import type { StabilityShape } from "./types";
 
+export interface StabilityStructuralShapeOption {
+  id: string;
+  label: string;
+  shape: Extract<StabilityShape, { kind: "manual" }>;
+}
+
 export interface StabilityFsiShapeOption {
   label: string;
   shape: Extract<StabilityShape, { kind: "fsi" }>;

@@ -75,6 +75,8 @@ export function validateTailSurface(surface: TailSurface, airfoilIds: ReadonlySe
   if (surface.sparChordFraction !== undefined && !isValidSparChordFraction(surface.sparChordFraction)) errors.push("Tail spar position must be between 0 and 100% of the chord.");
   if (surface.orientation === "horizontal" && (surface.isDoubleFin || surface.isSymmetricFin)) errors.push("XFLR5 fin flags are valid only for vertical tails.");
   if (surface.isSymmetricFin && !surface.isDoubleFin) errors.push("An XFLR5 symmetric fin arrangement requires double-fin mode.");
+  if (surface.isDoubleFin) errors.push("Double Finには対応していません。単一の垂直尾翼を使用してください。");
+  if (surface.isSymmetricFin) errors.push("Symmetric Finには対応していません。単一の垂直尾翼を使用してください。");
   errors.push(...validateSections(surface.sections, airfoilIds));
   return errors;
 }

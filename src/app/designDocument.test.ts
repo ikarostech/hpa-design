@@ -53,6 +53,15 @@ const document = {
 };
 
 describe("createDesignDocumentStore", () => {
+  it("invalidates stability results when the selected saved geometry changes", () => {
+    const analysisCase = { id: "selected", name: "Selected", method: "VLM" as const, scope: "aircraft" as const,
+      geometryId: document.aircraft.id, alphaStart: 0, alphaEnd: 0, alphaStep: 1, speed: 10, altitude: 0, reynolds: 100000,
+      status: "completed" as const, stabilityGeometry: document.aircraft };
+    const store = createDesignDocumentStore({ ...document, analysisCases: [analysisCase],
+      analysisResults: [{ id: "r", caseId: analysisCase.id, status: "completed", clMax: 0, cdMin: 0, maxLD: 0, cm0: 0, rows: [] }] });
+    store.saveAnalysisCase({ ...analysisCase, stabilityGeometry: { ...document.aircraft, tailSurfaces: [horizontalTail] } });
+    expect(store.getDocument().analysisResults[0].status).toBe("needs-review");
+  });
   it("isolates saved stability shapes and invalidates results when deformation changes", () => {
     const store = createDesignDocumentStore(document);
     const analysisCase = { id: "stability", name: "Manual", method: "VLM" as const, scope: "aircraft" as const,

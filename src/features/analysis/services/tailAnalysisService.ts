@@ -68,7 +68,7 @@ export function analyzeTailSurface(surface: TailSurface, condition: TailAnalysis
   try { mesh = createTailAnalysisMesh(surface); }
   catch (error) { return { status: "unsupported", issues: [error instanceof Error ? error.message : String(error)] }; }
   const metrics = deriveTailGeometry(surface);
-  const referenceArea = metrics.area * (surface.orientation === "vertical" && surface.isDoubleFin ? 2 : 1);
+  const referenceArea = metrics.area;
   if (metrics.area <= 0 || metrics.span <= 0 || metrics.meanAerodynamicChord <= 0) {
     return { status: "unsupported", issues: ["Tail reference dimensions must be positive."] };
   }
@@ -81,7 +81,6 @@ export function analyzeTailSurface(surface: TailSurface, condition: TailAnalysis
     const chord = localChord(surface, panel.stripIndex);
     const localRe = condition.density * condition.speed * chord / condition.dynamicViscosity;
     const localAngle = (surface.orientation === "horizontal" ? condition.alpha : condition.beta)
-      * (surface.orientation === "vertical" && surface.isDoubleFin && panel.side === "left" ? -1 : 1)
       + surface.incidence + localTwist(surface, panel.stripIndex);
     reynolds.push(localRe);
     const root = samplePolar(panel.airfoilRootId, localRe, localAngle, polars, usedPolarIds);
@@ -99,8 +98,7 @@ export function analyzeTailSurface(surface: TailSurface, condition: TailAnalysis
     vlm = calculateAircraftVlmCoefficients(mesh, {
       alpha: condition.alpha, beta: condition.beta,
       reference: { area: referenceArea, span: metrics.span, chord: metrics.meanAerodynamicChord,
-        point: surface.orientation === "vertical" && surface.isDoubleFin
-          ? { ...metrics.aerodynamicCenter, y: 0 } : metrics.aerodynamicCenter },
+        point: metrics.aerodynamicCenter },
     });
   } catch (error) {
     return { status: "unsupported", issues: [error instanceof Error ? error.message : String(error)] };

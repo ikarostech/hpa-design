@@ -572,7 +572,7 @@
         },
         "isDoubleFin": {
           "type": "boolean",
-          "description": "XFLR5 fin arrangement flags; valid only for vertical surfaces."
+          "description": "Legacy file fields. Only false is supported; fin arrangements have been removed."
         },
         "isSymmetricFin": {
           "type": "boolean"
@@ -798,6 +798,10 @@
             }
           ],
           "description": "Omitted legacy cases use the rigid shape."
+        },
+        "stabilityGeometry": {
+          "$ref": "#/$defs/AircraftGeometry",
+          "description": "Selected main-wing/tail design frozen when creating an initial stability case."
         },
         "alphaStart": {
           "type": "number"

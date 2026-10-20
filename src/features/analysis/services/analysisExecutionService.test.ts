@@ -43,6 +43,50 @@ const createPolar = (id: string, airfoilId: string, liftOffset: number): Airfoil
 const polars = [createPolar("polar-1", "af-1", 0), createPolar("polar-2", "af-2", 0.2)];
 
 describe("executeAnalysisCase", () => {
+  it("preserves the original VLM sweep including wing/tail coupling and lateral derivatives", async () => {
+    const geometry = { ...aircraft, span: 20, rootChord: 1.2, tipChord: 0.7, taperRatio: 0.7 / 1.2,
+      incidence: 2, wingArea: 19, aspectRatio: 400 / 19, mac: 1,
+      sections: aircraft.sections.map((section, index) => ({ ...section, yPosition: index * 10,
+        chord: index ? 0.7 : 1.2, dihedral: 5, chordwisePanels: 2, spanwisePanels: 3,
+        spanwiseDistribution: "cosine" as const })),
+      tailSurfaces: (["horizontal", "vertical"] as const).map((orientation, index) => ({
+        id: orientation, name: orientation, orientation, rootPosition: { x: 6, y: 0, z: 0.3 },
+        incidence: 0, symmetric: true, isDoubleFin: false, isSymmetricFin: false,
+        sections: [0, index ? 1 : 2].map((spanPosition, i) => ({
+          id: `tail-${i}`, spanPosition, chord: i ? 0.4 : 0.7, xOffset: 0, dihedral: 0, twist: 0,
+          leftAirfoilId: "af-1", rightAirfoilId: "af-1", chordwisePanels: 2, spanwisePanels: 2,
+          chordwiseDistribution: "cosine" as const, spanwiseDistribution: "cosine" as const,
+        })),
+      })),
+    };
+    const result = await executeAnalysisCase({ aircraft: geometry,
+      analysisCase: { ...analysisCase, method: "VLM", scope: "aircraft", alphaStart: -4, alphaEnd: 16,
+        alphaStep: 10, beta: 2, cgX: 0.4, cgZ: -0.3 },
+      createId: () => "characterization", onProgress: () => undefined });
+    // Captured from the original per-condition Gauss-Jordan solver before optimization.
+    const expected = [
+      [-0.23791664807850604, 0.0012132559243474223, 0.16553997230800943, 0.004719759880851666,
+        -0.0038827341462893436, 0.001358145844321743, 0.0388368928444682, -0.11102881963188788, 0.13496400958013197],
+      [0.8435782517915561, 0.010215666574194019, -0.19399778424805675, 0.004754017240397386,
+        -0.0037929209182788804, 0.000018070497123370394, 0.0005167353442641163, -0.10846056326469489, 0.1359436167463094],
+      [1.8994414533521247, 0.05149065249743712, -0.7845093594333581, 0.004643826191742417,
+        -0.0035878617074770586, -0.001322553912985976, -0.03781912289789475, -0.10259678756639519, 0.1327926459084388],
+    ];
+    const keys = ["cl", "cd", "cm", "cy", "cr", "cn", "cnBeta", "crBeta", "cyBeta"] as const;
+    expect(result.rows).toHaveLength(expected.length);
+    result.rows.forEach((row, index) => keys.forEach((key, column) => {
+      expect(row[key]).toBeCloseTo(expected[index][column], 10);
+    }));
+  });
+  it("runs the selected case geometry even after the current main-wing design changes", async () => {
+    const input = { analysisCase: { ...analysisCase, method: "VLM" as const, scope: "aircraft" as const,
+      alphaStart: 0, alphaEnd: 0, stabilityGeometry: aircraft },
+      aircraft, createId: () => "selected-design", onProgress: () => undefined };
+    const original = await executeAnalysisCase(input);
+    const rerun = await executeAnalysisCase({ ...input, aircraft: { ...aircraft, incidence: 15 } });
+    expect(rerun.aircraftSnapshot?.incidence).toBe(aircraft.incidence);
+    expect(rerun.rows[0].cl).toBeCloseTo(original.rows[0].cl, 8);
+  });
   it("uses the selected manual or frozen FSI shape in the complete-aircraft stability calculation", async () => {
     const geometry = { ...aircraft, incidence: 2, sections: aircraft.sections.map((s) => ({ ...s, chordwisePanels: 1 })) };
     const manual: StabilityShape = { kind: "manual", elasticAxisChordFraction: 0.35,
@@ -219,11 +263,11 @@ describe("executeAnalysisCase", () => {
     expect(Math.abs(dihedral.rows[2].cl)).toBeLessThan(Math.abs(baseline.rows[2].cl));
   });
 
-  it("stops without producing a result when the job is cancelled", async () => {
+  it.each(["wing", "aircraft"] as const)("stops %s analysis without producing a result when the job is cancelled", async (scope) => {
     const controller = new AbortController();
 
     await expect(executeAnalysisCase({
-      analysisCase,
+      analysisCase: { ...analysisCase, scope, method: scope === "aircraft" ? "VLM" : analysisCase.method },
       aircraft,
       polars,
       signal: controller.signal,

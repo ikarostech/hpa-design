@@ -1,6 +1,5 @@
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { TailPreview } from "../features/aircraft/components/TailPreview";
 import { deriveTailGeometry, validateTailSurface } from "../features/aircraft/model/tailGeometry";
 import { alignSectionsToStraightSpar, DEFAULT_SPAR_CHORD_FRACTION, isValidSparChordFraction } from "../features/aircraft/model/sparGeometry";
@@ -13,7 +12,8 @@ import { PageTemplate } from "../shared/ui/layout/PageTemplate";
 import { DeleteConfirmationDialog } from "../shared/ui/table/DeleteConfirmationDialog";
 import { OrderedEntityTable, type OrderedTableColumn } from "../shared/ui/table/OrderedEntityTable";
 import { RowActions } from "../shared/ui/table/RowActions";
-import { AerodynamicDesignTabs } from "./AerodynamicDesignTabs";
+import { StabilityDesignTabs } from "./StabilityDesignTabs";
+import { useTailDesignDraft } from "../features/aircraft/model/TailDesignDraft";
 
 interface TailDesignPageProps {
   aircraft: AircraftGeometry;
@@ -22,16 +22,18 @@ interface TailDesignPageProps {
 }
 
 export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDesignPageProps) {
-  const navigate = useNavigate();
   const initialSurfaces = useMemo(() => (aircraft.tailSurfaces ?? []).map(cloneTail), [aircraft.tailSurfaces]);
-  const [drafts, setDrafts] = useState<TailSurface[]>(initialSurfaces);
+  const { value: drafts, setValue: setDrafts } = useTailDesignDraft(initialSurfaces);
   const [selectedSections, setSelectedSections] = useState<Record<string, string | null>>(() => initialSelection(initialSurfaces));
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const airfoilIds = useMemo(() => new Set(airfoils.map((airfoil) => airfoil.id)), [airfoils]);
 
   useEffect(() => {
-    setDrafts(initialSurfaces);
-    setSelectedSections(initialSelection(initialSurfaces));
+    setSelectedSections((current) => Object.fromEntries(initialSurfaces.map((surface) => [
+      surface.id,
+      surface.sections.some((section) => section.id === current[surface.id])
+        ? current[surface.id] : surface.sections[0]?.id ?? null,
+    ])));
   }, [initialSurfaces]);
 
   const validation = drafts.map((surface) => ({ id: surface.id, errors: validateTailSurface(surface, airfoilIds) }));
@@ -39,20 +41,16 @@ export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDes
   const dirty = JSON.stringify(drafts) !== JSON.stringify(initialSurfaces);
   const preview = { ...aircraft, tailSurfaces: drafts };
 
+  useEffect(() => {
+    if (dirty && valid) onUpdateAircraft({ tailSurfaces: drafts.map(cloneTail) });
+  }, [dirty, valid, drafts, onUpdateAircraft]);
+
   const addTail = () => {
     const surface = createDefaultTail(airfoils[0]?.id ?? "", nextTailName(drafts));
     setDrafts((current) => [...current, surface]);
     setSelectedSections((current) => ({ ...current, [surface.id]: surface.sections[0]?.id ?? null }));
   };
   const updateTail = (surface: TailSurface) => setDrafts((current) => current.map((item) => item.id === surface.id ? surface : item));
-  const reset = () => {
-    setDrafts(initialSurfaces.map(cloneTail));
-    setSelectedSections(initialSelection(initialSurfaces));
-  };
-  const save = () => {
-    if (!dirty || !valid) return;
-    onUpdateAircraft({ tailSurfaces: drafts.map(cloneTail) });
-  };
   const remove = () => {
     if (!pendingDeleteId) return;
     setDrafts((current) => current.filter((surface) => surface.id !== pendingDeleteId));
@@ -63,13 +61,8 @@ export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDes
   return <PageTemplate
     title="尾翼設計"
     description="XFLR5のELEVATOR・FINと同じセクション構成で、尾翼を主翼形状とは独立して定義します。"
-    actions={<>
-      <Button variant="secondary" disabled={!dirty} onClick={reset}>キャンセル</Button>
-      <Button aria-label="尾翼設計を保存" disabled={!dirty || !valid} onClick={save}><Save size={16} />保存</Button>
-      <Button disabled={dirty || !valid} title={dirty ? "変更を保存してから解析へ進んでください" : undefined} onClick={() => navigate("/stability")}>安定性設計に進む</Button>
-    </>}
-    tabs={<AerodynamicDesignTabs />}
-    notices={!valid ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正してから尾翼設計を保存してください。</div> : null}
+    tabs={<StabilityDesignTabs />}
+    notices={!valid ? <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">入力を修正すると、尾翼設計に変更が反映されます。</div> : null}
   >
     <div className="space-y-5">
       <Card>
@@ -94,7 +87,7 @@ export function TailDesignPage({ aircraft, airfoils, onUpdateAircraft }: TailDes
       />)}
     </div>
 
-    <DeleteConfirmationDialog open={pendingDeleteId !== null} title="尾翼を削除しますか？" description="この尾翼面とすべてのセクション設定が、保存時に設計から削除されます。" onConfirm={remove} onCancel={() => setPendingDeleteId(null)} />
+    <DeleteConfirmationDialog open={pendingDeleteId !== null} title="尾翼を削除しますか？" description="この尾翼面とすべてのセクション設定が設計から削除されます。" onConfirm={remove} onCancel={() => setPendingDeleteId(null)} />
   </PageTemplate>;
 }
 
@@ -166,7 +159,7 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
     </div>
 
     <Card>
-      <CardHeader><h3 className="font-semibold text-slate-950">尾翼プロパティ</h3><p className="mt-1 text-xs text-slate-500">主翼設計と同様に、変更内容はページ上部の保存操作で確定します。</p></CardHeader>
+      <CardHeader><h3 className="font-semibold text-slate-950">尾翼プロパティ</h3><p className="mt-1 text-xs text-slate-500">有効な変更内容は自動的に設計へ反映されます。</p></CardHeader>
       <CardBody>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <TextInput label="名称" value={surface.name} onChange={(value) => onChange({ ...surface, name: value })} />
@@ -176,7 +169,6 @@ function TailSurfaceEditor({ surface, airfoils, errors, selectedSectionId, onSel
           <NumberInput label="取付Z位置" value={surface.rootPosition.z} unit="m" onChange={(value) => updateRootPosition("z", value)} />
           <NumberInput label="取付角" value={surface.incidence} unit="°" onChange={(value) => onChange({ ...surface, incidence: value })} />
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.symmetric} onChange={(event) => onChange({ ...surface, symmetric: event.target.checked, sections: event.target.checked ? surface.sections.map((section) => ({ ...section, leftAirfoilId: section.rightAirfoilId })) : surface.sections })} />左右翼型を対称にする</label>
-          {surface.orientation === "vertical" ? <><label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.isDoubleFin} onChange={(event) => onChange({ ...surface, isDoubleFin: event.target.checked, isSymmetricFin: event.target.checked ? surface.isSymmetricFin : false })} />Double Fin</label><label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={surface.isSymmetricFin} disabled={!surface.isDoubleFin} onChange={(event) => onChange({ ...surface, isSymmetricFin: event.target.checked })} />Symmetric Fin</label></> : null}
         </div>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="grid gap-1 text-sm text-slate-700">{surface.name}の桁位置 (%翼弦)

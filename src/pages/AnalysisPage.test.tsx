@@ -103,7 +103,7 @@ describe("AnalysisPage", () => {
     expect(screen.queryByRole("tablist", { name: "空力設計" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cruiseを詳細表示" })).toBeNull();
     expect(screen.getByRole("button", { name: "Climbを詳細表示" })).toBeTruthy();
-    expect(within(screen.getByTestId("polar-charts")).queryByText("Cruise")).toBeNull();
+    expect(screen.queryByTestId("polar-charts")).toBeNull();
     await user.click(screen.getByRole("button", { name: "解析ケースを作成" }));
     const editor = screen.getByRole("dialog", { name: "解析ケースを新規作成" });
     expect((within(editor).getByRole("combobox", { name: "解析対象" }) as HTMLSelectElement).value).toBe("aircraft");
@@ -131,7 +131,14 @@ describe("AnalysisPage", () => {
     await user.click(screen.getByRole("button", { name: "Climbを解析" }));
     expect(await screen.findByText(/全翼面VLMは非粘性/)).toBeTruthy();
     expect(screen.queryByText(/翼面別寄与/)).toBeNull();
-    expect(screen.getByText(/全機の力・モーメント係数/)).toBeTruthy();
+    expect(screen.getByText(/迎角別の静安定性/)).toBeTruthy();
+    expect(screen.queryByTestId("polar-charts")).toBeNull();
+    expect(screen.queryByText("トリム時 CL")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "CL" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "CDi" })).toBeNull();
+    expect(screen.getByRole("figure", { name: "縦安定・トリム Cm - α" })).toBeTruthy();
+    expect(screen.getByRole("figure", { name: "上反角効果 Crβ - α" })).toBeTruthy();
+    expect(screen.getByRole("figure", { name: "方向静安定 Cnβ - α" })).toBeTruthy();
     expect(screen.getByText(/トリム迎角/)).toBeTruthy();
     expect(screen.getByText("2.00°")).toBeTruthy();
     expect(screen.getByText("静安定余裕 (−dCm/dCL)")).toBeTruthy();
@@ -189,7 +196,7 @@ describe("AnalysisPage", () => {
     render(<MemoryRouter initialEntries={["/aerodynamics/analysis"]}><JobProvider><AnalysisPage aircraft={aircraft} cases={cases} results={[]} polars={[]} analysisCaseRepository={{ list: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn() }} saveAnalysisResult={vi.fn()} /></JobProvider></MemoryRouter>);
 
     expect(screen.getByRole("heading", { name: "主翼解析" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼設計", "主翼解析", "尾翼設計"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["翼型", "主翼設計", "主翼解析"]);
     expect(screen.getByRole("tab", { name: "主翼解析" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("tab", { name: "空力構造連成" })).toBeNull();
   });

@@ -18,6 +18,8 @@ describe("StabilityComparison", () => {
     expect(rows).toHaveLength(3);
     expect(within(rows[1]).getByText("剛体（比較基準）")).toBeTruthy();
     expect(within(rows[1]).getByText("-0.100")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Cmα /deg" })).toBeTruthy();
+    expect(within(rows[1]).getByText("-0.0200")).toBeTruthy();
     expect(within(rows[2]).getByText("簡易評価（仮のたわみ）")).toBeTruthy();
     expect(within(rows[2]).getByText("未算出")).toBeTruthy();
     expect(screen.getByText(/同じ速度・迎角・横滑り角・重心/)).toBeTruthy();

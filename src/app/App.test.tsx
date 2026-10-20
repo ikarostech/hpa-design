@@ -4,6 +4,7 @@ import App from "./App";
 import { ApplicationRouter } from "./AppRoot";
 import { createDefaultDesignDocument } from "./defaultDesignDocument";
 import { WORKING_DOCUMENT_ID } from "./designDocumentRecoveryRepository";
+import userEvent from "@testing-library/user-event";
 
 afterEach(() => {
   cleanup();
@@ -13,6 +14,40 @@ afterEach(() => {
 });
 
 describe("App routes", () => {
+  it("automatically applies tail edits and retains them across tab and navigation changes", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "localStorage", "get").mockReturnValue(new MemoryStorage());
+    window.location.hash = "#/stability/tails";
+    render(<ApplicationRouter><App /></ApplicationRouter>);
+    await screen.findByRole("heading", { name: "尾翼設計" }, { timeout: 10_000 });
+    const incidence = screen.getAllByRole("spinbutton", { name: "取付角 (°)" })[0];
+    await user.clear(incidence);
+    await user.type(incidence, "7");
+    await user.click(screen.getByRole("button", { name: "尾翼を追加" }));
+    await user.click(screen.getByRole("tab", { name: "安定性解析" }));
+    await screen.findByRole("heading", { name: "安定性設計" }, { timeout: 10_000 });
+    await user.click(screen.getByRole("tab", { name: "尾翼設計" }));
+    await screen.findByRole("heading", { name: "尾翼設計" }, { timeout: 10_000 });
+    expect((screen.getAllByRole("spinbutton", { name: "取付角 (°)" })[0] as HTMLInputElement).value).toBe("7");
+    expect(screen.getAllByRole("spinbutton", { name: "取付角 (°)" })).toHaveLength(3);
+    await user.click(screen.getByRole("link", { name: "設計概要" }));
+    await screen.findByRole("heading", { name: "設計概要" }, { timeout: 10_000 });
+    const unloadWhileAway = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unloadWhileAway);
+    expect(unloadWhileAway.defaultPrevented).toBe(true);
+    await user.click(screen.getByRole("link", { name: "安定性設計" }));
+    await screen.findByRole("heading", { name: "安定性設計" }, { timeout: 10_000 });
+    await user.click(screen.getByRole("tab", { name: "尾翼設計" }));
+    await screen.findByRole("heading", { name: "尾翼設計" }, { timeout: 10_000 });
+    expect((screen.getAllByRole("spinbutton", { name: "取付角 (°)" })[0] as HTMLInputElement).value).toBe("7");
+    expect(screen.queryByRole("button", { name: "キャンセル" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "尾翼設計を保存" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "安定性解析に進む" })).toBeNull();
+    expect(screen.getAllByRole("spinbutton", { name: "取付角 (°)" })).toHaveLength(3);
+    const recovered = JSON.parse(window.localStorage.getItem(WORKING_DOCUMENT_ID)!);
+    expect(recovered.document.aircraft.tailSurfaces[0].incidence).toBe(7);
+    expect(recovered.document.aircraft.tailSurfaces).toHaveLength(3);
+  }, 20_000);
   it.each(["/stability", "/aerodynamics/stability"])("opens standalone stability design from %s and retains aircraft cases", async (path) => {
     window.location.hash = `#${path}`;
     render(<ApplicationRouter><App /></ApplicationRouter>);
@@ -22,7 +57,7 @@ describe("App routes", () => {
     expect(screen.getByRole("link", { name: "安定性設計" }).getAttribute("aria-current")).toBe("page");
     const savedCase = createDefaultDesignDocument().analysisCases.find((item) => item.scope === "aircraft")!;
     expect(screen.getByRole("button", { name: `${savedCase.name}を詳細表示` })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "尾翼設計に戻る" }).getAttribute("href")).toContain("/aerodynamics/tails");
+    expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("href")).toContain("/stability/tails");
   }, 15_000);
   it("opens the coupled FSI workspace at its dedicated route", async () => {
     window.location.hash = "#/fsi";
@@ -45,13 +80,15 @@ describe("App routes", () => {
     expect(screen.queryByRole("heading", { name: "プロジェクトファイル仕様" })).toBeNull();
   });
 
-  it("opens tail design on its own aerodynamic-design route", async () => {
-    window.location.hash = "#/aerodynamics/tails";
+  it.each(["/stability/tails", "/aerodynamics/tails"])("opens tail design in stability design from %s", async (path) => {
+    window.location.hash = `#${path}`;
 
     render(<ApplicationRouter><App /></ApplicationRouter>);
 
-    expect(await screen.findByRole("heading", { name: "尾翼設計" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "尾翼設計" }, { timeout: 10_000 })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "尾翼設計" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("tablist", { name: "空力設計" })).toBeNull();
+    expect(window.location.hash).toBe("#/stability/tails");
     expect(screen.getByRole("button", { name: "尾翼を追加" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "エレベーター", level: 2 })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "ラダー", level: 2 })).toBeTruthy();
@@ -61,7 +98,7 @@ describe("App routes", () => {
     expect((screen.getByRole("combobox", { name: "ラダー section 1 right foil" }) as HTMLSelectElement).selectedOptions[0].textContent).toBe("NACA0042");
     expect(screen.queryByRole("heading", { name: "エレベーターの単体解析" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "ラダーの単体解析" })).toBeNull();
-  });
+  }, 15_000);
 
   it("shows recovered sample tail geometry without standalone analysis", async () => {
     const storage = new MemoryStorage();

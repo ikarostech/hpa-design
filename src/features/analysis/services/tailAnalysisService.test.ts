@@ -72,13 +72,11 @@ describe("analyzeTailSurface", () => {
     expect(analyzeTailSurface(fin, { ...condition, alpha: 0, beta: 12 }, [polar(100_000, 0.02)]).status).toBe("inviscid-only");
   });
 
-  it("uses the combined area of both fins as the double-fin reference", () => {
+  it("rejects a legacy double fin instead of silently analyzing one fin", () => {
     const fin = { ...surface, orientation: "vertical" as const, isDoubleFin: true, rootPosition: { x: 4, y: 1, z: 0 } };
     const result = analyzeTailSurface(fin, { ...condition, alpha: 0, beta: 5 }, [polar(100_000, 0.02)]);
-    expect(result.status).toBe("valid");
-    if (result.status !== "valid") return;
-    expect(result.reference.area).toBe(2);
-    expect(result.strips).toHaveLength(4);
-    expect(result.profileCd).toBeCloseTo(0.02, 8);
+    expect(result.status).toBe("unsupported");
+    if (result.status !== "unsupported") return;
+    expect(result.issues.join(" ")).toMatch(/Double Fin.*対応/);
   });
 });
